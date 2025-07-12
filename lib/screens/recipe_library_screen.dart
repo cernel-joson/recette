@@ -1,11 +1,11 @@
+// lib/screens/recipe_library_screen.dart
+
 import 'package:flutter/material.dart';
-
-import '../models/recipe_model.dart';
-import 'recipe_edit_screen.dart';
 import '../helpers/database_helper.dart';
+import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
+import 'recipe_edit_screen.dart';
 
-// --- Recipe Library Screen ---
 class RecipeLibraryScreen extends StatefulWidget {
   const RecipeLibraryScreen({super.key});
 
@@ -14,43 +14,92 @@ class RecipeLibraryScreen extends StatefulWidget {
 }
 
 class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
-  // Refactored from a FutureBuilder to a stateful list for easier modification.
-  List<Recipe> _recipes = [];
-  bool _isLoading = true;
+  // Use a nullable list. null means "loading", an empty list means "no data".
+  List<Recipe>? _recipes;
 
   @override
   void initState() {
     super.initState();
+    // Load recipes only once when the widget is first created.
     _loadRecipes();
   }
 
-  // Load recipes from the database and update the state.
   Future<void> _loadRecipes() async {
-    setState(() { _isLoading = true; });
-    final recipesFromDb = await DatabaseHelper.instance.getAllRecipes();
-    setState(() {
-      _recipes = recipesFromDb;
-      _isLoading = false;
-    });
+    final recipes = await DatabaseHelper.instance.getAllRecipes();
+    if (mounted) {
+      setState(() {
+        _recipes = recipes;
+      });
+    }
   }
 
-  // Delete a recipe from the database and the local list.
-  void _deleteRecipe(int index) async {
-    // Grab the context-dependent object before the async gap.
-    final messenger = ScaffoldMessenger.of(context);
-    final recipeToDelete = _recipes[index];
-    if (recipeToDelete.id != null) {
-      await DatabaseHelper.instance.delete(recipeToDelete.id!);
-      // After the await, check if the widget is still mounted before using state.
-      if (!mounted) return;
+  Future<void> _deleteRecipe(int id) async {
+    await DatabaseHelper.instance.delete(id);
+    _loadRecipes(); // Refresh the list after deleting.
+  }
 
-      setState(() {
-        _recipes.removeAt(index);
-      });
-      messenger.showSnackBar(
-        SnackBar(content: Text('"${recipeToDelete.title}" deleted.')),
+  Widget _buildBody() {
+    // 1. Check if recipes are still loading.
+    if (_recipes == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // 2. Check if the library is empty.
+    if (_recipes!.isEmpty) {
+      return const Center(
+        child: Text(
+          'Your library is empty. Analyze and save a recipe to add it here.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
       );
     }
+
+    // 3. If we have recipes, display them in the ListView.
+    return ListView.builder(
+      itemCount: _recipes!.length,
+      itemBuilder: (context, index) {
+        final recipe = _recipes![index];
+        return Dismissible(
+          key: Key(recipe.id.toString()),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          onDismissed: (direction) {
+            _deleteRecipe(recipe.id!);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('"${recipe.title}" deleted')),
+            );
+          },
+          child: ListTile(
+            title: Text(recipe.title),
+            subtitle: Text(
+              recipe.description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                    appBar: AppBar(title: Text(recipe.title)),
+                    body: RecipeCard(recipe: recipe),
+                  ),
+                ),
+              );
+              // After returning from viewing a recipe, refresh the library
+              // in case it was edited or deleted.
+              _loadRecipes();
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -59,52 +108,22 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
       appBar: AppBar(
         title: const Text('My Recipe Library'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _recipes.isEmpty
-              ? const Center(child: Text('Your library is empty. Analyze and save a recipe to add it here.'))
-              : ListView.builder(
-                  itemCount: _recipes.length,
-                  itemBuilder: (context, index) {
-                    final recipe = _recipes[index];
-                    // Wrap the ListTile in a Dismissible widget for swipe-to-delete.
-                    return Dismissible(
-                      key: Key(recipe.id.toString()),
-                      direction: DismissDirection.endToStart,
-                      onDismissed: (direction) {
-                        _deleteRecipe(index);
-                      },
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      child: ListTile(
-                        title: Text(recipe.title),
-                        subtitle: Text(recipe.description, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => Scaffold(
-                              appBar: AppBar(title: Text(recipe.title)),
-                              body: RecipeCard(recipe: recipe),
-                            )),
-                          ).then((_) => _loadRecipes()); // Refresh list when returning.
-                        },
-                      ),
-                    );
-                  },
-                ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
+      // The body is now built using our stateful logic.
+      body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          // Navigate to the edit screen for a new recipe.
+          final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(builder: (context) => const RecipeEditScreen()),
-          ).then((_) => _loadRecipes());
+          );
+          // If the new recipe was saved (result is true), refresh the list.
+          if (result == true) {
+            _loadRecipes();
+          }
         },
-        icon: const Icon(Icons.add),
-        label: const Text("New Recipe"),
+        tooltip: 'New Recipe',
+        child: const Icon(Icons.add),
       ),
     );
   }
