@@ -168,8 +168,13 @@ class RecipeCard extends StatelessWidget {
                     icon: const Icon(Icons.save_alt_outlined),
                     label: const Text('Save'),
                     onPressed: () async {
+                      // Capture the context-dependent object and other data before the async gap.
+                      final messenger = ScaffoldMessenger.of(context);
+                      final recipeTitle = recipe.title;
+
                       await DatabaseHelper.instance.insert(recipe);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('"${recipe.title}" saved!')));
+
+                      messenger.showSnackBar(SnackBar(content: Text('"$recipeTitle" saved!')));
                     },
                   ),
                 if (recipe.id != null)
@@ -203,6 +208,11 @@ class RecipeCard extends StatelessWidget {
                     label: const Text('Delete'),
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.red[700]),
                     onPressed: () async {
+                      // Capture context-dependent objects and other data before the async gap.
+                      final navigator = Navigator.of(context);
+                      final messenger = ScaffoldMessenger.of(context);
+                      final recipeTitle = recipe.title;
+
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (BuildContext dialogContext) => AlertDialog(
@@ -216,8 +226,8 @@ class RecipeCard extends StatelessWidget {
                       );
                       if (confirm == true) {
                         await DatabaseHelper.instance.delete(recipe.id!);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('"${recipe.title}" deleted')));
-                        Navigator.of(context).pop(); // Go back to the library screen
+                        messenger.showSnackBar(SnackBar(content: Text('"$recipeTitle" deleted')));
+                        navigator.pop(); // Go back to the library screen
                       }
                     },
                   ),

@@ -36,13 +36,18 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
 
   // Delete a recipe from the database and the local list.
   void _deleteRecipe(int index) async {
+    // Grab the context-dependent object before the async gap.
+    final messenger = ScaffoldMessenger.of(context);
     final recipeToDelete = _recipes[index];
     if (recipeToDelete.id != null) {
       await DatabaseHelper.instance.delete(recipeToDelete.id!);
+      // After the await, check if the widget is still mounted before using state.
+      if (!mounted) return;
+
       setState(() {
         _recipes.removeAt(index);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('"${recipeToDelete.title}" deleted.')),
       );
     }
