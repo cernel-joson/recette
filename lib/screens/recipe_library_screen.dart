@@ -40,7 +40,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
 
   Future<void> _navigateToEditScreen(BuildContext context, Recipe? recipe,
       {bool showPasteDialog = false}) async {
-    final result = await Navigator.push<bool>(
+    final result = await Navigator.push<Recipe>(
       context,
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
