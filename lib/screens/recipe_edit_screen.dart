@@ -1,16 +1,24 @@
 // lib/screens/recipe_edit_screen.dart
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../models/recipe_model.dart';
+import '../helpers/api_helper.dart'; // Import the new helper
 import '../helpers/database_helper.dart';
+import '../models/recipe_model.dart';
 
-// This screen handles both creating a new recipe and editing an existing one.
+/// A screen for creating a new recipe or editing an existing one.
 class RecipeEditScreen extends StatefulWidget {
-  final Recipe? recipe; // If a recipe is passed, we're in "Edit Mode"
+  /// The recipe to be edited. If null, a new recipe is being created.
+  final Recipe? recipe;
 
-  const RecipeEditScreen({super.key, this.recipe});
+  /// If true, the "Paste Text" dialog will be shown automatically on load.
+  /// This is used when creating a new recipe via the paste text option.
+  final bool showPasteDialogOnLoad;
+
+  const RecipeEditScreen({
+    super.key,
+    this.recipe,
+    this.showPasteDialogOnLoad = false,
+  });
 
   @override
   State<RecipeEditScreen> createState() => _RecipeEditScreenState();
@@ -18,54 +26,53 @@ class RecipeEditScreen extends StatefulWidget {
 
 class _RecipeEditScreenState extends State<RecipeEditScreen> {
   final _formKey = GlobalKey<FormState>();
-  
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late TextEditingController _sourceUrlController;
-  
   late List<TextEditingController> _ingredientControllers;
   late List<TextEditingController> _instructionControllers;
+  late String _sourceUrl;
 
-  bool _isAiLoading = false;
+  // The cloud function URL is now managed by ApiHelper.
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with existing recipe data or as empty
-    _populateControllers(widget.recipe);
+    if (widget.recipe != null) {
+      // If we're editing an existing recipe, populate the controllers.
+      _populateControllers(widget.recipe!);
+    } else {
+      // If we're creating a new recipe, initialize with empty controllers.
+      _titleController = TextEditingController();
+      _descriptionController = TextEditingController();
+      _ingredientControllers = [TextEditingController()];
+      _instructionControllers = [TextEditingController()];
+      _sourceUrl = '';
 
-    // If this is a new recipe, automatically show the paste dialog.
-    if (widget.recipe == null) {
-      // This ensures the dialog shows after the screen is built.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPasteTextDialog();
-      });
+      // If specified, show the paste dialog automatically after the screen builds.
+      if (widget.showPasteDialogOnLoad) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _showPasteTextDialog());
+      }
     }
   }
 
-  void _populateControllers(Recipe? recipe) {
-    _titleController = TextEditingController(text: recipe?.title ?? '');
-    _descriptionController = TextEditingController(text: recipe?.description ?? '');
-    _sourceUrlController = TextEditingController(text: recipe?.sourceUrl ?? '');
-
-    // A more robust way to handle ingredients for editing
-    _ingredientControllers = recipe?.ingredients.map((i) {
-      String text = i.toString();
-      if (i.notes.isNotEmpty) {
-        text += ' (${i.notes})';
-      }
-      return TextEditingController(text: text);
-    }).toList() ?? [];
-
-    _instructionControllers = recipe?.instructions.map((i) => TextEditingController(text: i)).toList() ?? [];
+  /// Populates the text controllers with data from an existing Recipe object.
+  void _populateControllers(Recipe recipe) {
+    _titleController = TextEditingController(text: recipe.title);
+    _descriptionController = TextEditingController(text: recipe.description);
+    _ingredientControllers = recipe.ingredients
+        .map((i) => TextEditingController(text: i.toString()))
+        .toList();
+    _instructionControllers =
+        recipe.instructions.map((i) => TextEditingController(text: i)).toList();
+    _sourceUrl = recipe.sourceUrl;
   }
 
   @override
   void dispose() {
-    // Dispose all controllers to free up resources
+    // Dispose all controllers to free up resources.
     _titleController.dispose();
     _descriptionController.dispose();
-    _sourceUrlController.dispose();
     for (var controller in _ingredientControllers) {
       controller.dispose();
     }
@@ -75,87 +82,82 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     super.dispose();
   }
 
-  Future<void> _analyzePastedText(String pastedText) async {
-    setState(() { _isAiLoading = true; });
-    
-    // This is the same cloud function URL from the main screen.
-    const cloudFunctionUrl = "https://recipe-analyzer-api-1004204297555.us-central1.run.app";
+  /// Adds a new empty text field to a list of controllers.
+  void _addTextField(List<TextEditingController> controllers) {
+    setState(() {
+      controllers.add(TextEditingController());
+    });
+  }
 
-    try {
-      final response = await http.post(
-        Uri.parse(cloudFunctionUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-        },
-        // Send the text instead of a URL
-        body: json.encode({'text': pastedText}),
+  /// Removes a text field from a list of controllers at a given index.
+  void _removeTextField(List<TextEditingController> controllers, int index) {
+    setState(() {
+      controllers[index].dispose();
+      controllers.removeAt(index);
+    });
+  }
+
+  /// Saves the form data to the database, either as a new recipe or an update.
+  Future<void> _saveForm() async {
+    if (_formKey.currentState!.validate()) {
+      final newRecipe = Recipe(
+        id: widget.recipe?.id,
+        title: _titleController.text,
+        description: _descriptionController.text,
+        // For simplicity, we are not editing these fields in the UI for now.
+        prepTime: widget.recipe?.prepTime ?? '',
+        cookTime: widget.recipe?.cookTime ?? '',
+        totalTime: widget.recipe?.totalTime ?? '',
+        servings: widget.recipe?.servings ?? '',
+        // We need to parse the ingredient strings back into Ingredient objects.
+        // This is a simplified approach; a more robust solution would have separate fields.
+        ingredients: _ingredientControllers
+            .map((c) => Ingredient.fromString(c.text))
+            .toList(),
+        instructions: _instructionControllers.map((c) => c.text).toList(),
+        sourceUrl: _sourceUrl,
       );
 
-      if (response.statusCode == 200 && mounted) {
-        final data = json.decode(response.body);
-        // Create a recipe object from the AI response
-        final parsedRecipe = Recipe.fromJson(data, _sourceUrlController.text);
-        // Use the new recipe data to repopulate the text fields
-        setState(() {
-          _populateControllers(parsedRecipe);
-        });
+      if (widget.recipe?.id != null) {
+        // Update existing recipe
+        await DatabaseHelper.instance.update(newRecipe);
       } else {
-        // Handle error
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error analyzing text: ${response.body}')),
-          );
-        }
+        // Insert new recipe
+        await DatabaseHelper.instance.insert(newRecipe);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to analyze text: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() { _isAiLoading = false; });
-      }
+
+      // Pop the screen and return `true` to indicate a save occurred.
+      if (mounted) Navigator.of(context).pop(true);
     }
   }
 
+  /// Shows the dialog for pasting and analyzing unformatted recipe text.
   void _showPasteTextDialog() {
     final textController = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) {
+      builder: (context) {
         return AlertDialog(
           title: const Text('Populate from Text'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Paste your unformatted recipe text below and the AI will try to structure it for you.'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: textController,
-                maxLines: 8,
-                decoration: const InputDecoration(
-                  hintText: 'Paste recipe here...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
+          content: TextField(
+            controller: textController,
+            maxLines: 10,
+            decoration: const InputDecoration(
+              hintText: 'Paste your recipe text here...',
+              border: OutlineInputBorder(),
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                if (textController.text.isNotEmpty) {
-                  _analyzePastedText(textController.text);
-                }
-                Navigator.of(dialogContext).pop();
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                _analyzePastedText(textController.text);
               },
-              child: const Text('Analyze Text'),
+              child: const Text('Analyze'),
             ),
           ],
         );
@@ -163,33 +165,34 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     );
   }
 
-  void _saveForm() async {
-    if (_formKey.currentState!.validate()) {
-      // This parsing is still simplistic. For a production app, you'd want
-      // separate fields for each part of the ingredient.
-      final ingredients = _ingredientControllers.map((c) => Ingredient(quantity: '', unit: '', name: c.text, notes: '')).toList();
-      final instructions = _instructionControllers.map((c) => c.text).toList();
+  /// Analyzes pasted text by calling the centralized ApiHelper.
+  Future<void> _analyzePastedText(String text) async {
+    if (text.isEmpty) return;
 
-      final newRecipe = Recipe(
-        id: widget.recipe?.id,
-        title: _titleController.text,
-        description: _descriptionController.text,
-        sourceUrl: _sourceUrlController.text,
-        ingredients: ingredients,
-        instructions: instructions,
-        prepTime: widget.recipe?.prepTime ?? '',
-        cookTime: widget.recipe?.cookTime ?? '',
-        totalTime: widget.recipe?.totalTime ?? '',
-        servings: widget.recipe?.servings ?? '',
+    // Show a loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Analyzing text...')),
+    );
+
+    try {
+      // Call the centralized ApiHelper method.
+      final recipe = await ApiHelper.analyzeText(text);
+      setState(() {
+        _populateControllers(recipe);
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Fields populated successfully!'),
+            backgroundColor: Colors.green),
       );
-
-      if (widget.recipe == null) {
-        await DatabaseHelper.instance.insert(newRecipe);
-      } else {
-        await DatabaseHelper.instance.update(newRecipe);
-      }
-      
-      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -199,115 +202,112 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
       appBar: AppBar(
         title: Text(widget.recipe == null ? 'New Recipe' : 'Edit Recipe'),
         actions: [
-          // Show the "repopulate" button only when editing an existing recipe
-          if (widget.recipe != null)
-            IconButton(
-              icon: const Icon(Icons.paste_sharp),
-              tooltip: 'Repopulate from Text',
-              onPressed: () {
-                 showDialog(
-                    context: context,
-                    builder: (BuildContext dialogContext) => AlertDialog(
-                      title: const Text('Confirm Repopulate'),
-                      content: const Text('This will replace all current recipe data with the newly analyzed text. Continue?'),
-                      actions: <Widget>[
-                        TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-                        TextButton(
+          // Show the paste/repopulate button in the app bar.
+          IconButton(
+            icon: const Icon(Icons.paste_sharp),
+            tooltip: 'Populate from Text',
+            onPressed: () {
+              if (widget.recipe != null) {
+                // If editing, confirm before overriding data.
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Confirm'),
+                    content: const Text(
+                        'This will replace all current recipe data. Continue?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cancel')),
+                      ElevatedButton(
                           onPressed: () {
-                            Navigator.of(dialogContext).pop();
+                            Navigator.of(ctx).pop();
                             _showPasteTextDialog();
                           },
-                          child: const Text('Continue'),
-                        ),
-                      ],
-                    ),
-                  );
-              },
-            ),
+                          child: const Text('Continue')),
+                    ],
+                  ),
+                );
+              } else {
+                _showPasteTextDialog();
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.save),
-            tooltip: 'Save Recipe',
             onPressed: _saveForm,
+            tooltip: 'Save Recipe',
           ),
         ],
       ),
-      body: _isAiLoading
-        ? const Center(child: CircularProgressIndicator(semanticsLabel: 'AI is analyzing...'))
-        : Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-                    validator: (value) => value!.isEmpty ? 'Please enter a title' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _sourceUrlController,
-                    decoration: const InputDecoration(labelText: 'Source URL', border: OutlineInputBorder()),
-                  ),
-                  const Divider(height: 32),
-                  Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
-                  ..._buildDynamicTextFields(_ingredientControllers, 'Ingredient'),
-                  const Divider(height: 32),
-                  Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
-                  ..._buildDynamicTextFields(_instructionControllers, 'Instruction'),
-                ],
-              ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+              validator: (value) =>
+                  value!.isEmpty ? 'Please enter a title' : null,
             ),
-          ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 24),
+            _buildEditableList(
+                'Ingredients', _ingredientControllers, _addTextField, _removeTextField),
+            const SizedBox(height: 24),
+            _buildEditableList(
+                'Instructions', _instructionControllers, _addTextField, _removeTextField),
+          ],
+        ),
+      ),
     );
   }
 
-  List<Widget> _buildDynamicTextFields(List<TextEditingController> controllers, String hint) {
-    List<Widget> fields = [];
-    for (int i = 0; i < controllers.length; i++) {
-      fields.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controllers[i],
-                  decoration: InputDecoration(labelText: '$hint ${i + 1}'),
+  /// A reusable helper widget to build a list of editable text fields.
+  Widget _buildEditableList(
+      String title,
+      List<TextEditingController> controllers,
+      Function(List<TextEditingController>) onAdd,
+      Function(List<TextEditingController>, int) onRemove) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: controllers.length,
+          itemBuilder: (context, index) {
+            return Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controllers[index],
+                    decoration: InputDecoration(labelText: 'Step ${index + 1}'),
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () {
-                  setState(() {
-                    controllers[i].dispose(); // Dispose the controller before removing
-                    controllers.removeAt(i);
-                  });
-                },
-              ),
-            ],
-          ),
-        )
-      );
-    }
-    fields.add(
-      TextButton.icon(
-        icon: const Icon(Icons.add),
-        label: Text('Add $hint'),
-        onPressed: () {
-          setState(() {
-            controllers.add(TextEditingController());
-          });
-        },
-      )
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () => onRemove(controllers, index),
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          icon: const Icon(Icons.add),
+          label: Text('Add $title'),
+          onPressed: () => onAdd(controllers),
+        ),
+      ],
     );
-    return fields;
   }
 }

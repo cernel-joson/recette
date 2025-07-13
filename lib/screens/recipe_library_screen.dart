@@ -1,6 +1,7 @@
 // lib/screens/recipe_library_screen.dart
 
 import 'package:flutter/material.dart';
+import '../helpers/api_helper.dart'; // Import the centralized helper
 import '../helpers/database_helper.dart';
 import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
@@ -43,6 +44,108 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     _loadRecipes();
   }
 
+  /// Navigates to the RecipeEditScreen and refreshes the library if a save occurs.
+  Future<void> _navigateToEditScreen(BuildContext context, Recipe? recipe,
+      {bool showPasteDialog = false}) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecipeEditScreen(
+          recipe: recipe,
+          showPasteDialogOnLoad: showPasteDialog,
+        ),
+      ),
+    );
+
+    // If the edit screen returned `true`, it means a save happened.
+    if (result == true) {
+      _loadRecipes();
+    }
+  }
+
+  /// Shows the dialog for importing a recipe from a URL.
+  void _showUrlImportDialog(BuildContext context) {
+    final urlController = TextEditingController();
+    // Use a StatefulBuilder to manage the loading state within the dialog.
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent closing while loading
+      builder: (context) {
+        bool isLoading = false;
+        String? errorMessage;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Import from Web'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: urlController,
+                    decoration: const InputDecoration(
+                      labelText: 'Paste Recipe URL',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  if (errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text(errorMessage!,
+                          style: const TextStyle(color: Colors.red)),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (urlController.text.isEmpty) return;
+                          setDialogState(() {
+                            isLoading = true;
+                            errorMessage = null;
+                          });
+                          try {
+                            // Call the centralized ApiHelper method.
+                            final recipe =
+                                await ApiHelper.analyzeUrl(urlController.text);
+
+                            if (mounted) {
+                              Navigator.of(context).pop(); // Close URL dialog
+                              _navigateToEditScreen(context, recipe);
+                            }
+                          } catch (e) {
+                            setDialogState(() {
+                              errorMessage = e.toString();
+                            });
+                          } finally {
+                            // Only update state if the dialog is still mounted
+                            if(mounted) {
+                              setDialogState(() {
+                                isLoading = false;
+                              });
+                            }
+                          }
+                        },
+                  child: const Text('Import'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   /// Shows a modal bottom sheet with options for adding a new recipe.
   void _showAddRecipeMenu() {
     showModalBottomSheet(
@@ -56,8 +159,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                 title: const Text('Import from Web (URL)'),
                 onTap: () {
                   Navigator.pop(context); // Close the sheet
-                  // TODO: Implement URL import dialog
-                  debugPrint("Import from URL tapped");
+                  _showUrlImportDialog(context);
                 },
               ),
               ListTile(
@@ -65,8 +167,8 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                 title: const Text('Paste Recipe Text'),
                 onTap: () {
                   Navigator.pop(context); // Close the sheet
-                  // TODO: Navigate to edit screen and trigger text paste dialog
-                  debugPrint("Paste Text tapped");
+                  // Navigate to edit screen and trigger text paste dialog
+                  _navigateToEditScreen(context, null, showPasteDialog: true);
                 },
               ),
               ListTile(
@@ -74,8 +176,8 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                 title: const Text('Enter Manually'),
                 onTap: () {
                   Navigator.pop(context); // Close the sheet
-                  // TODO: Navigate to a blank edit screen
-                  debugPrint("Enter Manually tapped");
+                  // Navigate to a blank edit screen without the paste dialog
+                  _navigateToEditScreen(context, null, showPasteDialog: false);
                 },
               ),
             ],
