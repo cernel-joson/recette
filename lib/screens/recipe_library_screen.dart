@@ -6,6 +6,7 @@ import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
 import 'recipe_edit_screen.dart';
 
+/// A screen that displays a list of all recipes saved in the local database.
 class RecipeLibraryScreen extends StatefulWidget {
   const RecipeLibraryScreen({super.key});
 
@@ -14,7 +15,8 @@ class RecipeLibraryScreen extends StatefulWidget {
 }
 
 class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
-  // Use a nullable list. null means "loading", an empty list means "no data".
+  // A state variable to hold the list of recipes.
+  // It's nullable: null means "loading", an empty list means "no data".
   List<Recipe>? _recipes;
 
   @override
@@ -24,8 +26,10 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     _loadRecipes();
   }
 
+  /// Fetches all recipes from the database and updates the state.
   Future<void> _loadRecipes() async {
     final recipes = await DatabaseHelper.instance.getAllRecipes();
+    // Check if the widget is still in the tree before calling setState.
     if (mounted) {
       setState(() {
         _recipes = recipes;
@@ -33,29 +37,76 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     }
   }
 
+  /// Deletes a recipe from the database and refreshes the list.
   Future<void> _deleteRecipe(int id) async {
     await DatabaseHelper.instance.delete(id);
-    _loadRecipes(); // Refresh the list after deleting.
+    _loadRecipes();
   }
 
+  /// Shows a modal bottom sheet with options for adding a new recipe.
+  void _showAddRecipeMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text('Import from Web (URL)'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  // TODO: Implement URL import dialog
+                  debugPrint("Import from URL tapped");
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.paste),
+                title: const Text('Paste Recipe Text'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  // TODO: Navigate to edit screen and trigger text paste dialog
+                  debugPrint("Paste Text tapped");
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_note),
+                title: const Text('Enter Manually'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet
+                  // TODO: Navigate to a blank edit screen
+                  debugPrint("Enter Manually tapped");
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds the main body of the screen based on the state of the recipe list.
   Widget _buildBody() {
-    // 1. Check if recipes are still loading.
+    // 1. Show a loading indicator while recipes are being fetched.
     if (_recipes == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 2. Check if the library is empty.
+    // 2. Show a message if the library is empty.
     if (_recipes!.isEmpty) {
       return const Center(
-        child: Text(
-          'Your library is empty. Analyze and save a recipe to add it here.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Your library is empty.\nTap the + button to add a new recipe.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
         ),
       );
     }
 
-    // 3. If we have recipes, display them in the ListView.
+    // 3. If we have recipes, display them in a dismissible list.
     return ListView.builder(
       itemCount: _recipes!.length,
       itemBuilder: (context, index) {
@@ -83,6 +134,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             onTap: () async {
+              // When a recipe is tapped, navigate to the RecipeCard view.
               await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -92,8 +144,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                   ),
                 ),
               );
-              // After returning from viewing a recipe, refresh the library
-              // in case it was edited or deleted.
+              // After returning, refresh the library in case of edits/deletions.
               _loadRecipes();
             },
           ),
@@ -108,21 +159,11 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
       appBar: AppBar(
         title: const Text('My Recipe Library'),
       ),
-      // The body is now built using our stateful logic.
       body: _buildBody(),
+      // The FloatingActionButton now opens our new "Add Recipe" menu.
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Navigate to the edit screen for a new recipe.
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(builder: (context) => const RecipeEditScreen()),
-          );
-          // If the new recipe was saved (result is true), refresh the list.
-          if (result == true) {
-            _loadRecipes();
-          }
-        },
-        tooltip: 'New Recipe',
+        onPressed: _showAddRecipeMenu,
+        tooltip: 'Add Recipe',
         child: const Icon(Icons.add),
       ),
     );
