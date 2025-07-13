@@ -1,6 +1,7 @@
 // lib/screens/recipe_library_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // Import image_picker
 import '../helpers/api_helper.dart'; // Import the centralized helper
 import '../helpers/database_helper.dart';
 import '../helpers/usage_limiter.dart'; // Import the new helper
@@ -135,6 +136,76 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     );
   }
 
+  /// --- NEW: Handles the entire OCR flow ---
+  Future<void> _handleOcrScan(ImageSource source) async {
+    // Check usage limit first.
+    final canScan = await UsageLimiter.canPerformScan();
+    if (!canScan) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Daily Limit Reached'),
+            content: const Text(
+                'You have reached your daily limit for recipe scans. Please try again tomorrow.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // Use ImagePicker to get an image.
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: source);
+
+    if (image == null) return; // User cancelled the picker.
+
+    // Show a loading indicator.
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Scanning and analyzing image...'),
+            duration: Duration(seconds: 30)), // Long duration for analysis
+      );
+    }
+
+    try {
+      // Call the API helper to analyze the image.
+      final recipe = await ApiHelper.analyzeImage(image);
+      
+      // Increment the scan count on success.
+      await UsageLimiter.incrementScanCount();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        _navigateToEditScreen(context, recipe);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Scan Error'),
+            content: Text('An error occurred during the scan: ${e.toString()}'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
   /// Shows a modal bottom sheet with options for adding a new recipe.
   void _showAddRecipeMenu() {
     showModalBottomSheet(
@@ -167,47 +238,22 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                   _navigateToEditScreen(context, null, showPasteDialog: false);
                 },
               ),
-              // New "Scan from Camera" option
+              // Updated "Scan from Camera" option
               ListTile(
                 leading: const Icon(Icons.camera_alt_outlined),
                 title: const Text('Scan from Camera'),
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(context); // Close the sheet first
-                  final canScan = await UsageLimiter.canPerformScan();
-                  if (canScan) {
-                    // TODO: Implement actual OCR camera logic here.
-                    // For now, we just show a placeholder dialog.
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('OCR Feature'),
-                        content: const Text(
-                            'This will open the camera to scan a recipe.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  } else {
-                    // If the limit is reached, show a warning dialog.
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Daily Limit Reached'),
-                        content: const Text(
-                            'You have reached your daily limit for recipe scans. Please try again tomorrow.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                  _handleOcrScan(ImageSource.camera);
+                },
+              ),
+              // New "Scan from Gallery" option
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Scan from Gallery'),
+                onTap: () {
+                  Navigator.pop(context); // Close the sheet first
+                  _handleOcrScan(ImageSource.gallery);
                 },
               ),
             ],

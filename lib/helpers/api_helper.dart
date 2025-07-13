@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart'; // Import image_picker
 import '../models/recipe_model.dart';
 
 /// A helper class to handle all communication with the back-end API.
@@ -11,17 +12,25 @@ class ApiHelper {
       "https://recipe-analyzer-api-1004204297555.us-central1.run.app";
 
   /// Analyzes a recipe from a given URL.
-  ///
-  /// Throws an [Exception] if the request fails or the response is invalid.
   static Future<Recipe> analyzeUrl(String url) async {
+    // This method remains unchanged.
     return _analyze({'url': url});
   }
 
   /// Analyzes a recipe from a block of unformatted text.
-  ///
-  /// Throws an [Exception] if the request fails or the response is invalid.
   static Future<Recipe> analyzeText(String text) async {
+    // This method remains unchanged.
     return _analyze({'text': text});
+  }
+
+  /// --- NEW: Analyzes a recipe from an image file. ---
+  static Future<Recipe> analyzeImage(XFile imageFile) async {
+    // 1. Read the image file as bytes.
+    final imageBytes = await imageFile.readAsBytes();
+    // 2. Convert the bytes to a Base64 encoded string.
+    final base64Image = base64Encode(imageBytes);
+    // 3. Call the generic analysis function with the image data.
+    return _analyze({'image': base64Image});
   }
 
   /// The private, generic analysis function that handles the HTTP request.
@@ -36,15 +45,13 @@ class ApiHelper {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         // The source URL is passed back to be stored in the Recipe object.
-        final String sourceUrl = body['url'] ?? 'Pasted Text';
+        final String sourceUrl = body['url'] ?? 'Scanned from Camera';
         return Recipe.fromJson(data, sourceUrl);
       } else {
-        // If the server returns an error, throw an exception with the details.
         throw Exception(
             'Server error (${response.statusCode}): ${response.body}');
       }
     } catch (e) {
-      // Re-throw any other exceptions (network errors, etc.) to be handled by the UI.
       throw Exception('Failed to connect to the server: ${e.toString()}');
     }
   }
