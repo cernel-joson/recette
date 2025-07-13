@@ -8,7 +8,7 @@ import '../models/recipe_model.dart';
 class ApiHelper {
   // The single source of truth for our cloud function URL.
   static const String _cloudFunctionUrl =
-      "https://us-central1-winged-oath-465602-i5.cloudfunctions.net/recipe-analyzer-api";
+      "https://recipe-analyzer-api-1004204297555.us-central1.run.app";
 
   /// Analyzes a recipe from a given URL.
   ///
