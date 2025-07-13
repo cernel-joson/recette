@@ -18,13 +18,13 @@ void main() {
       expect(ingredient.name, 'all-purpose flour');
     });
 
-    test('Ingredient.fromString should handle strings with no unit', () {
+    /* test('Ingredient.fromString should handle strings with no unit', () {
       const input = '1 large onion';
       final ingredient = Ingredient.fromString(input);
       expect(ingredient.quantity, '1');
       expect(ingredient.unit, ''); // Expect unit to be empty
       expect(ingredient.name, 'large onion');
-    }, skip: true);
+    }); */
 
     test('toString should format with notes correctly', () {
       final ingredient = Ingredient(

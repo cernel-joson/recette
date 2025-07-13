@@ -1,17 +1,13 @@
-// lib/screens/recipe_edit_screen.dart
-
 import 'package:flutter/material.dart';
-import '../helpers/api_helper.dart'; // Import the new helper
+import '../helpers/api_helper.dart';
 import '../helpers/database_helper.dart';
 import '../models/recipe_model.dart';
+import '../widgets/ingredient_edit_dialog.dart';
+import '../widgets/timing_info_edit_dialog.dart'; // Import the new dialog
 
 /// A screen for creating a new recipe or editing an existing one.
 class RecipeEditScreen extends StatefulWidget {
-  /// The recipe to be edited. If null, a new recipe is being created.
   final Recipe? recipe;
-
-  /// If true, the "Paste Text" dialog will be shown automatically on load.
-  /// This is used when creating a new recipe via the paste text option.
   final bool showPasteDialogOnLoad;
 
   const RecipeEditScreen({
@@ -26,219 +22,268 @@ class RecipeEditScreen extends StatefulWidget {
 
 class _RecipeEditScreenState extends State<RecipeEditScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // Use controllers for simple text fields
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late List<TextEditingController> _ingredientControllers;
-  late List<TextEditingController> _instructionControllers;
-  late String _sourceUrl;
+  late TextEditingController _prepTimeController;
+  late TextEditingController _cookTimeController;
+  late TextEditingController _totalTimeController;
+  late TextEditingController _servingsController;
 
-  // The cloud function URL is now managed by ApiHelper.
+  // Manage complex lists directly in the state
+  late List<Ingredient> _ingredients;
+  late List<String> _instructions;
+  late List<TimingInfo> _otherTimings; // New state list
+  late String _sourceUrl;
 
   @override
   void initState() {
     super.initState();
-    if (widget.recipe != null) {
-      // If we're editing an existing recipe, populate the controllers.
-      _populateControllers(widget.recipe!);
-    } else {
-      // If we're creating a new recipe, initialize with empty controllers.
-      _titleController = TextEditingController();
-      _descriptionController = TextEditingController();
-      _ingredientControllers = [TextEditingController()];
-      _instructionControllers = [TextEditingController()];
-      _sourceUrl = '';
+    _populateState(widget.recipe);
 
-      // If specified, show the paste dialog automatically after the screen builds.
-      if (widget.showPasteDialogOnLoad) {
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _showPasteTextDialog());
-      }
+    if (widget.showPasteDialogOnLoad) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _showPasteTextDialog());
     }
   }
 
-  /// Populates the text controllers with data from an existing Recipe object.
-  void _populateControllers(Recipe recipe) {
-    _titleController = TextEditingController(text: recipe.title);
-    _descriptionController = TextEditingController(text: recipe.description);
-    _ingredientControllers = recipe.ingredients
-        .map((i) => TextEditingController(text: i.toString()))
-        .toList();
-    _instructionControllers =
-        recipe.instructions.map((i) => TextEditingController(text: i)).toList();
-    _sourceUrl = recipe.sourceUrl;
+  /// Populates all state variables from a Recipe object.
+  void _populateState(Recipe? recipe) {
+    _titleController = TextEditingController(text: recipe?.title ?? '');
+    _descriptionController =
+        TextEditingController(text: recipe?.description ?? '');
+    _prepTimeController = TextEditingController(text: recipe?.prepTime ?? '');
+    _cookTimeController = TextEditingController(text: recipe?.cookTime ?? '');
+    _totalTimeController = TextEditingController(text: recipe?.totalTime ?? '');
+    _servingsController = TextEditingController(text: recipe?.servings ?? '');
+    _ingredients = List<Ingredient>.from(recipe?.ingredients ?? []);
+    _instructions = List<String>.from(recipe?.instructions ?? []);
+    _otherTimings = List<TimingInfo>.from(recipe?.otherTimings ?? []); // Populate new list
+    _sourceUrl = recipe?.sourceUrl ?? '';
   }
 
   @override
   void dispose() {
-    // Dispose all controllers to free up resources.
+    // Dispose all controllers
     _titleController.dispose();
     _descriptionController.dispose();
-    for (var controller in _ingredientControllers) {
-      controller.dispose();
-    }
-    for (var controller in _instructionControllers) {
-      controller.dispose();
-    }
+    _prepTimeController.dispose();
+    _cookTimeController.dispose();
+    _totalTimeController.dispose();
+    _servingsController.dispose();
     super.dispose();
   }
 
-  /// Adds a new empty text field to a list of controllers.
-  void _addTextField(List<TextEditingController> controllers) {
-    setState(() {
-      controllers.add(TextEditingController());
-    });
-  }
-
-  /// Removes a text field from a list of controllers at a given index.
-  void _removeTextField(List<TextEditingController> controllers, int index) {
-    setState(() {
-      controllers[index].dispose();
-      controllers.removeAt(index);
-    });
-  }
-
-  /// Saves the form data to the database, either as a new recipe or an update.
+  /// Saves the form data to the database.
   Future<void> _saveForm() async {
     if (_formKey.currentState!.validate()) {
       final newRecipe = Recipe(
         id: widget.recipe?.id,
         title: _titleController.text,
         description: _descriptionController.text,
-        // For simplicity, we are not editing these fields in the UI for now.
-        prepTime: widget.recipe?.prepTime ?? '',
-        cookTime: widget.recipe?.cookTime ?? '',
-        totalTime: widget.recipe?.totalTime ?? '',
-        servings: widget.recipe?.servings ?? '',
-        // We need to parse the ingredient strings back into Ingredient objects.
-        // This is a simplified approach; a more robust solution would have separate fields.
-        ingredients: _ingredientControllers
-            .map((c) => Ingredient.fromString(c.text))
-            .toList(),
-        instructions: _instructionControllers.map((c) => c.text).toList(),
+        prepTime: _prepTimeController.text,
+        cookTime: _cookTimeController.text,
+        totalTime: _totalTimeController.text,
+        servings: _servingsController.text,
+        ingredients: _ingredients,
+        instructions: _instructions,
+        otherTimings: _otherTimings, // Save the new list
         sourceUrl: _sourceUrl,
       );
 
       if (widget.recipe?.id != null) {
-        // Update existing recipe
         await DatabaseHelper.instance.update(newRecipe);
       } else {
-        // Insert new recipe
         await DatabaseHelper.instance.insert(newRecipe);
       }
 
-      // Pop the screen and return `true` to indicate a save occurred.
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(newRecipe);
     }
   }
 
-  /// Shows the dialog for pasting and analyzing unformatted recipe text.
+  // --- New Timing Management ---
+  Future<void> _editOtherTiming(int index) async {
+    final updatedTiming = await showDialog<TimingInfo>(
+      context: context,
+      builder: (context) => TimingInfoEditDialog(timingInfo: _otherTimings[index]),
+    );
+    if (updatedTiming != null) {
+      setState(() {
+        _otherTimings[index] = updatedTiming;
+      });
+    }
+  }
+
+  Future<void> _addOtherTiming() async {
+    final newTiming = await showDialog<TimingInfo>(
+      context: context,
+      builder: (context) => const TimingInfoEditDialog(),
+    );
+    if (newTiming != null) {
+      setState(() {
+        _otherTimings.add(newTiming);
+      });
+    }
+  }
+
+  void _removeOtherTiming(int index) {
+    setState(() {
+      _otherTimings.removeAt(index);
+    });
+  }
+
+
+  // --- Ingredient and Instruction management methods ---
+  Future<void> _editIngredient(int index) async {
+    final updatedIngredient = await showDialog<Ingredient>(
+      context: context,
+      builder: (context) =>
+          IngredientEditDialog(ingredient: _ingredients[index]),
+    );
+    if (updatedIngredient != null) {
+      setState(() {
+        _ingredients[index] = updatedIngredient;
+      });
+    }
+  }
+
+  Future<void> _addIngredient() async {
+    final newIngredient = await showDialog<Ingredient>(
+      context: context,
+      builder: (context) => const IngredientEditDialog(),
+    );
+    if (newIngredient != null) {
+      setState(() {
+        _ingredients.add(newIngredient);
+      });
+    }
+  }
+
+  void _removeIngredient(int index) {
+    setState(() {
+      _ingredients.removeAt(index);
+    });
+  }
+
+  Future<void> _editInstruction(int index) async {
+    final controller = TextEditingController(text: _instructions[index]);
+    final updatedInstruction = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Step ${index + 1}'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (updatedInstruction != null) {
+      setState(() {
+        _instructions[index] = updatedInstruction;
+      });
+    }
+  }
+
+  void _addInstruction() {
+    setState(() {
+      _instructions.add('');
+    });
+    _editInstruction(_instructions.length - 1);
+  }
+
+  void _removeInstruction(int index) {
+    setState(() {
+      _instructions.removeAt(index);
+    });
+  }
+
+  // --- AI Population logic ---
   void _showPasteTextDialog() {
     final textController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Populate from Text'),
-          content: TextField(
-            controller: textController,
-            maxLines: 10,
-            decoration: const InputDecoration(
-              hintText: 'Paste your recipe text here...',
-              border: OutlineInputBorder(),
-            ),
+      builder: (context) => AlertDialog(
+        title: const Text('Populate from Text'),
+        content: TextField(
+          controller: textController,
+          maxLines: 10,
+          decoration: const InputDecoration(
+            hintText: 'Paste your recipe text here...',
+            border: OutlineInputBorder(),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog
-                _analyzePastedText(textController.text);
-              },
-              child: const Text('Analyze'),
-            ),
-          ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              _analyzePastedText(textController.text);
+            },
+            child: const Text('Analyze'),
+          ),
+        ],
+      ),
     );
   }
 
-  /// Analyzes pasted text by calling the centralized ApiHelper.
   Future<void> _analyzePastedText(String text) async {
     if (text.isEmpty) return;
-
-    // Show a loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Analyzing text...')),
-    );
-
     try {
-      // Call the centralized ApiHelper method.
       final recipe = await ApiHelper.analyzeText(text);
       setState(() {
-        _populateControllers(recipe);
+        _populateState(recipe); // Repopulate all fields with AI data
       });
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Fields populated successfully!'),
-            backgroundColor: Colors.green),
-      );
     } catch (e) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red),
-      );
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error analyzing text: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.recipe == null ? 'New Recipe' : 'Edit Recipe'),
-        actions: [
-          // Show the paste/repopulate button in the app bar.
-          IconButton(
-            icon: const Icon(Icons.paste_sharp),
-            tooltip: 'Populate from Text',
-            onPressed: () {
-              if (widget.recipe != null) {
-                // If editing, confirm before overriding data.
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Confirm'),
-                    content: const Text(
-                        'This will replace all current recipe data. Continue?'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(),
-                          child: const Text('Cancel')),
-                      ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(ctx).pop();
-                            _showPasteTextDialog();
-                          },
-                          child: const Text('Continue')),
-                    ],
-                  ),
-                );
-              } else {
-                _showPasteTextDialog();
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveForm,
-            tooltip: 'Save Recipe',
-          ),
-        ],
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            TextButton.icon(
+              icon: const Icon(Icons.paste_sharp),
+              label: const Text('Repopulate'),
+              onPressed: _showPasteTextDialog,
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.save),
+              label: const Text('Save'),
+              onPressed: _saveForm,
+            ),
+          ],
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -257,55 +302,144 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
               decoration: const InputDecoration(labelText: 'Description'),
               maxLines: 3,
             ),
+            const SizedBox(height: 16),
+            // Standard time and servings fields
+            Row(
+              children: [
+                Expanded(
+                    child: TextFormField(
+                        controller: _prepTimeController,
+                        decoration:
+                            const InputDecoration(labelText: 'Prep Time'))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: TextFormField(
+                        controller: _cookTimeController,
+                        decoration:
+                            const InputDecoration(labelText: 'Cook Time'))),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                    child: TextFormField(
+                        controller: _totalTimeController,
+                        decoration:
+                            const InputDecoration(labelText: 'Total Time'))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: TextFormField(
+                        controller: _servingsController,
+                        decoration:
+                            const InputDecoration(labelText: 'Servings'))),
+              ],
+            ),
             const SizedBox(height: 24),
-            _buildEditableList(
-                'Ingredients', _ingredientControllers, _addTextField, _removeTextField),
+
+            // New section for other timings
+            _buildOtherTimingsList(),
+
             const SizedBox(height: 24),
-            _buildEditableList(
-                'Instructions', _instructionControllers, _addTextField, _removeTextField),
+
+            _buildIngredientList(),
+
+            const SizedBox(height: 24),
+
+            _buildInstructionList(),
           ],
         ),
       ),
     );
   }
 
-  /// A reusable helper widget to build a list of editable text fields.
-  Widget _buildEditableList(
-      String title,
-      List<TextEditingController> controllers,
-      Function(List<TextEditingController>) onAdd,
-      Function(List<TextEditingController>, int) onRemove) {
+  // --- New Builder for Other Timings ---
+  Widget _buildOtherTimingsList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        Text('Other Timings', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: controllers.length,
+          itemCount: _otherTimings.length,
           itemBuilder: (context, index) {
-            return Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: controllers[index],
-                    decoration: InputDecoration(labelText: 'Step ${index + 1}'),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () => onRemove(controllers, index),
-                ),
-              ],
+            return ListTile(
+              title: Text(_otherTimings[index].toString()),
+              trailing: IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                onPressed: () => _removeOtherTiming(index),
+              ),
+              onTap: () => _editOtherTiming(index),
             );
           },
         ),
-        const SizedBox(height: 8),
         TextButton.icon(
           icon: const Icon(Icons.add),
-          label: Text('Add $title'),
-          onPressed: () => onAdd(controllers),
+          label: const Text('Add Timing'),
+          onPressed: _addOtherTiming,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIngredientList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _ingredients.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              title: Text(_ingredients[index].toString()),
+              trailing: IconButton(
+                icon: const Icon(Icons.remove_circle_outline,
+                    color: Colors.red),
+                onPressed: () => _removeIngredient(index),
+              ),
+              onTap: () => _editIngredient(index),
+            );
+          },
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.add),
+          label: const Text('Add Ingredient'),
+          onPressed: _addIngredient,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInstructionList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _instructions.length,
+          itemBuilder: (context, index) {
+            return ListTile(
+              leading: Text('${index + 1}.'),
+              title: Text(_instructions[index]),
+              trailing: IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                onPressed: () => _removeInstruction(index),
+              ),
+              onTap: () => _editInstruction(index),
+            );
+          },
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.add),
+          label: const Text('Add Instruction'),
+          onPressed: _addInstruction,
         ),
       ],
     );

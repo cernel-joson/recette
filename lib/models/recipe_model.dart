@@ -1,6 +1,28 @@
-// lib/models/recipe_model.dart
-
 import 'dart:convert';
+
+/// A new class to represent a labeled duration.
+class TimingInfo {
+  final String label;
+  final String duration;
+
+  TimingInfo({required this.label, required this.duration});
+
+  Map<String, dynamic> toMap() {
+    return {'label': label, 'duration': duration};
+  }
+
+  factory TimingInfo.fromMap(Map<String, dynamic> map) {
+    return TimingInfo(
+      label: map['label'] ?? '',
+      duration: map['duration'] ?? '',
+    );
+  }
+
+  @override
+  String toString() {
+    return '$label: $duration';
+  }
+}
 
 /// Represents a full recipe with all its details.
 class Recipe {
@@ -14,6 +36,7 @@ class Recipe {
   final List<Ingredient> ingredients;
   final List<String> instructions;
   final String sourceUrl;
+  final List<TimingInfo> otherTimings; // New field
 
   Recipe({
     this.id,
@@ -26,6 +49,7 @@ class Recipe {
     required this.ingredients,
     required this.instructions,
     required this.sourceUrl,
+    this.otherTimings = const [], // Default to an empty list
   });
 
   /// Converts a Recipe object into a Map for database insertion.
@@ -41,6 +65,8 @@ class Recipe {
       'ingredients': json.encode(ingredients.map((i) => i.toMap()).toList()),
       'instructions': json.encode(instructions),
       'sourceUrl': sourceUrl,
+      // Encode the new list of timings into a JSON string for the database.
+      'otherTimings': json.encode(otherTimings.map((t) => t.toMap()).toList()),
     };
   }
 
@@ -54,6 +80,11 @@ class Recipe {
     List<String> instructions =
         instructionsList.map((i) => i.toString()).toList();
 
+    // Decode the new other_timings list from the AI response.
+    var otherTimingsList = json['other_timings'] as List? ?? [];
+    List<TimingInfo> otherTimings =
+        otherTimingsList.map((t) => TimingInfo.fromMap(t)).toList();
+
     return Recipe(
       title: json['title'] ?? 'No Title Provided',
       description: json['description'] ?? '',
@@ -64,6 +95,7 @@ class Recipe {
       ingredients: ingredients,
       instructions: instructions,
       sourceUrl: url,
+      otherTimings: otherTimings,
     );
   }
 
@@ -82,25 +114,30 @@ class Recipe {
           .toList(),
       instructions: List<String>.from(json.decode(map['instructions'])),
       sourceUrl: map['sourceUrl'],
+      // Decode the otherTimings from the database, handling legacy data.
+      otherTimings: map['otherTimings'] != null
+          ? (json.decode(map['otherTimings']) as List)
+              .map((t) => TimingInfo.fromMap(t))
+              .toList()
+          : [],
     );
   }
 }
 
-/// Represents a single ingredient in a recipe.
+// ... (The Ingredient class remains the same) ...
 class Ingredient {
   final String quantity;
   final String unit;
   final String name;
-  final String notes; // New field for additional comments.
+  final String notes;
 
   Ingredient({
     required this.quantity,
     required this.unit,
     required this.name,
-    this.notes = '', // Default to an empty string.
+    this.notes = '',
   });
 
-  /// Converts an Ingredient object to a Map.
   Map<String, dynamic> toMap() {
     return {
       'quantity': quantity,
@@ -110,7 +147,6 @@ class Ingredient {
     };
   }
 
-  /// Factory constructor to create an Ingredient from a JSON map (from AI).
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     return Ingredient(
       quantity: json['quantity'] ?? '',
@@ -120,21 +156,16 @@ class Ingredient {
     );
   }
 
-  /// Factory constructor to create an Ingredient from a database Map.
   factory Ingredient.fromMap(Map<String, dynamic> map) {
     return Ingredient(
       quantity: map['quantity'],
       unit: map['unit'],
       name: map['name'],
-      notes: map['notes'] ?? '', // Handle legacy data that might not have notes.
+      notes: map['notes'] ?? '',
     );
   }
 
-  /// A simplified factory constructor to parse an ingredient from a single string.
-  /// This is used when saving from the simple text fields in the edit screen.
-  /// It makes a best guess and is not as robust as the AI parser.
   factory Ingredient.fromString(String text) {
-    // This is a very basic parser. A more complex regex could be used.
     final parts = text.split(' ');
     if (parts.length > 2) {
       return Ingredient(
@@ -149,10 +180,8 @@ class Ingredient {
     }
   }
 
-  /// Overrides the default toString() method for display purposes.
   @override
   String toString() {
-    // Build the string piece by piece to handle missing parts gracefully.
     final parts = [quantity, unit, name];
     String mainString = parts.where((p) => p.isNotEmpty).join(' ').trim();
     if (notes.isNotEmpty) {

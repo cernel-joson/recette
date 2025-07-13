@@ -1,15 +1,12 @@
-// lib/screens/recipe_library_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import '../helpers/api_helper.dart'; // Import the centralized helper
 import '../helpers/database_helper.dart';
 import '../helpers/usage_limiter.dart'; // Import the new helper
 import '../models/recipe_model.dart';
-import '../widgets/recipe_card.dart';
 import 'recipe_edit_screen.dart';
+import 'recipe_view_screen.dart'; // Import the new view screen
 
-/// A screen that displays a list of all recipes saved in the local database.
 class RecipeLibraryScreen extends StatefulWidget {
   const RecipeLibraryScreen({super.key});
 
@@ -27,6 +24,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
   }
 
   Future<void> _loadRecipes() async {
+    // ... this method remains the same
     final recipes = await DatabaseHelper.instance.getAllRecipes();
     if (mounted) {
       setState(() {
@@ -262,8 +260,8 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
       },
     );
   }
-
-  // ... (The rest of the file, _buildBody and build methods, remains the same) ...
+  
+  // The _buildBody method is updated to navigate to the new screen
   Widget _buildBody() {
     if (_recipes == null) {
       return const Center(child: CircularProgressIndicator());
@@ -309,16 +307,18 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             onTap: () async {
-              await Navigator.push(
+              // **THIS IS THE KEY CHANGE**
+              // Navigate to the new RecipeViewScreen.
+              final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Scaffold(
-                    appBar: AppBar(title: Text(recipe.title)),
-                    body: RecipeCard(recipe: recipe),
-                  ),
+                  builder: (context) => RecipeViewScreen(recipe: recipe),
                 ),
               );
-              _loadRecipes();
+              // If the view screen returns true, it means a deletion occurred.
+              if (result == true) {
+                _loadRecipes();
+              }
             },
           ),
         );
