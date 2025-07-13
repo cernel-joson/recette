@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../helpers/api_helper.dart'; // Import the centralized helper
 import '../helpers/database_helper.dart';
+import '../helpers/usage_limiter.dart'; // Import the new helper
 import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
 import 'recipe_edit_screen.dart';
@@ -16,21 +17,16 @@ class RecipeLibraryScreen extends StatefulWidget {
 }
 
 class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
-  // A state variable to hold the list of recipes.
-  // It's nullable: null means "loading", an empty list means "no data".
   List<Recipe>? _recipes;
 
   @override
   void initState() {
     super.initState();
-    // Load recipes only once when the widget is first created.
     _loadRecipes();
   }
 
-  /// Fetches all recipes from the database and updates the state.
   Future<void> _loadRecipes() async {
     final recipes = await DatabaseHelper.instance.getAllRecipes();
-    // Check if the widget is still in the tree before calling setState.
     if (mounted) {
       setState(() {
         _recipes = recipes;
@@ -38,13 +34,11 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     }
   }
 
-  /// Deletes a recipe from the database and refreshes the list.
   Future<void> _deleteRecipe(int id) async {
     await DatabaseHelper.instance.delete(id);
     _loadRecipes();
   }
 
-  /// Navigates to the RecipeEditScreen and refreshes the library if a save occurs.
   Future<void> _navigateToEditScreen(BuildContext context, Recipe? recipe,
       {bool showPasteDialog = false}) async {
     final result = await Navigator.push<bool>(
@@ -57,19 +51,16 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
       ),
     );
 
-    // If the edit screen returned `true`, it means a save happened.
     if (result == true) {
       _loadRecipes();
     }
   }
 
-  /// Shows the dialog for importing a recipe from a URL.
   void _showUrlImportDialog(BuildContext context) {
     final urlController = TextEditingController();
-    // Use a StatefulBuilder to manage the loading state within the dialog.
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent closing while loading
+      barrierDismissible: false,
       builder: (context) {
         bool isLoading = false;
         String? errorMessage;
@@ -102,7 +93,8 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                  onPressed:
+                      isLoading ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
@@ -115,12 +107,10 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                             errorMessage = null;
                           });
                           try {
-                            // Call the centralized ApiHelper method.
                             final recipe =
                                 await ApiHelper.analyzeUrl(urlController.text);
-
                             if (mounted) {
-                              Navigator.of(context).pop(); // Close URL dialog
+                              Navigator.of(context).pop();
                               _navigateToEditScreen(context, recipe);
                             }
                           } catch (e) {
@@ -128,8 +118,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                               errorMessage = e.toString();
                             });
                           } finally {
-                            // Only update state if the dialog is still mounted
-                            if(mounted) {
+                            if (mounted) {
                               setDialogState(() {
                                 isLoading = false;
                               });
@@ -158,7 +147,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                 leading: const Icon(Icons.language),
                 title: const Text('Import from Web (URL)'),
                 onTap: () {
-                  Navigator.pop(context); // Close the sheet
+                  Navigator.pop(context);
                   _showUrlImportDialog(context);
                 },
               ),
@@ -166,8 +155,7 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                 leading: const Icon(Icons.paste),
                 title: const Text('Paste Recipe Text'),
                 onTap: () {
-                  Navigator.pop(context); // Close the sheet
-                  // Navigate to edit screen and trigger text paste dialog
+                  Navigator.pop(context);
                   _navigateToEditScreen(context, null, showPasteDialog: true);
                 },
               ),
@@ -175,9 +163,51 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                 leading: const Icon(Icons.edit_note),
                 title: const Text('Enter Manually'),
                 onTap: () {
-                  Navigator.pop(context); // Close the sheet
-                  // Navigate to a blank edit screen without the paste dialog
+                  Navigator.pop(context);
                   _navigateToEditScreen(context, null, showPasteDialog: false);
+                },
+              ),
+              // New "Scan from Camera" option
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Scan from Camera'),
+                onTap: () async {
+                  Navigator.pop(context); // Close the sheet first
+                  final canScan = await UsageLimiter.canPerformScan();
+                  if (canScan) {
+                    // TODO: Implement actual OCR camera logic here.
+                    // For now, we just show a placeholder dialog.
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('OCR Feature'),
+                        content: const Text(
+                            'This will open the camera to scan a recipe.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    // If the limit is reached, show a warning dialog.
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Daily Limit Reached'),
+                        content: const Text(
+                            'You have reached your daily limit for recipe scans. Please try again tomorrow.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                 },
               ),
             ],
@@ -187,14 +217,12 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     );
   }
 
-  /// Builds the main body of the screen based on the state of the recipe list.
+  // ... (The rest of the file, _buildBody and build methods, remains the same) ...
   Widget _buildBody() {
-    // 1. Show a loading indicator while recipes are being fetched.
     if (_recipes == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 2. Show a message if the library is empty.
     if (_recipes!.isEmpty) {
       return const Center(
         child: Padding(
@@ -208,7 +236,6 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
       );
     }
 
-    // 3. If we have recipes, display them in a dismissible list.
     return ListView.builder(
       itemCount: _recipes!.length,
       itemBuilder: (context, index) {
@@ -236,7 +263,6 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             onTap: () async {
-              // When a recipe is tapped, navigate to the RecipeCard view.
               await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -246,7 +272,6 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
                   ),
                 ),
               );
-              // After returning, refresh the library in case of edits/deletions.
               _loadRecipes();
             },
           ),
@@ -262,7 +287,6 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
         title: const Text('My Recipe Library'),
       ),
       body: _buildBody(),
-      // The FloatingActionButton now opens our new "Add Recipe" menu.
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddRecipeMenu,
         tooltip: 'Add Recipe',
