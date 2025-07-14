@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart'; // Import the new share package
 import '../helpers/database_helper.dart';
 import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
 import 'recipe_edit_screen.dart';
-import '../helpers/pdf_generator.dart'; // We will use the PDF generator here
+import '../helpers/pdf_generator.dart';
+import '../helpers/text_formatter.dart'; // Import our new text formatter
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete }
@@ -19,7 +21,6 @@ class RecipeViewScreen extends StatefulWidget {
 }
 
 class _RecipeViewScreenState extends State<RecipeViewScreen> {
-  // We hold the recipe in the state so it can be updated after editing.
   late Recipe _currentRecipe;
 
   @override
@@ -29,15 +30,12 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   }
 
   Future<void> _editRecipe() async {
-    // Navigate to the edit screen.
     final updatedRecipe = await Navigator.push<Recipe>(
       context,
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(recipe: _currentRecipe),
       ),
     );
-
-    // If the edit screen returns an updated recipe, refresh the state.
     if (updatedRecipe != null) {
       setState(() {
         _currentRecipe = updatedRecipe;
@@ -64,14 +62,44 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
         ],
       ),
     );
-
     if (confirm == true) {
       await DatabaseHelper.instance.delete(_currentRecipe.id!);
       if (mounted) {
-        // Pop the screen and return true to signal a deletion occurred.
         Navigator.of(context).pop(true);
       }
     }
+  }
+
+  /// NEW: Shows a dialog with different sharing options.
+  Future<void> _showShareOptions() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share Recipe As...'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf),
+              title: const Text('PDF Document'),
+              onTap: () {
+                Navigator.of(context).pop();
+                PdfGenerator.generateAndShareRecipe(_currentRecipe);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.article),
+              title: const Text('Plain Text'),
+              onTap: () {
+                Navigator.of(context).pop();
+                final recipeText = TextFormatter.formatRecipe(_currentRecipe);
+                Share.share(recipeText, subject: _currentRecipe.title);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -80,31 +108,27 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       appBar: AppBar(
         title: Text(_currentRecipe.title),
       ),
-      // The body of the screen is our simplified RecipeCard.
       body: RecipeCard(recipe: _currentRecipe),
-      // The new BottomAppBar for actions.
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // Visible "Edit" button
             TextButton.icon(
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Edit'),
               onPressed: _editRecipe,
             ),
-            // Visible "Print" button
             TextButton.icon(
               icon: const Icon(Icons.print_outlined),
               label: const Text('Print'),
               onPressed: () => PdfGenerator.generateAndPrintRecipe(_currentRecipe),
             ),
-            // PopupMenuButton for secondary actions
             PopupMenuButton<_MenuAction>(
               icon: const Icon(Icons.more_vert),
               onSelected: (action) {
                 if (action == _MenuAction.share) {
-                  PdfGenerator.generateAndShareRecipe(_currentRecipe);
+                  // Call our new share options dialog
+                  _showShareOptions();
                 } else if (action == _MenuAction.delete) {
                   _deleteRecipe();
                 }
