@@ -9,6 +9,7 @@ import '../widgets/dashboard_card.dart';
 import 'recipe_library_screen.dart';
 import 'recipe_edit_screen.dart';
 import '../main.dart'; // Import main.dart to get access to the navigatorKey
+import 'dietary_profile_screen.dart'; // Import the new screen
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -128,6 +129,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
             ),
             const SizedBox(height: 8),
+            // NEW: Add a card for the Dietary Profile
+            DashboardCard(
+              icon: Icons.person_outline,
+              title: 'My Dietary Profile',
+              subtitle: 'Set your health goals and preferences',
+              onTap: () {
+                 Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const DietaryProfileScreen()),
+                );
+              },
+            ),
             DashboardCard(
               icon: Icons.calendar_month_outlined,
               title: 'Meal Planner',
