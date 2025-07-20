@@ -174,8 +174,8 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
     }
 
     try {
-      // Call the API helper to analyze the image.
-      final recipe = await ApiHelper.analyzeImage(image);
+      // UPDATED: Pass the image path string to the helper.
+      final recipe = await ApiHelper.analyzeImage(image.path);
       
       // Increment the scan count on success.
       await UsageLimiter.incrementScanCount();
