@@ -307,15 +307,14 @@ class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             onTap: () async {
-              // **THIS IS THE KEY CHANGE**
-              // Navigate to the new RecipeViewScreen.
+              // CORRECTED: Pass the recipe.id! to the RecipeViewScreen's recipeId parameter.
               final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => RecipeViewScreen(recipe: recipe),
+                  builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
                 ),
               );
-              // If the view screen returns true, it means a deletion occurred.
+              // If the view screen returns true, it means a change (edit or delete) occurred.
               if (result == true) {
                 _loadRecipes();
               }

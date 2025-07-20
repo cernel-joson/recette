@@ -15,8 +15,8 @@ class DatabaseHelper {
 
   _initDatabase() async {
     String path = join(await getDatabasesPath(), 'recipes.db');
-    // Bumping the version to 2 will trigger the onUpgrade method.
-    return await openDatabase(path, version: 2, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    return await openDatabase(path,
+        version: 2, onCreate: _onCreate, onUpgrade: _onUpgrade);
   }
 
   Future _onCreate(Database db, int version) async {
@@ -37,10 +37,8 @@ class DatabaseHelper {
           ''');
   }
 
-  // This new method handles database schema migrations.
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // If upgrading from version 1, add the new otherTimings column.
       await db.execute("ALTER TABLE recipes ADD COLUMN otherTimings TEXT;");
     }
   }
@@ -68,5 +66,16 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return Recipe.fromMap(maps[i]);
     });
+  }
+
+  /// --- NEW: Fetches a single recipe by its ID. ---
+  Future<Recipe?> getRecipeById(int id) async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps =
+        await db.query('recipes', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (maps.isNotEmpty) {
+      return Recipe.fromMap(maps.first);
+    }
+    return null;
   }
 }

@@ -6,6 +6,27 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import '../models/recipe_model.dart';
 
+/// A data class to hold the result of a health analysis.
+class HealthAnalysisResult {
+  final String rating; // e.g., "GREEN", "YELLOW", "RED"
+  final String summary;
+  final List<String> suggestions;
+
+  HealthAnalysisResult({
+    required this.rating,
+    required this.summary,
+    required this.suggestions,
+  });
+
+  factory HealthAnalysisResult.fromJson(Map<String, dynamic> json) {
+    return HealthAnalysisResult(
+      rating: json['health_rating'] ?? 'UNKNOWN',
+      summary: json['summary'] ?? 'No summary provided.',
+      suggestions: List<String>.from(json['suggestions'] ?? []),
+    );
+  }
+}
+
 /// A helper class to handle all communication with the back-end API.
 class ApiHelper {
   // The single source of truth for our cloud function URL.
@@ -43,8 +64,23 @@ class ApiHelper {
     return responseBody['summary'] ?? 'AI could not provide a summary.';
   }
 
+  /// NEW: Sends a recipe and profile to the AI for a health analysis.
+  static Future<HealthAnalysisResult> getHealthAnalysis({
+    required String profileText,
+    required Recipe recipe,
+  }) async {
+    final body = {
+      'health_check': true, // The new key to trigger the right logic
+      'dietary_profile': profileText,
+      'recipe_data': recipe.toMap(), // Send the full recipe data
+    };
+
+    final responseBody = await _analyzeRaw(body);
+    return HealthAnalysisResult.fromJson(responseBody);
+  }
+
   /// A private, generic analysis function that returns the raw JSON map.
-  static Future<Map<String, dynamic>> _analyzeRaw(Map<String, String> body) async {
+  static Future<Map<String, dynamic>> _analyzeRaw(Map<String, dynamic> body) async {
     try {
       final response = await http.post(
         Uri.parse(_cloudFunctionUrl),
