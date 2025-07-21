@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// A helper class to manage daily usage limits for features.
 class UsageLimiter {
-  static const _scanLimit = 5; // Set the daily scan limit here.
+  static const _scanLimit = 10; // Set the daily scan limit here.
   static const _scanCountKey = 'daily_scan_count';
   static const _lastScanDateKey = 'last_scan_date';
 
@@ -17,9 +17,6 @@ class UsageLimiter {
 
     final lastScanDate = prefs.getString(_lastScanDateKey);
     int currentCount = prefs.getInt(_scanCountKey) ?? 0;
-    print(currentCount);
-    print(lastScanDate);
-    print(today);
     // If the last scan was not today, reset the counter.
     if (lastScanDate != today) {
       currentCount = 0;
