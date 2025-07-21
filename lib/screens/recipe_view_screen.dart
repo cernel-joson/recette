@@ -8,6 +8,7 @@ import '../widgets/recipe_card.dart';
 import 'recipe_edit_screen.dart';
 import '../helpers/pdf_generator.dart';
 import '../helpers/text_formatter.dart'; // Import our new text formatter
+import '../services/health_check_service.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete }
@@ -27,6 +28,13 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   // The recipe is now nullable and loaded from the database.
   Recipe? _currentRecipe;
   bool _didChange = false; // Flag to track if an edit/delete occurred.
+  
+  // 1. Instantiate the service
+  final HealthCheckService _healthService = HealthCheckService();
+
+  // 2. State variables for loading and results
+  bool _isLoadingHealthCheck = true;
+  HealthAnalysisResult? _healthAnalysis;
 
   @override
   void initState() {
@@ -127,6 +135,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     );
 
     try {
+      debugPrint("--- Load user's profile and perform health check ---");
       // 1. Load the user's profile
       final profileText = await ProfileHelper.loadProfile();
       if (profileText.isEmpty && mounted) {
@@ -136,10 +145,13 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       }
 
       // 2. Call the API
-      final result = await ApiHelper.getHealthAnalysis(
+      /* final result = await ApiHelper.getHealthAnalysis(
         profileText: profileText,
         recipe: _currentRecipe!,
-      );
+      ); */
+
+      debugPrint("--- getHealthAnalysisForRecipe ---");
+      final result = await _healthService.getHealthAnalysisForRecipe(_currentRecipe!);
 
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog

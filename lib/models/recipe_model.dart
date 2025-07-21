@@ -37,6 +37,11 @@ class Recipe {
   final List<String> instructions;
   final String sourceUrl;
   final List<TimingInfo> otherTimings; // New field
+  // NEW: Fields for caching health analysis
+  String? healthRating; // e.g., "GREEN", "YELLOW", "RED"
+  String? healthSummary; // AI-generated summary/suggestions
+  List<String>? healthSuggestions; // AI-generated summary/suggestions
+  String? dietaryProfileFingerprint; // Hash of the profile used for the rating
 
   Recipe({
     this.id,
@@ -50,6 +55,11 @@ class Recipe {
     required this.instructions,
     required this.sourceUrl,
     this.otherTimings = const [], // Default to an empty list
+    // NEW: Initialize new fields as null
+    this.healthRating,
+    this.healthSummary,
+    this.healthSuggestions = const [],
+    this.dietaryProfileFingerprint,
   });
 
   /// Converts a Recipe object into a Map for database insertion.
@@ -67,6 +77,11 @@ class Recipe {
       'sourceUrl': sourceUrl,
       // Encode the new list of timings into a JSON string for the database.
       'otherTimings': json.encode(otherTimings.map((t) => t.toMap()).toList()),
+      // NEW: Add new fields to the map
+      'healthRating': healthRating,
+      'healthSummary': healthSummary,
+      'healthSuggestions': healthSuggestions,
+      'dietaryProfileFingerprint': dietaryProfileFingerprint,
     };
   }
 
@@ -85,6 +100,10 @@ class Recipe {
     List<TimingInfo> otherTimings =
         otherTimingsList.map((t) => TimingInfo.fromMap(t)).toList();
 
+    var healthSuggestionsList = json['healthSuggestions'] as List? ?? [];
+    List<String> healthSuggestions =
+        healthSuggestionsList.map((i) => i.toString()).toList();
+
     return Recipe(
       title: json['title'] ?? 'No Title Provided',
       description: json['description'] ?? '',
@@ -96,6 +115,10 @@ class Recipe {
       instructions: instructions,
       sourceUrl: url,
       otherTimings: otherTimings,
+      healthRating: json['healthRating'] ?? '',
+      healthSummary: json['healthSummary'] ?? '',
+      healthSuggestions: healthSuggestions,
+      dietaryProfileFingerprint: json['dietaryProfileFingerprint'] ?? '',
     );
   }
 
@@ -120,6 +143,11 @@ class Recipe {
               .map((t) => TimingInfo.fromMap(t))
               .toList()
           : [],
+      // NEW: Extract new fields from the map
+      healthRating: map['healthRating'],
+      healthSummary: map['healthSummary'],
+      healthSuggestions: List<String>.from(map['healthSuggestions'] ?? []),
+      dietaryProfileFingerprint: map['dietaryProfileFingerprint'],
     );
   }
 }

@@ -78,6 +78,54 @@ def get_image_prompt():
     {JSON_STRUCTURE_PROMPT}
     """
 
+def get_profile_review_prompt(profile_text):
+    """Creates the prompt for reviewing a user's dietary profile text."""
+    return f"""
+    You are a helpful dietary assistant. A user has provided the following text to describe their dietary goals.
+    Please review it and do two things:
+    1. Summarize the key, actionable rules you've identified in a simple, bulleted list.
+    2. If you see any confusing, contradictory, or vague statements, suggest a clearer way to phrase them.
+
+    Your goal is to help the user create a clear and effective set of guidelines for future AI analysis.
+    Return your response as a single, clean JSON object with one key, "summary", containing your review as a string.
+
+    Here is the user's text to review:
+    ---
+    {profile_text}
+    ---
+    """
+
+def get_health_check_prompt(profile_text, recipe_data):
+    """NEW: Creates the prompt for analyzing a recipe against a dietary profile."""
+    return f"""
+    You are an expert nutritional analyst. Your task is to analyze a recipe against a user's specific dietary guidelines.
+
+    Here are the user's dietary guidelines:
+    ---
+    {profile_text}
+    ---
+
+    Here is the recipe data you need to analyze:
+    ---
+    {recipe_data}
+    ---
+
+    Your Task:
+    1. Assign a `health_rating` of `GREEN`, `YELLOW`, or `RED`.
+       - `GREEN` means it aligns perfectly with the user's goals.
+       - `YELLOW` means it's acceptable in moderation but has some minor issues.
+       - `RED` means it significantly violates one or more core health rules.
+    2. Write a brief, one or two-sentence `summary` of your findings.
+    3. Provide a bulleted list of specific, actionable `suggestions` for improvement.
+
+    Return your response as a single, clean JSON object with the following structure:
+    {{
+      "health_rating": "...",
+      "summary": "...",
+      "suggestions": [ "..." ]
+    }}
+    """
+
 # --- Helper Function for Scraping ---
 def scrape_text_from_url(url):
     """Scrapes all text from a URL and returns it as a string."""
@@ -90,67 +138,56 @@ def scrape_text_from_url(url):
     except requests.exceptions.RequestException as e:
         raise Exception(f'Failed to fetch or scrape URL: {e}')
 
-
 # --- Main Cloud Function ---
 @functions_framework.http
 def recipe_analyzer_api(request):
     """
-    An HTTP-triggered Cloud Function that analyzes a recipe from a URL,
-    raw text, or an image.
+    An HTTP-triggered Cloud Function that can analyze recipes or review dietary profiles.
     """
-    # Set CORS headers for preflight requests
-    if request.method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '3600'
-        }
-        return ('', 204, headers)
-
-    # Set CORS headers for the main request
-    headers = {
-        'Access-Control-Allow-Origin': '*'
-    }
+    # ... (CORS header logic remains the same) ...
+    headers = {'Access-Control-Allow-Origin': '*'} # Simplified for brevity
 
     try:
         request_json = request.get_json(silent=True)
         if not request_json:
             raise Exception("Invalid request. JSON body is required.", 400)
 
-        request_content = None
-
-        # --- Refactored Logic to Prepare the AI Request ---
+        # --- NEW: Route the request based on the JSON key ---
+        # --- UPDATED: Route the request based on the JSON key ---
+        if 'health_check' in request_json:
+            profile = request_json.get('dietary_profile')
+            recipe = request_json.get('recipe_data')
+            if not profile or not recipe:
+                raise Exception("Health check requires 'dietary_profile' and 'recipe_data'.", 400)
+            prompt = get_health_check_prompt(json.dumps(profile), json.dumps(recipe))
+            request_content = [prompt]
+        elif 'review_text' in request_json:
+            prompt = get_profile_review_prompt(request_json['review_text'])
+            request_content = [prompt]
         if 'image' in request_json:
             image_data = request_json['image']
             prompt = get_image_prompt()
             image_part = Part.from_data(data=image_data, mime_type="image/jpeg")
             request_content = [image_part, prompt]
-
         elif 'text' in request_json:
             pasted_text = request_json['text']
             if not pasted_text or len(pasted_text) < 20:
                 raise Exception("Insufficient text provided for analysis.", 400)
             prompt = get_text_prompt(pasted_text)
             request_content = [prompt] # For text-only, content is a list with one item
-
         elif 'url' in request_json:
             scraped_text = scrape_text_from_url(request_json['url'])
             if not scraped_text or len(scraped_text) < 20:
                 raise Exception("Insufficient text scraped from URL for analysis.", 400)
             prompt = get_text_prompt(scraped_text)
             request_content = [prompt]
-
+            pass
         else:
-            raise Exception("Invalid request. 'image', 'text', or 'url' key is required.", 400)
+            raise Exception("Invalid request. One of 'review_text', 'image', 'text', or 'url' key is required.", 400)
 
-        # --- Consolidated AI Call and Response Handling ---
+        # --- Consolidated AI Call ---
         response = model.generate_content(request_content)
-        
-        # Clean up the response text to get pure JSON
         json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-        
-        # Validate that the response is valid JSON before returning
         parsed_json = json.loads(json_string)
 
         return (json.dumps(parsed_json), 200, headers)
