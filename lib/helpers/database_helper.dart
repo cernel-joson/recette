@@ -125,9 +125,11 @@ class DatabaseHelper {
   }
 
   Future<List<Recipe>> getAllRecipes() async {
+    debugPrint("--- getAllRecipes called ---");
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps =
         await db.query('recipes', orderBy: 'title ASC');
+    debugPrint("--- query completed ---");
     return List.generate(maps.length, (i) {
       return Recipe.fromMap(maps[i]);
     });

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intelligent_nutrition_app/models/recipe_model.dart';
+import 'package:intelligent_nutrition_app/models/ingredient_model.dart';
+import 'package:intelligent_nutrition_app/models/timing_info_model.dart';
 import 'package:intelligent_nutrition_app/widgets/recipe_card.dart';
 
 // A helper function to wrap our widget in a MaterialApp.

@@ -1,28 +1,7 @@
 import 'dart:convert';
-
-/// A new class to represent a labeled duration.
-class TimingInfo {
-  final String label;
-  final String duration;
-
-  TimingInfo({required this.label, required this.duration});
-
-  Map<String, dynamic> toMap() {
-    return {'label': label, 'duration': duration};
-  }
-
-  factory TimingInfo.fromMap(Map<String, dynamic> map) {
-    return TimingInfo(
-      label: map['label'] ?? '',
-      duration: map['duration'] ?? '',
-    );
-  }
-
-  @override
-  String toString() {
-    return '$label: $duration';
-  }
-}
+import 'package:flutter/foundation.dart';
+import '../models/ingredient_model.dart';
+import '../models/timing_info_model.dart';
 
 /// Represents a full recipe with all its details.
 class Recipe {
@@ -80,7 +59,7 @@ class Recipe {
       // NEW: Add new fields to the map
       'healthRating': healthRating,
       'healthSummary': healthSummary,
-      'healthSuggestions': healthSuggestions,
+      'healthSuggestions': json.encode(healthSuggestions),
       'dietaryProfileFingerprint': dietaryProfileFingerprint,
     };
   }
@@ -124,6 +103,7 @@ class Recipe {
 
   /// Factory constructor to create a Recipe from a database Map.
   factory Recipe.fromMap(Map<String, dynamic> map) {
+    debugPrint(map.toString());
     return Recipe(
       id: map['id'],
       title: map['title'],
@@ -146,75 +126,10 @@ class Recipe {
       // NEW: Extract new fields from the map
       healthRating: map['healthRating'],
       healthSummary: map['healthSummary'],
-      healthSuggestions: List<String>.from(map['healthSuggestions'] ?? []),
+      healthSuggestions: map['healthSuggestions'] != null
+          ? List<String>.from(json.decode(map['healthSuggestions'].toString()))
+          : [],
       dietaryProfileFingerprint: map['dietaryProfileFingerprint'],
     );
-  }
-}
-
-// ... (The Ingredient class remains the same) ...
-class Ingredient {
-  final String quantity;
-  final String unit;
-  final String name;
-  final String notes;
-
-  Ingredient({
-    required this.quantity,
-    required this.unit,
-    required this.name,
-    this.notes = '',
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'quantity': quantity,
-      'unit': unit,
-      'name': name,
-      'notes': notes,
-    };
-  }
-
-  factory Ingredient.fromJson(Map<String, dynamic> json) {
-    return Ingredient(
-      quantity: json['quantity'] ?? '',
-      unit: json['unit'] ?? '',
-      name: json['name'] ?? 'Unknown Ingredient',
-      notes: json['notes'] ?? '',
-    );
-  }
-
-  factory Ingredient.fromMap(Map<String, dynamic> map) {
-    return Ingredient(
-      quantity: map['quantity'],
-      unit: map['unit'],
-      name: map['name'],
-      notes: map['notes'] ?? '',
-    );
-  }
-
-  factory Ingredient.fromString(String text) {
-    final parts = text.split(' ');
-    if (parts.length > 2) {
-      return Ingredient(
-        quantity: parts[0],
-        unit: parts[1],
-        name: parts.sublist(2).join(' '),
-      );
-    } else if (parts.length == 2) {
-      return Ingredient(quantity: parts[0], unit: '', name: parts[1]);
-    } else {
-      return Ingredient(quantity: '', unit: '', name: text);
-    }
-  }
-
-  @override
-  String toString() {
-    final parts = [quantity, unit, name];
-    String mainString = parts.where((p) => p.isNotEmpty).join(' ').trim();
-    if (notes.isNotEmpty) {
-      return '$mainString ($notes)';
-    }
-    return mainString;
   }
 }

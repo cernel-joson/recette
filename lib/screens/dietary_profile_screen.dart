@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../helpers/profile_helper.dart';
-import '../helpers/api_helper.dart'; // We will add the review function here
+import '../services/profile_service.dart';
 
 /// A screen for viewing and editing the user's dietary profile.
 class DietaryProfileScreen extends StatefulWidget {
@@ -23,7 +22,7 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
   Future<void> _loadProfile() async {
     setState(() { _isLoading = true; });
-    final profileText = await ProfileHelper.loadProfile();
+    final profileText = await ProfileService.loadProfile();
     if (mounted) {
       setState(() {
         _controller.text = profileText;
@@ -38,7 +37,7 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
     final inputText = _controller.text;
     if (inputText.isEmpty) {
-      await ProfileHelper.saveProfile('');
+      await ProfileService.saveProfile('');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile cleared.')),
@@ -50,7 +49,7 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
     try {
       // Step 1: Get AI review
-      final review = await ApiHelper.reviewProfile(inputText);
+      final review = await ProfileService.reviewProfile(inputText);
 
       // Step 2: Show confirmation dialog
       final bool? saveConfirmed = await showDialog<bool>(
@@ -86,7 +85,7 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
       // Step 3: Save if confirmed
       if (saveConfirmed == true) {
-        await ProfileHelper.saveProfile(inputText);
+        await ProfileService.saveProfile(inputText);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

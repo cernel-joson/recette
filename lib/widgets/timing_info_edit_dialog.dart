@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/recipe_model.dart';
+import '../models/timing_info_model.dart';
 
 /// A dialog for editing the details of a single TimingInfo object.
 class TimingInfoEditDialog extends StatefulWidget {

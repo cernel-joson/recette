@@ -3,6 +3,28 @@ import '../models/recipe_model.dart';
 import '../helpers/database_helper.dart';
 import '../helpers/fingerprint_generator.dart';
 import '../helpers/api_helper.dart'; // Assuming you have an ApiHelper for the actual API call
+import '../helpers/profile_helper.dart'; // Import profile helper
+
+/// A data class to hold the result of a health analysis.
+class HealthAnalysisResult {
+  final String rating; // e.g., "GREEN", "YELLOW", "RED"
+  final String summary;
+  final List<String> suggestions;
+
+  HealthAnalysisResult({
+    required this.rating,
+    required this.summary,
+    required this.suggestions,
+  });
+
+  factory HealthAnalysisResult.fromJson(Map<String, dynamic> json) {
+    return HealthAnalysisResult(
+      rating: json['health_rating'] ?? 'UNKNOWN',
+      summary: json['summary'] ?? 'No summary provided.',
+      suggestions: List<String>.from(json['suggestions'] ?? []),
+    );
+  }
+}
 
 // A dedicated service to handle the logic for recipe health analysis,
 // incorporating the caching mechanism.
@@ -27,8 +49,7 @@ class HealthCheckService {
   /// Returns a Map containing the 'rating' and 'summary'.
   Future<HealthAnalysisResult> getHealthAnalysisForRecipe(Recipe recipe) async {
     // 1. Load the user's current dietary profile text.
-    final prefs = await SharedPreferences.getInstance();
-    final currentProfileText = prefs.getString(dietaryProfileKey) ?? '';
+    final currentProfileText = await ProfileHelper.loadProfile();
 
     // If the user has no profile set, we can't provide a rating.
     if (currentProfileText.isEmpty) {
@@ -61,7 +82,7 @@ class HealthCheckService {
     // 5. Make the actual API call to get a fresh analysis.
     // This is where you call your existing Gemini API logic.
     final newAnalysis =
-        await ApiHelper.getHealthAnalysis(
+        await getHealthAnalysis(
           profileText: currentProfileText,
           recipe: recipe,
         );
@@ -84,5 +105,20 @@ class HealthCheckService {
   Future<void> saveDietaryProfile(String profileText) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(dietaryProfileKey, profileText);
+  }
+
+  /// NEW: Sends a recipe and profile to the AI for a health analysis.
+  static Future<HealthAnalysisResult> getHealthAnalysis({
+    required String profileText,
+    required Recipe recipe,
+  }) async {
+    final body = {
+      'health_check': true, // The new key to trigger the right logic
+      'dietary_profile': profileText,
+      'recipe_data': recipe.toMap(), // Send the full recipe data
+    };
+
+    final responseBody = await ApiHelper.analyzeRaw(body);
+    return HealthAnalysisResult.fromJson(responseBody);
   }
 }

@@ -3,7 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import '../helpers/api_helper.dart';
+import '../services/recipe_parsing_service.dart';
 import '../models/recipe_model.dart';
 import '../widgets/dashboard_card.dart';
 import 'recipe_library_screen.dart';
@@ -59,10 +59,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Check the type of the shared file.
     if (file.type == SharedMediaType.text || file.type == SharedMediaType.url) {
       // If it's text or a URL, analyze it as a URL.
-      _analyzeAndNavigate(ApiHelper.analyzeUrl(file.path));
+      _analyzeAndNavigate(RecipeParsingService.analyzeUrl(file.path));
     } else if (file.type == SharedMediaType.image) {
       // If it's an image, analyze it as an image path.
-      _analyzeAndNavigate(ApiHelper.analyzeImage(file.path));
+      _analyzeAndNavigate(RecipeParsingService.analyzeImage(file.path));
     }
   }
 

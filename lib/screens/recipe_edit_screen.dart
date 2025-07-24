@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../helpers/api_helper.dart';
+import '../services/recipe_parsing_service.dart';
 import '../helpers/database_helper.dart';
 import '../models/recipe_model.dart';
+import '../models/ingredient_model.dart';
+import '../models/timing_info_model.dart';
 import '../widgets/ingredient_edit_dialog.dart';
 import '../widgets/timing_info_edit_dialog.dart'; // Import the new dialog
 
@@ -279,7 +281,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
   Future<void> _analyzePastedText(String text) async {
     if (text.isEmpty) return;
     try {
-      final recipe = await ApiHelper.analyzeText(text);
+      final recipe = await RecipeParsingService.analyzeText(text);
       setState(() {
         _populateState(recipe); // Repopulate all fields with AI data
       });

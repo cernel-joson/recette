@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart'; // Import the new share package
 import '../helpers/database_helper.dart';
-import '../helpers/profile_helper.dart'; // Import profile helper
 import '../helpers/api_helper.dart'; // Import api helper for the result class
 import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
@@ -135,27 +134,14 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     );
 
     try {
-      debugPrint("--- Load user's profile and perform health check ---");
-      // 1. Load the user's profile
-      final profileText = await ProfileHelper.loadProfile();
-      if (profileText.isEmpty && mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        _showProfileEmptyWarning();
-        return;
-      }
-
-      // 2. Call the API
-      /* final result = await ApiHelper.getHealthAnalysis(
-        profileText: profileText,
-        recipe: _currentRecipe!,
-      ); */
-
-      debugPrint("--- getHealthAnalysisForRecipe ---");
       final result = await _healthService.getHealthAnalysisForRecipe(_currentRecipe!);
-
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
-        _showHealthCheckResult(result);
+        if (result.rating == 'UNRATED') { // A clear signal from the service
+          _showProfileEmptyWarning();
+        } else {
+          _showHealthCheckResult(result);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -187,9 +173,15 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   /// NEW: Shows the result from the AI in a formatted dialog.
   void _showHealthCheckResult(HealthAnalysisResult result) {
     Color ratingColor = Colors.grey;
+    String ratingCircle = "⚪";
+    
     if (result.rating == 'GREEN') ratingColor = Colors.green;
     if (result.rating == 'YELLOW') ratingColor = Colors.orange;
     if (result.rating == 'RED') ratingColor = Colors.red;
+
+    if (result.rating == 'GREEN') ratingCircle = "🟢";
+    if (result.rating == 'YELLOW') ratingCircle = "🟡";
+    if (result.rating == 'RED') ratingCircle = "🔴";
 
     showDialog(
       context: context,
@@ -198,7 +190,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
           children: [
             const Text('Health Check Result: '),
             Text(
-              result.rating,
+              ratingCircle,
               style: TextStyle(color: ratingColor, fontWeight: FontWeight.bold),
             ),
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/recipe_model.dart';
+import '../models/ingredient_model.dart';
 
 /// A dialog for editing the details of a single ingredient.
 class IngredientEditDialog extends StatefulWidget {
