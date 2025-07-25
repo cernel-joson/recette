@@ -1,257 +1,60 @@
 import 'package:flutter/material.dart';
-import '../services/recipe_parsing_service.dart';
-import '../helpers/database_helper.dart';
+import 'package:provider/provider.dart';
 import '../models/recipe_model.dart';
 import '../models/ingredient_model.dart';
 import '../models/timing_info_model.dart';
 import '../widgets/ingredient_edit_dialog.dart';
-import '../widgets/timing_info_edit_dialog.dart'; // Import the new dialog
+import '../widgets/timing_info_edit_dialog.dart';
+import '../controllers/recipe_edit_controller.dart';
 
 /// A screen for creating a new recipe or editing an existing one.
-class RecipeEditScreen extends StatefulWidget {
-  final Recipe? recipe;
-  final bool showPasteDialogOnLoad;
-
+class RecipeEditScreen extends StatelessWidget {
   const RecipeEditScreen({
     super.key,
     this.recipe,
     this.showPasteDialogOnLoad = false,
   });
 
+  final Recipe? recipe;
+  final bool showPasteDialogOnLoad;
+
   @override
-  State<RecipeEditScreen> createState() => _RecipeEditScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => RecipeEditController(recipe),
+      child: _RecipeEditView(showPasteDialogOnLoad: showPasteDialogOnLoad),
+    );
+  }
 }
 
-class _RecipeEditScreenState extends State<RecipeEditScreen> {
-  final _formKey = GlobalKey<FormState>();
+/// The UI portion of the Recipe Edit Screen
+class _RecipeEditView extends StatefulWidget {
+  const _RecipeEditView({required this.showPasteDialogOnLoad});
+  final bool showPasteDialogOnLoad;
 
-  // Use controllers for simple text fields
-  late TextEditingController _titleController;
-  late TextEditingController _descriptionController;
-  late TextEditingController _prepTimeController;
-  late TextEditingController _cookTimeController;
-  late TextEditingController _totalTimeController;
-  late TextEditingController _servingsController;
+  @override
+  State<_RecipeEditView> createState() => _RecipeEditViewState();
+}
 
-  // Manage complex lists directly in the state
-  late List<Ingredient> _ingredients;
-  late List<String> _instructions;
-  late List<TimingInfo> _otherTimings; // New state list
-  late String _sourceUrl;
-
-  // New: A flag to track if any changes have been made.
-  bool _isDirty = false;
-
+class _RecipeEditViewState extends State<_RecipeEditView> {
   @override
   void initState() {
     super.initState();
-    _populateState(widget.recipe);
-    _addListeners(); // New: Add listeners to track changes.
-
     if (widget.showPasteDialogOnLoad) {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _showPasteTextDialog());
-    }
-  }
-
-  /// Populates all state variables from a Recipe object.
-  void _populateState(Recipe? recipe) {
-    _titleController = TextEditingController(text: recipe?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: recipe?.description ?? '');
-    _prepTimeController = TextEditingController(text: recipe?.prepTime ?? '');
-    _cookTimeController = TextEditingController(text: recipe?.cookTime ?? '');
-    _totalTimeController = TextEditingController(text: recipe?.totalTime ?? '');
-    _servingsController = TextEditingController(text: recipe?.servings ?? '');
-    _ingredients = List<Ingredient>.from(recipe?.ingredients ?? []);
-    _instructions = List<String>.from(recipe?.instructions ?? []);
-    _otherTimings = List<TimingInfo>.from(recipe?.otherTimings ?? []); // Populate new list
-    _sourceUrl = recipe?.sourceUrl ?? '';
-  }
-
-  /// New: Adds listeners to all controllers to detect changes.
-  void _addListeners() {
-    _titleController.addListener(_markDirty);
-    _descriptionController.addListener(_markDirty);
-    _prepTimeController.addListener(_markDirty);
-    _cookTimeController.addListener(_markDirty);
-    _totalTimeController.addListener(_markDirty);
-    _servingsController.addListener(_markDirty);
-  }
-
-  /// New: A simple method to set the dirty flag.
-  void _markDirty() {
-    if (!_isDirty) {
-      setState(() {
-        _isDirty = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Use the context to get the controller for the paste dialog
+        final controller = Provider.of<RecipeEditController>(context, listen: false);
+        _showPasteTextDialog(context, controller);
       });
     }
   }
 
-  @override
-  void dispose() {
-    // Dispose all controllers
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _prepTimeController.dispose();
-    _cookTimeController.dispose();
-    _totalTimeController.dispose();
-    _servingsController.dispose();
-    super.dispose();
-  }
-
-  /// Saves the form data to the database.
-  Future<void> _saveForm() async {
-    if (_formKey.currentState!.validate()) {
-      final newRecipe = Recipe(
-        id: widget.recipe?.id,
-        title: _titleController.text,
-        description: _descriptionController.text,
-        prepTime: _prepTimeController.text,
-        cookTime: _cookTimeController.text,
-        totalTime: _totalTimeController.text,
-        servings: _servingsController.text,
-        ingredients: _ingredients,
-        instructions: _instructions,
-        otherTimings: _otherTimings, // Save the new list
-        sourceUrl: _sourceUrl,
-      );
-
-      if (widget.recipe?.id != null) {
-        await DatabaseHelper.instance.update(newRecipe);
-      } else {
-        await DatabaseHelper.instance.insert(newRecipe);
-      }
-
-      if (mounted) Navigator.of(context).pop(newRecipe);
-    }
-  }
-
-  // --- List Management Methods (now with _markDirty calls) ---
-
-  Future<void> _editIngredient(int index) async {
-    final updatedIngredient = await showDialog<Ingredient>(
-      context: context,
-      builder: (context) =>
-          IngredientEditDialog(ingredient: _ingredients[index]),
-    );
-    if (updatedIngredient != null && updatedIngredient != _ingredients[index]) {
-      setState(() {
-        _ingredients[index] = updatedIngredient;
-        _markDirty();
-      });
-    }
-  }
-
-  Future<void> _addIngredient() async {
-    final newIngredient = await showDialog<Ingredient>(
-      context: context,
-      builder: (context) => const IngredientEditDialog(),
-    );
-    if (newIngredient != null) {
-      setState(() {
-        _ingredients.add(newIngredient);
-        _markDirty();
-      });
-    }
-  }
-
-  void _removeIngredient(int index) {
-    setState(() {
-      _ingredients.removeAt(index);
-      _markDirty();
-    });
-  }
-
-  Future<void> _editInstruction(int index) async {
-    final controller = TextEditingController(text: _instructions[index]);
-    final updatedInstruction = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit Step ${index + 1}'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-
-    if (updatedInstruction != null && updatedInstruction != _instructions[index]) {
-      setState(() {
-        _instructions[index] = updatedInstruction;
-        _markDirty();
-      });
-    }
-  }
-
-  void _addInstruction() {
-    setState(() {
-      _instructions.add('');
-      _markDirty();
-    });
-    _editInstruction(_instructions.length - 1);
-  }
-
-  void _removeInstruction(int index) {
-    setState(() {
-      _instructions.removeAt(index);
-      _markDirty();
-    });
-  }
-
-  Future<void> _editOtherTiming(int index) async {
-    final updatedTiming = await showDialog<TimingInfo>(
-      context: context,
-      builder: (context) => TimingInfoEditDialog(timingInfo: _otherTimings[index]),
-    );
-    if (updatedTiming != null && updatedTiming != _otherTimings[index]) {
-      setState(() {
-        _otherTimings[index] = updatedTiming;
-        _markDirty();
-      });
-    }
-  }
-
-  Future<void> _addOtherTiming() async {
-    final newTiming = await showDialog<TimingInfo>(
-      context: context,
-      builder: (context) => const TimingInfoEditDialog(),
-    );
-    if (newTiming != null) {
-      setState(() {
-        _otherTimings.add(newTiming);
-        _markDirty();
-      });
-    }
-  }
-
-  void _removeOtherTiming(int index) {
-    setState(() {
-      _otherTimings.removeAt(index);
-      _markDirty();
-    });
-  }
-
-  // --- AI Population logic ---
-  void _showPasteTextDialog() {
+  // --- Dialogs and UI Logic (Remain in the Widget) ---
+  void _showPasteTextDialog(BuildContext context, RecipeEditController controller) {
     final textController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Populate from Text'),
         content: TextField(
           controller: textController,
@@ -263,13 +66,13 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              _analyzePastedText(textController.text);
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              controller.analyzePastedText(textController.text);
             },
             child: const Text('Analyze'),
           ),
@@ -278,231 +81,194 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     );
   }
 
-  Future<void> _analyzePastedText(String text) async {
-    if (text.isEmpty) return;
-    try {
-      final recipe = await RecipeParsingService.analyzeText(text);
-      setState(() {
-        _populateState(recipe); // Repopulate all fields with AI data
-      });
-    } catch (e) {
-      if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error analyzing text: $e'), backgroundColor: Colors.red),
-        );
-      }
+  Future<void> _addIngredient(BuildContext context, RecipeEditController controller) async {
+    final newIngredient = await showDialog<Ingredient>(
+      context: context,
+      builder: (context) => const IngredientEditDialog(),
+    );
+    if (newIngredient != null) {
+      controller.addIngredient(newIngredient);
     }
   }
 
-  /// New: Shows the confirmation dialog when trying to navigate with unsaved changes.
-  Future<bool> _showUnsavedChangesDialog() async {
+  Future<void> _editIngredient(BuildContext context, RecipeEditController controller, int index) async {
+    final updatedIngredient = await showDialog<Ingredient>(
+      context: context,
+      builder: (context) => IngredientEditDialog(ingredient: controller.ingredients![index]),
+    );
+    if (updatedIngredient != null) {
+      controller.editIngredient(index, updatedIngredient);
+    }
+  }
+
+  Future<void> _editInstruction(BuildContext context, RecipeEditController controller, int index) async {
+    final textController = TextEditingController(text: controller.instructions![index]);
+    final updatedInstruction = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Edit Step ${index + 1}'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          maxLines: 5,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(dialogContext).pop(textController.text), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (updatedInstruction != null) {
+      controller.editInstruction(index, updatedInstruction);
+    }
+  }
+  
+  Future<void> _addOtherTiming(BuildContext context, RecipeEditController controller) async {
+    final newTiming = await showDialog<TimingInfo>(
+      context: context,
+      builder: (context) => const TimingInfoEditDialog(),
+    );
+    if (newTiming != null) {
+      controller.addOtherTiming(newTiming);
+    }
+  }
+
+  Future<void> _editOtherTiming(BuildContext context, RecipeEditController controller, int index) async {
+    final updatedTiming = await showDialog<TimingInfo>(
+      context: context,
+      builder: (context) => TimingInfoEditDialog(timingInfo: controller.otherTimings![index]),
+    );
+    if (updatedTiming != null) {
+      controller.editOtherTiming(index, updatedTiming);
+    }
+  }
+  
+  Future<bool> _showUnsavedChangesDialog(BuildContext context) async {
     final bool? discard = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Discard Changes?'),
         content: const Text('You have unsaved changes. Are you sure you want to leave?'),
         actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Don't discard
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Discard
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Discard'),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
           ),
         ],
       ),
     );
-    // Return true if the user chose to discard, false otherwise.
     return discard ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
-    // New: Wrap the Scaffold in a PopScope to intercept back navigation.
-    return PopScope(
-      // canPop is false if there are unsaved changes, preventing immediate navigation.
-      canPop: !_isDirty,
-      // onPopInvoked is called when a pop is attempted and canPop is false.
-      onPopInvoked: (didPop) async {
-        if (didPop) return; // If already popped, do nothing.
-        final shouldPop = await _showUnsavedChangesDialog();
-        if (shouldPop && mounted) {
-          Navigator.of(context).pop();
-        }
+    // Consumer rebuilds the widget tree when the controller calls notifyListeners().
+    return Consumer<RecipeEditController>(
+      builder: (context, controller, child) {
+        return PopScope(
+          canPop: !controller.isDirty,
+          onPopInvoked: (didPop) async {
+            if (didPop) return;
+            final shouldPop = await _showUnsavedChangesDialog(context);
+            if (shouldPop && mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(controller.sourceUrl.isEmpty ? 'New Recipe' : 'Edit Recipe'),
+            ),
+            bottomNavigationBar: BottomAppBar(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  TextButton.icon(
+                    icon: controller.isAnalyzing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.paste_sharp),
+                    label: const Text('Repopulate'),
+                    onPressed: controller.isAnalyzing ? null : () => _showPasteTextDialog(context, controller),
+                  ),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.save),
+                    label: const Text('Save'),
+                    onPressed: () async {
+                      final success = await controller.saveForm();
+                      if (success && mounted) {
+                        Navigator.of(context).pop(true);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            body: Form(
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  TextFormField(controller: controller.titleController, decoration: const InputDecoration(labelText: 'Title')),
+                  const SizedBox(height: 16),
+                  TextFormField(controller: controller.descriptionController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: TextFormField(controller: controller.prepTimeController, decoration: const InputDecoration(labelText: 'Prep Time'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextFormField(controller: controller.cookTimeController, decoration: const InputDecoration(labelText: 'Cook Time'))),
+                  ]),
+                  Row(children: [
+                    Expanded(child: TextFormField(controller: controller.totalTimeController, decoration: const InputDecoration(labelText: 'Total Time'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextFormField(controller: controller.servingsController, decoration: const InputDecoration(labelText: 'Servings'))),
+                  ]),
+                  const SizedBox(height: 24),
+                  _buildSection(context, controller, 'Other Timings', controller.otherTimings, _addOtherTiming, _editOtherTiming, (ctrl, idx) => ctrl.removeOtherTiming(idx)),
+                  const SizedBox(height: 24),
+                  _buildSection(context, controller, 'Ingredients', controller.ingredients, _addIngredient, _editIngredient, (ctrl, idx) => ctrl.removeIngredient(idx)),
+                  const SizedBox(height: 24),
+                  _buildSection(context, controller, 'Instructions', controller.instructions, (ctx, ctrl) => ctrl.addInstruction(), _editInstruction, (ctrl, idx) => ctrl.removeInstruction(idx)),
+                ],
+              ),
+            ),
+          ),
+        );
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.recipe == null ? 'New Recipe' : 'Edit Recipe'),
-        ),
-        bottomNavigationBar: BottomAppBar(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              TextButton.icon(
-                icon: const Icon(Icons.paste_sharp),
-                label: const Text('Repopulate'),
-                onPressed: _showPasteTextDialog,
-              ),
-              FilledButton.icon(
-                icon: const Icon(Icons.save),
-                label: const Text('Save'),
-                onPressed: _saveForm,
-              ),
-            ],
+    );
+  }// Generic builder for list sections to reduce code duplication
+  Widget _buildSection<T>(
+    BuildContext context,
+    RecipeEditController controller,
+    String title,
+    List<T>? items,
+    Function(BuildContext, RecipeEditController) onAdd,
+    Function(BuildContext, RecipeEditController, int) onEdit,
+    Function(RecipeEditController, int) onRemove,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        if (items != null)
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                leading: title == 'Instructions' ? Text('${index + 1}.') : null,
+                title: Text(items[index].toString()),
+                trailing: IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                  onPressed: () => onRemove(controller, index),
+                ),
+                onTap: () => onEdit(context, controller, index),
+              );
+            },
           ),
-        ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              // ... (The rest of the form UI remains the same) ...
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Please enter a title' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                      child: TextFormField(
-                          controller: _prepTimeController,
-                          decoration:
-                              const InputDecoration(labelText: 'Prep Time'))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: TextFormField(
-                          controller: _cookTimeController,
-                          decoration:
-                              const InputDecoration(labelText: 'Cook Time'))),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                      child: TextFormField(
-                          controller: _totalTimeController,
-                          decoration:
-                              const InputDecoration(labelText: 'Total Time'))),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: TextFormField(
-                          controller: _servingsController,
-                          decoration:
-                              const InputDecoration(labelText: 'Servings'))),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _buildOtherTimingsList(),
-              const SizedBox(height: 24),
-              _buildIngredientList(),
-              const SizedBox(height: 24),
-              _buildInstructionList(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- New Builder for Other Timings ---
-  Widget _buildOtherTimingsList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Other Timings', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _otherTimings.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              title: Text(_otherTimings[index].toString()),
-              trailing: IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                onPressed: () => _removeOtherTiming(index),
-              ),
-              onTap: () => _editOtherTiming(index),
-            );
-          },
-        ),
         TextButton.icon(
           icon: const Icon(Icons.add),
-          label: const Text('Add Timing'),
-          onPressed: _addOtherTiming,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIngredientList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _ingredients.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              title: Text(_ingredients[index].toString()),
-              trailing: IconButton(
-                icon: const Icon(Icons.remove_circle_outline,
-                    color: Colors.red),
-                onPressed: () => _removeIngredient(index),
-              ),
-              onTap: () => _editIngredient(index),
-            );
-          },
-        ),
-        TextButton.icon(
-          icon: const Icon(Icons.add),
-          label: const Text('Add Ingredient'),
-          onPressed: _addIngredient,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInstructionList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _instructions.length,
-          itemBuilder: (context, index) {
-            return ListTile(
-              leading: Text('${index + 1}.'),
-              title: Text(_instructions[index]),
-              trailing: IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                onPressed: () => _removeInstruction(index),
-              ),
-              onTap: () => _editInstruction(index),
-            );
-          },
-        ),
-        TextButton.icon(
-          icon: const Icon(Icons.add),
-          label: const Text('Add Instruction'),
-          onPressed: _addInstruction,
+          label: Text('Add ${title.substring(0, title.length - 1)}'),
+          onPressed: () => onAdd(context, controller),
         ),
       ],
     );

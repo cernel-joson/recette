@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Import image_picker
 import '../services/recipe_parsing_service.dart'; // Import the centralized helper
 import '../helpers/database_helper.dart';
 import '../helpers/usage_limiter.dart'; // Import the new helper

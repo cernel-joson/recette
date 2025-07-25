@@ -103,7 +103,7 @@ class _RecipeLibraryView extends StatelessWidget {
         // StatefulBuilder allows the dialog to have its own internal state
         // without making the whole screen a StatefulWidget.
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (builderContext, setDialogState) {
             return AlertDialog(
               title: const Text('Import from Web'),
               content: Column(
@@ -149,24 +149,37 @@ class _RecipeLibraryView extends StatelessWidget {
                             errorMessage = null;
                           });
 
-                          try {
-                            // 2. Call the CONTROLLER to do the work
-                            final recipe = await controller.analyzeUrl(urlController.text);
-                            
-                            // 3. Handle success (UI logic)
-                            Navigator.of(context).pop(); // Close the dialog
-                            _navigateToEditScreen(context, recipe); // Navigate
+                          Recipe? recipe;
+                          String? error;
 
+                          debugPrint('--- calling analyzeUrl() ---');
+                          // 2. Call the CONTROLLER to do the work. Perform the async operation and store the result or error.
+                          try {
+                            recipe = await controller.analyzeUrl(urlController.text);
                           } catch (e) {
-                            // 4. Handle error (UI logic)
-                            setDialogState(() {
-                              errorMessage = e.toString();
-                            });
-                          } finally {
-                            // 5. Always stop loading (UI logic)
-                            setDialogState(() {
-                              isLoading = false;
-                            });
+                            error = e.toString();
+                          }
+                          
+                          // 3. Update the dialog's state with the outcome. This happens
+                          //    BEFORE any navigation occurs.
+                          setDialogState(() {
+                            isLoading = false;
+                            errorMessage = error;
+                          });
+
+                          // 4. Handle success (UI logic)
+                          // Use the dialog's own context to pop it.
+                          // If, and only if, the operation was successful,
+                          //    pop the dialog and navigate.
+                          if (recipe != null) {
+                            // Pop the dialog using its own context.
+                            if (Navigator.of(dialogContext).canPop()) {
+                            debugPrint('--- calling pop() on dialogContext ---');
+                              Navigator.of(dialogContext).pop(); // Close the dialog
+                            }
+                            debugPrint('--- calling _navigateToEditScreen() on context ---');
+                            // Navigate using the main screen's context.
+                            _navigateToEditScreen(context, recipe); // Navigate
                           }
                         },
                   child: const Text('Import'),
