@@ -9,7 +9,7 @@ import '../helpers/text_formatter.dart'; // Import our new text formatter
 import '../services/health_check_service.dart';
 
 // Enum to define the result of the popup menu
-enum _MenuAction { share, delete }
+enum _MenuAction { share, delete, createVariation }
 
 /// A screen dedicated to viewing a single recipe and performing actions on it.
 class RecipeViewScreen extends StatefulWidget {
@@ -25,6 +25,8 @@ class RecipeViewScreen extends StatefulWidget {
 class _RecipeViewScreenState extends State<RecipeViewScreen> {
   // The recipe is now nullable and loaded from the database.
   Recipe? _currentRecipe;
+  Recipe? _parentRecipe;
+  List<Recipe> _variations = [];
   bool _didChange = false; // Flag to track if an edit/delete occurred.
   
   // 1. Instantiate the service
@@ -37,19 +39,52 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRecipe();
+    _loadRecipeData();
   }
 
-  /// Fetches the recipe from the database using its ID.
-  Future<void> _loadRecipe() async {
+  /// --- NEW: Consolidated data loading method ---
+  Future<void> _loadRecipeData() async {
     final recipe = await DatabaseHelper.instance.getRecipeById(widget.recipeId);
+    if (recipe == null) return;
+
+    // Fetch parent if it exists
+    Recipe? parent;
+    if (recipe.parentRecipeId != null) {
+      parent = await DatabaseHelper.instance.getRecipeById(recipe.parentRecipeId!);
+    }
+
+    // Fetch variations
+    final variations = await DatabaseHelper.instance.getVariationsForRecipe(recipe.id!);
+    
     if (mounted) {
       setState(() {
         _currentRecipe = recipe;
+        _parentRecipe = parent;
+        _variations = variations;
       });
     }
   }
 
+  /// --- UPDATED: Method to create a variation ---
+  Future<void> _createVariation() async {
+    // By calling copyWith and setting isVariation to true, we create a new,
+    // unsaved Recipe object with a null ID and the parentRecipeId set correctly.
+    final recipeForVariation = _currentRecipe!.copyWith(isVariation: true);
+
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecipeEditScreen(
+          recipe: recipeForVariation,
+          // No need to pass parentId separately anymore, it's in the object.
+        ),
+      ),
+    );
+    if (result == true) {
+      _didChange = true;
+      _loadRecipeData(); // Reload all data to show the new variation
+    }
+  }
 
   Future<void> _editRecipe() async {
     final result = await Navigator.push<bool>(
@@ -60,7 +95,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     );
     if (result == true) {
       _didChange = true;
-      _loadRecipe(); // Reload the recipe from the database to get fresh data.
+      _loadRecipeData(); // Reload the recipe from the database to get fresh data.
     }
   }
 
@@ -134,6 +169,12 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
 
     try {
       final result = await _healthService.getHealthAnalysisForRecipe(_currentRecipe!);
+      
+      // --- THIS IS THE FIX ---
+      // After the service updates the database, we must reload the local recipe
+      // object to get the fresh data, including the new fingerprints and ratings.
+      await _loadRecipeData();
+      
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
         if (result.rating == 'UNRATED') { // A clear signal from the service
@@ -236,14 +277,45 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
         ),
         body: _currentRecipe == null
             ? const Center(child: CircularProgressIndicator())
-            : RecipeCard(recipe: _currentRecipe!),
+            // --- NEW: Use a ListView to show lineage info + recipe card ---
+            : ListView(
+                children: [
+                  // --- Parent Recipe Link ---
+                  if (_parentRecipe != null)
+                    ListTile(
+                      leading: const Icon(Icons.arrow_upward),
+                      title: Text('Based on: ${_parentRecipe!.title}'),
+                      onTap: () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => RecipeViewScreen(recipeId: _parentRecipe!.id!))
+                      ),
+                    ),
+                  
+                  // --- The Main Recipe Card ---
+                  RecipeCard(recipe: _currentRecipe!),
+
+                  // --- Variations List ---
+                  if (_variations.isNotEmpty) ...[
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text('Your Variations', style: Theme.of(context).textTheme.titleLarge),
+                    ),
+                    ..._variations.map((variation) => ListTile(
+                      title: Text(variation.title),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => RecipeViewScreen(recipeId: variation.id!))
+                      ).then((_) => _loadRecipeData()), // Refresh when returning
+                    )),
+                  ]
+                ],
+              ),
         bottomNavigationBar: _currentRecipe == null
             ? null
             : BottomAppBar(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // NEW: Health Check Button
                     TextButton.icon(
                       icon: const Icon(Icons.health_and_safety_outlined),
                       label: const Text('Check'),
@@ -254,18 +326,21 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                       label: const Text('Edit'),
                       onPressed: _editRecipe,
                     ),
-                    // The print and more menu are now combined into the popup
                     PopupMenuButton<_MenuAction>(
                       icon: const Icon(Icons.more_vert),
                       onSelected: (action) {
-                        if (action == _MenuAction.share) {
-                          _showShareOptions();
-                        } else if (action == _MenuAction.delete) {
-                          _deleteRecipe();
-                        }
+                        if (action == _MenuAction.share) _showShareOptions();
+                        if (action == _MenuAction.delete) _deleteRecipe();
+                        if (action == _MenuAction.createVariation) _createVariation();
                       },
                       itemBuilder: (context) => [
-                        // Add Print to this menu
+                        const PopupMenuItem(
+                          value: _MenuAction.createVariation,
+                          child: ListTile(
+                            leading: Icon(Icons.add_circle_outline),
+                            title: Text('Create Variation'),
+                          ),
+                        ),
                         PopupMenuItem(
                           onTap: () => PdfGenerator.generateAndPrintRecipe(_currentRecipe!),
                           child: const ListTile(
@@ -273,6 +348,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                             title: Text('Print'),
                           ),
                         ),
+                        // ... (share and delete menu items are the same) ...
                         const PopupMenuItem(
                           value: _MenuAction.share,
                           child: ListTile(

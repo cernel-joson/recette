@@ -12,16 +12,18 @@ class RecipeEditScreen extends StatelessWidget {
   const RecipeEditScreen({
     super.key,
     this.recipe,
+    this.parentRecipeId,
     this.showPasteDialogOnLoad = false,
   });
 
   final Recipe? recipe;
+  final int? parentRecipeId;
   final bool showPasteDialogOnLoad;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => RecipeEditController(recipe),
+      create: (_) => RecipeEditController(recipe, parentRecipeId: parentRecipeId),
       child: _RecipeEditView(showPasteDialogOnLoad: showPasteDialogOnLoad),
     );
   }

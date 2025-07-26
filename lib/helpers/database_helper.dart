@@ -8,8 +8,8 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
   static Database? _database;
   
-  // Use a higher version number to trigger the onUpgrade method
-  static const int _dbVersion = 4;
+  // IMPORTANT: Increment the DB version to trigger the upgrade.
+  static const int _dbVersion = 5;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -37,32 +37,28 @@ class DatabaseHelper {
 
   // This method is called when the database is created for the first time.
   Future _createDB(Database db, int version) async {
-    debugPrint("--- executing _createDB (Database did not exist) ---");
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-    const textType = 'TEXT NOT NULL';
-    const nullableTextType = 'TEXT';
-
+    // This now includes the parentRecipeId column from the start.
     await db.execute('''
       CREATE TABLE recipes ( 
-        id $idType,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parentRecipeId INTEGER,
         fingerprint TEXT,
-        title $textType,
-        description $nullableTextType,
-        prepTime $nullableTextType,
-        cookTime $nullableTextType,
-        totalTime $nullableTextType,
-        servings $nullableTextType,
-        ingredients $textType,
-        instructions $textType,
-        sourceUrl $nullableTextType,
-        otherTimings $nullableTextType,
-        healthRating $nullableTextType,
-        healthSummary $nullableTextType,
-        healthSuggestions $nullableTextType,
-        dietaryProfileFingerprint $nullableTextType
+        title TEXT NOT NULL,
+        description TEXT,
+        prepTime TEXT,
+        cookTime TEXT,
+        totalTime TEXT,
+        servings TEXT,
+        ingredients TEXT NOT NULL,
+        instructions TEXT NOT NULL,
+        sourceUrl TEXT,
+        otherTimings TEXT,
+        healthRating TEXT,
+        healthSummary TEXT,
+        healthSuggestions TEXT,
+        dietaryProfileFingerprint TEXT
       )
     ''');
-    debugPrint("--- _createDB complete. Table 'recipes' created with all columns. ---");
   }
   
   // IMPORTANT: This method handles database schema updates for existing users.
@@ -88,6 +84,10 @@ class DatabaseHelper {
     if (oldVersion < 4) {
       debugPrint("--- Upgrading from v3: Adding all new columns. ---");
       await _addColumnIfNotExists(db, 'recipes', 'fingerprint', 'TEXT');
+    }
+    // --- NEW: Add the parentRecipeId column if upgrading from a version less than 5. ---
+    if (oldVersion < 5) {
+      await _addColumnIfNotExists(db, 'recipes', 'parentRecipeId', 'INTEGER');
     }
     debugPrint("--- _upgradeDB complete. ---");
   }
@@ -151,5 +151,17 @@ class DatabaseHelper {
       whereArgs: [fingerprint],
     );
     return maps.isNotEmpty;
+  }
+
+  /// --- NEW: Fetches all variations for a given parent recipe ID. ---
+  Future<List<Recipe>> getVariationsForRecipe(int parentId) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      where: 'parentRecipeId = ?',
+      whereArgs: [parentId],
+      orderBy: 'title ASC',
+    );
+    return List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
   }
 }

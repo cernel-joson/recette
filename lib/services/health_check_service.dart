@@ -1,12 +1,10 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recipe_model.dart';
 import '../models/dietary_profile_model.dart'; // Import the profile model
 import '../helpers/database_helper.dart';
 import '../helpers/fingerprint_helper.dart'; // Import the generic helper
-import '../helpers/fingerprint_generator.dart';
 import '../helpers/api_helper.dart'; // Assuming you have an ApiHelper for the actual API call
-import '../helpers/profile_helper.dart'; // Import profile helper
 import '../services/profile_service.dart';
+import 'package:flutter/foundation.dart';
 
 /// A data class to hold the result of a health analysis.
 class HealthAnalysisResult {
@@ -72,6 +70,10 @@ class HealthCheckService {
         recipe.dietaryProfileFingerprint == currentProfileFingerprint &&
         recipe.fingerprint == currentRecipeFingerprint;
 
+    print("recipe.healthRating: ${recipe.healthRating}");
+    print("${recipe.dietaryProfileFingerprint} == ${currentProfileFingerprint}?");
+    print("${recipe.fingerprint} == ${currentRecipeFingerprint}?");
+
     if (isCacheValid) {
       print("CACHE HIT for Recipe ID ${recipe.id}! Using stored health rating.");
       return HealthAnalysisResult(
@@ -96,11 +98,13 @@ class HealthCheckService {
       healthSummary: newAnalysis.summary,
       healthSuggestions: newAnalysis.suggestions,
       dietaryProfileFingerprint: currentProfileFingerprint,
-      fingerprint: currentRecipeFingerprint, // Also save the recipe's fingerprint
+      fingerprint: currentRecipeFingerprint,
     );
 
+    // --- THIS IS THE FIX ---
+    // The health check results must be saved to the database to update the cache.
     await _dbHelper.update(updatedRecipe);
-    print("Updated cache for Recipe ID ${recipe.id} with new analysis.");
+    debugPrint("Updated cache for Recipe ID ${recipe.id} with new analysis.");
 
     return newAnalysis;
   }

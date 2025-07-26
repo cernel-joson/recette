@@ -14,6 +14,7 @@ class RecipeExistsException implements Exception {
 
 class RecipeEditController with ChangeNotifier {
   final Recipe? _initialRecipe;
+  final int? parentRecipeId;
   final _db = DatabaseHelper.instance;
 
   // State
@@ -32,7 +33,7 @@ class RecipeEditController with ChangeNotifier {
   bool isDirty = false;
   bool isAnalyzing = false;
 
-  RecipeEditController(this._initialRecipe) {
+  RecipeEditController(this._initialRecipe, {this.parentRecipeId}) {
     // Initialize all state from the initial recipe or with default values
     _populateState(_initialRecipe);
     _addListeners();
@@ -144,6 +145,7 @@ class RecipeEditController with ChangeNotifier {
   Future<bool> saveForm() async {
     final newRecipe = Recipe(
       id: _initialRecipe?.id,
+      parentRecipeId: parentRecipeId,
       title: titleController.text,
       description: descriptionController.text,
       prepTime: prepTimeController.text,
