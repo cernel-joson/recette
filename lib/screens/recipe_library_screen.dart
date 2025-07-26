@@ -5,6 +5,8 @@ import '../models/recipe_model.dart';
 import 'recipe_edit_screen.dart';
 import 'recipe_view_screen.dart'; // Import the new view screen
 import '../controllers/recipe_library_controller.dart';
+import '../services/export_service.dart'; // Import the new service
+import '../services/import_service.dart'; // Import the new service
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({super.key});
@@ -256,11 +258,87 @@ class _RecipeLibraryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the controller once to use in the onPressed callbacks.
+    final controller = Provider.of<RecipeLibraryController>(context, listen: false);
+
     // The ChangeNotifierProvider creates the controller and makes it available
     // to all widgets below it in the tree.
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Recipe Library'),
+        // --- NEW: Add an actions list for the export button ---
+        actions: [
+          // --- NEW: Import Button ---
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Import Library',
+            onPressed: () async {
+              try {
+                final confirm = await showDialog<bool>(
+                   context: context,
+                   builder: (ctx) => AlertDialog(
+                     title: const Text('Import Recipe Library?'),
+                     content: const Text('This will add recipes from a JSON backup file. Existing recipes will be skipped.'),
+                     actions: [
+                       TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                       FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Import')),
+                     ],
+                   ),
+                );
+
+                if (confirm != true) return;
+
+                final result = await ImportService.importLibrary();
+                
+                // Refresh the library and show the results
+                controller.loadRecipes();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
+                  );
+                }
+
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Import failed: ${e.toString()}'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.upload_file),
+            tooltip: 'Export Library',
+            onPressed: () async {
+              try {
+                // Show a confirmation before exporting
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Export Recipe Library?'),
+                    content: const Text('This will generate a JSON backup file of all your recipes that you can save to your device or a cloud service.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                      FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Export')),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  await ExportService.exportLibrary();
+                }
+              } catch (e) {
+                // Show an error if something goes wrong (e.g., library is empty)
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Export failed: ${e.toString()}'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
       // The Consumer widget listens for notifications and rebuilds the UI
       body: Consumer<RecipeLibraryController>(
