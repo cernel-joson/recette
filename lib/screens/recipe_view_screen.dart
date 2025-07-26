@@ -69,14 +69,17 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   Future<void> _createVariation() async {
     // By calling copyWith and setting isVariation to true, we create a new,
     // unsaved Recipe object with a null ID and the parentRecipeId set correctly.
-    final recipeForVariation = _currentRecipe!.copyWith(isVariation: true);
+    final recipeForVariation = _currentRecipe!.copyWith(parentRecipeId: _currentRecipe!.id, isVariation: true);
 
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
           recipe: recipeForVariation,
-          // No need to pass parentId separately anymore, it's in the object.
+          // --- THIS IS THE FIX ---
+          // We explicitly pass the ID of the current recipe as the
+          // parent ID for the new variation.
+          parentRecipeId: _currentRecipe!.id,
         ),
       ),
     );
