@@ -1,11 +1,15 @@
 class Ingredient {
+  // quantity is now a String to hold text like "a splash" or "2-3".
   final String quantity;
+  // quantityNumeric is an optional double for scaling and calculations.
+  final double? quantityNumeric;
   final String unit;
   final String name;
   final String notes;
 
   Ingredient({
     required this.quantity,
+    this.quantityNumeric, // Now optional
     required this.unit,
     required this.name,
     this.notes = '',
@@ -14,6 +18,7 @@ class Ingredient {
   Map<String, dynamic> toMap() {
     return {
       'quantity': quantity,
+      'quantityNumeric': quantityNumeric,
       'unit': unit,
       'name': name,
       'notes': notes,
@@ -22,7 +27,11 @@ class Ingredient {
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     return Ingredient(
-      quantity: json['quantity'] ?? '',
+      // The AI now provides 'quantity_display'.
+      quantity: json['quantity_display'] ?? '',
+      // The AI now provides 'quantity_numeric', which can be null.
+      // We handle both int and double from JSON safely.
+      quantityNumeric: (json['quantity_numeric'] as num?)?.toDouble(),
       unit: json['unit'] ?? '',
       name: json['name'] ?? 'Unknown Ingredient',
       notes: json['notes'] ?? '',
@@ -32,6 +41,7 @@ class Ingredient {
   factory Ingredient.fromMap(Map<String, dynamic> map) {
     return Ingredient(
       quantity: map['quantity'],
+      quantityNumeric: map['quantityNumeric'],
       unit: map['unit'],
       name: map['name'],
       notes: map['notes'] ?? '',

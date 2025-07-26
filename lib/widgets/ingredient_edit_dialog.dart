@@ -1,7 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/recipe_model.dart';
 import '../models/ingredient_model.dart';
+import 'package:flutter/foundation.dart';
+
+// --- New Helper Function ---
+// This function robustly parses a string to a double. It handles whitespace
+// and common fraction characters that double.tryParse cannot handle on its own.
+double? _parseNumericQuantity(String input) {
+  // First, remove any leading/trailing whitespace which causes parsing to fail.
+  String processedInput = input.trim();
+  debugPrint(processedInput);
+
+  // Replace common single-character fractions with their decimal equivalents.
+  processedInput = processedInput.replaceAll('½', '0.5');
+  processedInput = processedInput.replaceAll('¼', '0.25');
+  processedInput = processedInput.replaceAll('¾', '0.75');
+  processedInput = processedInput.replaceAll('⅓', '0.333');
+  processedInput = processedInput.replaceAll('⅔', '0.667');
+  processedInput = processedInput.replaceAll('⅛', '0.125');
+
+  // After cleaning the string, attempt to parse it.
+  return double.tryParse(processedInput);
+}
 
 /// A dialog for editing the details of a single ingredient.
 class IngredientEditDialog extends StatefulWidget {
@@ -43,6 +63,7 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
     if (_formKey.currentState!.validate()) {
       final updatedIngredient = Ingredient(
         quantity: _quantityController.text,
+        quantityNumeric: _parseNumericQuantity(_quantityController.text),
         unit: _unitController.text,
         name: _nameController.text,
         notes: _notesController.text,
@@ -64,13 +85,15 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
             children: [
               TextFormField(
                 controller: _quantityController,
-                // Use a keyboard that allows decimal points.
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                // Use a regular expression to allow digits, '.', and '/'.
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9./]')),
-                ],
-                decoration: const InputDecoration(labelText: 'Quantity (e.g., 1, 1/2, 0.5)'),
+                // The keyboard is now standard text to allow for "a splash", etc.
+                keyboardType: TextInputType.text,
+                decoration: const InputDecoration(labelText: 'Quantity (e.g., 2, 1/2, a splash)'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a quantity';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
                 controller: _unitController,
