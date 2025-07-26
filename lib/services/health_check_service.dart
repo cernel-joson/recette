@@ -120,7 +120,10 @@ class HealthCheckService {
       'recipe_data': recipe.toMap(),
     };
 
-    final responseBody = await ApiHelper.analyzeRaw(body);
+    final responseBody = await ApiHelper.analyzeRaw(
+      body,
+      model: AiModel.flash, // Use the faster, cheaper model
+    );
     return HealthAnalysisResult.fromJson(responseBody);
   }
 }

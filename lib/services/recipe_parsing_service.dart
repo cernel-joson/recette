@@ -26,6 +26,9 @@ class RecipeParsingService {
     // 2. Convert the bytes to a Base64 encoded string.
     final base64Image = base64Encode(imageBytes);
     // 3. Call the generic analysis function with the image data.
-    return ApiHelper.analyze({'image': base64Image});
+    return ApiHelper.analyze(
+      {'image': base64Image},
+      model: AiModel.pro, // Use the more powerful model for OCR
+    );
   }
 }

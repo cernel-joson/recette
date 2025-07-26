@@ -12,10 +12,13 @@ import json
 # --- Initialization ---
 PROJECT_ID = "winged-oath-465602-i5"
 GCP_REGION = "us-central1"
-MODEL_NAME = "gemini-2.5-pro"
 
 vertexai.init(project=PROJECT_ID, location=GCP_REGION)
-model = GenerativeModel(MODEL_NAME)
+
+models = {
+    "pro": GenerativeModel("gemini-2.5-pro"),
+    "flash": GenerativeModel("gemini-2.5-flash")
+}
 
 # --- Refactored Prompts for DRY Principle ---
 
@@ -30,14 +33,17 @@ Please return a single, clean JSON object with the following structure:
   "total_time": "The total time, if available (e.g., '1 hour 5 minutes')",
   "servings": "The number of servings, if available (e.g., '4-6 people')",
   "ingredients": [
-    { 
-      "quantity": "...", 
-      "unit": "...", 
-      "name": "...",
-      "notes": "..."
+    {
+        "quantity_display": "The quantity exactly as it is written in the text (e.g., '2 or 3', '1/2', 'a splash'). THIS MUST BE A STRING.",
+        "quantity_numeric": "The numeric value of the quantity, if possible. For '2 or 3', use 2.5. For '1/2', use 0.5. For non-numeric quantities like 'a splash', return null.",
+        "unit": "The unit of measurement (e.g., 'cup', 'tbsp', 'clove')",
+        "name": "The core name of the ingredient",
+        "notes": "Any additional commentary, brand suggestions, or preparation notes (e.g., 'finely chopped', '(see note)')"
     }
   ],
-  "instructions": [ "..." ],
+  "instructions": [
+        "A list of strings, with each string being a single step in the recipe."
+  ],
   "other_timings": [
     {
         "label": "The name of any other time (e.g., 'Rest Time', 'Marinate Time')",
@@ -81,15 +87,21 @@ def get_image_prompt():
 def get_profile_review_prompt(profile_text):
     """Creates the prompt for reviewing a user's dietary profile text."""
     return f"""
-    You are a helpful dietary assistant. A user has provided the following text to describe their dietary goals.
-    Please review it and do two things:
-    1. Summarize the key, actionable rules you've identified in a simple, bulleted list.
-    2. If you see any confusing, contradictory, or vague statements, suggest a clearer way to phrase them.
+    You are an expert dietary assistant. A user has provided text for their health rules and their personal preferences.
+    Your task is to analyze this text and refine it into two distinct, well-structured summaries.
 
-    Your goal is to help the user create a clear and effective set of guidelines for future AI analysis.
-    Return your response as a single, clean JSON object with one key, "summary", containing your review as a string.
+    1.  **Health Rules & Allergies:** This section should only contain clear, actionable medical directives and allergies. Extract these from the user's text.
+    2.  **Likes, Dislikes & Preferences:** This section should contain subjective tastes, cuisine preferences, and other non-critical information.
 
-    Here is the user's text to review:
+    Return a single, clean JSON object with the following structure:
+    {{
+        "suggested_rules": "Your refined summary of the user's health rules and allergies.",
+        "suggested_preferences": "Your refined summary of the user's likes, dislikes, and preferences."
+    }}
+
+    Do not include any text or formatting before or after the JSON object.
+
+    Here is the user's text to analyze:
     ---
     {profile_text}
     ---
@@ -142,63 +154,78 @@ def scrape_text_from_url(url):
 @functions_framework.http
 def recipe_analyzer_api(request):
     """
-    An HTTP-triggered Cloud Function that can analyze recipes or review dietary profiles.
+    HTTP Cloud Function to analyze recipe data from a URL, text, or image.
+    It now intelligently selects the Gemini model based on the request.
     """
-    # ... (CORS header logic remains the same) ...
-    headers = {'Access-Control-Allow-Origin': '*'} # Simplified for brevity
+    # --- 1. Set CORS headers for preflight requests ---
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "3600",
+        }
+        return ("", 204, headers)
+
+    # --- 2. Set CORS headers for the main request ---
+    headers = {"Access-Control-Allow-Origin": "*"}
 
     try:
+        # --- 3. Parse Request and Select Model ---
         request_json = request.get_json(silent=True)
+
         if not request_json:
             raise Exception("Invalid request. JSON body is required.", 400)
 
-        # --- NEW: Route the request based on the JSON key ---
-        # --- UPDATED: Route the request based on the JSON key ---
+        model_choice_key = request_json.get("model_choice", "gemini-2.5-pro")
+        model = models.get("flash" if "flash" in model_choice_key else "pro")
+
+        # --- CORRECTED: Initialize prompt_parts as an empty list ---
+        prompt_parts = []
+
+        # Prepare the prompt based on whether a URL, text, or image was provided.
         if 'health_check' in request_json:
             profile = request_json.get('dietary_profile')
             recipe = request_json.get('recipe_data')
             if not profile or not recipe:
                 raise Exception("Health check requires 'dietary_profile' and 'recipe_data'.", 400)
             prompt = get_health_check_prompt(json.dumps(profile), json.dumps(recipe))
-            request_content = [prompt]
+            prompt_parts = [prompt] # Assign to prompt_parts
         elif 'review_text' in request_json:
             prompt = get_profile_review_prompt(request_json['review_text'])
-            request_content = [prompt]
-        if 'image' in request_json:
+            prompt_parts = [prompt] # Assign to prompt_parts
+        elif 'image' in request_json:
             image_data = request_json['image']
             prompt = get_image_prompt()
-            image_part = Part.from_data(data=image_data, mime_type="image/jpeg")
-            request_content = [image_part, prompt]
+            # CORRECTED: Added base64 decoding
+            image_part = Part.from_data(data=base64.b64decode(image_data), mime_type="image/jpeg")
+            prompt_parts = [image_part, prompt] # Assign to prompt_parts
         elif 'text' in request_json:
             pasted_text = request_json['text']
             if not pasted_text or len(pasted_text) < 20:
                 raise Exception("Insufficient text provided for analysis.", 400)
             prompt = get_text_prompt(pasted_text)
-            request_content = [prompt] # For text-only, content is a list with one item
+            prompt_parts = [prompt] # Assign to prompt_parts
         elif 'url' in request_json:
             scraped_text = scrape_text_from_url(request_json['url'])
             if not scraped_text or len(scraped_text) < 20:
                 raise Exception("Insufficient text scraped from URL for analysis.", 400)
             prompt = get_text_prompt(scraped_text)
-            request_content = [prompt]
-            pass
+            prompt_parts = [prompt] # Assign to prompt_parts
         else:
             raise Exception("Invalid request. One of 'review_text', 'image', 'text', or 'url' key is required.", 400)
 
-        # --- Consolidated AI Call ---
-        response = model.generate_content(request_content)
+        # Now, prompt_parts will contain the correct content for the API call
+        response = model.generate_content(prompt_parts)
         json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
         parsed_json = json.loads(json_string)
 
         return (json.dumps(parsed_json), 200, headers)
 
     except Exception as e:
-        # Centralized error handling
-        status_code = 500
-        # Check if a specific status code was passed with the exception
-        if len(e.args) > 1 and isinstance(e.args[1], int):
-            status_code = e.args[1]
-        
-        error_message = str(e.args[0])
-        print(f"An error occurred: {error_message}")
-        return (jsonify({"error": error_message}), status_code, headers)
+            status_code = 500
+            if len(e.args) > 1 and isinstance(e.args[1], int):
+                status_code = e.args[1]
+            error_message = str(e.args[0])
+            # Use jsonify for error responses for consistency
+            return (jsonify({"error": error_message}), status_code, headers)
