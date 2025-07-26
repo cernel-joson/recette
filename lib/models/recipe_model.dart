@@ -2,10 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/ingredient_model.dart';
 import '../models/timing_info_model.dart';
+import '../helpers/fingerprint_helper.dart';
+
 
 /// Represents a full recipe with all its details.
-class Recipe {
+class Recipe implements Fingerprintable {
   final int? id;
+  // New field to store the generated fingerprint.
+  final String? fingerprint;
   final String title;
   final String description;
   final String prepTime;
@@ -24,6 +28,7 @@ class Recipe {
 
   Recipe({
     this.id,
+    this.fingerprint,
     required this.title,
     required this.description,
     required this.prepTime,
@@ -41,10 +46,63 @@ class Recipe {
     this.dietaryProfileFingerprint,
   });
 
+  // --- Implementation of the Fingerprintable contract ---
+  @override
+  String get fingerprintableString {
+    // To create a consistent string, we combine key properties.
+    // Crucially, we sort the ingredients before joining them. This ensures
+    // that two recipes with the same ingredients in a different order
+    // will still produce the same fingerprint.
+    final ingredientNames = ingredients.map((i) => i.name).toList()..sort();
+    
+    // We join the core, user-editable text content together.
+    return '$title$description${ingredientNames.join()}${instructions.join()}';
+  }
+
+  // Helper method to create a copy of the recipe with a new fingerprint.
+  Recipe copyWith({
+    int? id,
+    String? fingerprint,
+    String? title,
+    String? description,
+    String? prepTime,
+    String? cookTime,
+    String? totalTime,
+    String? servings,
+    List<Ingredient>? ingredients,
+    List<String>? instructions,
+    String? sourceUrl,
+    List<TimingInfo>? otherTimings,
+    String? healthRating,
+    String? healthSummary,
+    List<String>? healthSuggestions,
+    String? dietaryProfileFingerprint,
+  }) {
+    return Recipe(
+      id: this.id,
+      fingerprint: fingerprint ?? this.fingerprint,
+      title: this.title,
+      description: this.description,
+      ingredients: this.ingredients,
+      instructions: this.instructions,
+      prepTime: this.prepTime,
+      cookTime: this.cookTime,
+      totalTime: this.totalTime,
+      servings: this.servings,
+      sourceUrl: this.sourceUrl,
+      otherTimings: this.otherTimings,
+      healthRating: this.healthRating,
+      healthSummary: this.healthSummary,
+      healthSuggestions: this.healthSuggestions,
+      dietaryProfileFingerprint: this.dietaryProfileFingerprint,
+    );
+  }
+
   /// Converts a Recipe object into a Map for database insertion.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'fingerprint': fingerprint,
       'title': title,
       'description': description,
       'prepTime': prepTime,
@@ -106,6 +164,7 @@ class Recipe {
     debugPrint(map.toString());
     return Recipe(
       id: map['id'],
+      fingerprint: map['fingerprint'],
       title: map['title'],
       description: map['description'],
       prepTime: map['prepTime'],

@@ -161,6 +161,23 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
     );
     return discard ?? false;
   }
+  
+  // --- NEW: Method to show the duplicate recipe dialog ---
+  Future<void> _showDuplicateRecipeDialog(BuildContext context, String message) async {
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Duplicate Recipe'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,11 +208,28 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
                   ),
                   FilledButton.icon(
                     icon: const Icon(Icons.save),
+                    // --- UPDATED: Save button logic ---
                     label: const Text('Save'),
                     onPressed: () async {
-                      final success = await controller.saveForm();
-                      if (success && mounted) {
-                        Navigator.of(context).pop(true);
+                      try {
+                        // Attempt to save the form.
+                        await controller.saveForm();
+                        // If successful, pop the screen.
+                        if (mounted) {
+                          Navigator.of(context).pop(true);
+                        }
+                      } on RecipeExistsException catch (e) {
+                        // If our specific exception is caught, show the dialog.
+                        if (mounted) {
+                          _showDuplicateRecipeDialog(context, e.message);
+                        }
+                      } catch (e) {
+                        // Catch any other unexpected errors.
+                        if (mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('An unexpected error occurred: $e')),
+                          );
+                        }
                       }
                     },
                   ),

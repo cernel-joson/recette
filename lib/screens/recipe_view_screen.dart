@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart'; // Import the new share package
 import '../helpers/database_helper.dart';
-import '../helpers/api_helper.dart'; // Import api helper for the result class
 import '../models/recipe_model.dart';
 import '../widgets/recipe_card.dart';
 import 'recipe_edit_screen.dart';

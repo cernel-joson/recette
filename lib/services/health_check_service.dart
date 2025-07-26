@@ -1,9 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/recipe_model.dart';
+import '../models/dietary_profile_model.dart'; // Import the profile model
 import '../helpers/database_helper.dart';
+import '../helpers/fingerprint_helper.dart'; // Import the generic helper
 import '../helpers/fingerprint_generator.dart';
 import '../helpers/api_helper.dart'; // Assuming you have an ApiHelper for the actual API call
 import '../helpers/profile_helper.dart'; // Import profile helper
+import '../services/profile_service.dart';
 
 /// A data class to hold the result of a health analysis.
 class HealthAnalysisResult {
@@ -48,52 +51,53 @@ class HealthCheckService {
   /// [recipe] The recipe to be analyzed.
   /// Returns a Map containing the 'rating' and 'summary'.
   Future<HealthAnalysisResult> getHealthAnalysisForRecipe(Recipe recipe) async {
-    // 1. Load the user's current dietary profile text.
-    final currentProfileText = await ProfileHelper.loadProfile();
+    // 1. Load the user's current dietary profile object.
+    final currentProfile = await ProfileService.loadProfile();
 
-    // If the user has no profile set, we can't provide a rating.
-    if (currentProfileText.isEmpty) {
-      return HealthAnalysisResult.fromJson({
-        'health_rating': 'UNRATED',
-        'summary': 'Please set your dietary profile to get a health rating.',
-        'suggestions': '',
-      });
+    if (currentProfile.fullProfileText.isEmpty) {
+      return HealthAnalysisResult(
+        rating: 'UNRATED',
+        summary: 'Please set your dietary profile to get a health rating.',
+        suggestions: [],
+      );
     }
 
-    // 2. Generate the fingerprint for the current profile.
-    final currentFingerprint = generateProfileFingerprint(currentProfileText);
+    // 2. Generate fingerprints for BOTH the current profile and the recipe.
+    final currentProfileFingerprint = FingerprintHelper.generate(currentProfile);
+    final currentRecipeFingerprint = FingerprintHelper.generate(recipe);
 
     // 3. Check if the cached data is valid (Cache Hit).
-    // A valid cache requires a non-null rating AND a matching fingerprint.
-    if (recipe.healthRating != null &&
-        recipe.dietaryProfileFingerprint == currentFingerprint) {
+    // A valid cache now requires THREE conditions to be met.
+    final bool isCacheValid = recipe.healthRating != null &&
+        recipe.dietaryProfileFingerprint == currentProfileFingerprint &&
+        recipe.fingerprint == currentRecipeFingerprint;
+
+    if (isCacheValid) {
       print("CACHE HIT for Recipe ID ${recipe.id}! Using stored health rating.");
-      
-      return HealthAnalysisResult.fromJson({
-        'health_rating': recipe.healthRating!,
-        'summary': recipe.healthSummary ?? 'No summary available.',
-        'suggestions': recipe.healthSuggestions ?? [],
-      });
+      return HealthAnalysisResult(
+        rating: recipe.healthRating!,
+        summary: recipe.healthSummary ?? 'No summary available.',
+        suggestions: recipe.healthSuggestions ?? [],
+      );
     }
 
     // 4. If we reach here, it's a Cache Miss.
     print("CACHE MISS for Recipe ID ${recipe.id}. Fetching new rating from API.");
 
     // 5. Make the actual API call to get a fresh analysis.
-    // This is where you call your existing Gemini API logic.
-    final newAnalysis =
-        await getHealthAnalysis(
-          profileText: currentProfileText,
-          recipe: recipe,
-        );
+    final newAnalysis = await _fetchHealthAnalysisFromApi(
+      profile: currentProfile,
+      recipe: recipe,
+    );
 
-    // 6. Save the new analysis and fingerprint back to the database.
-    // We create a new Recipe object with the updated info to save it.
-    final updatedRecipe = recipe
-      ..healthRating = newAnalysis.rating
-      ..healthSummary = newAnalysis.summary
-      ..healthSuggestions = newAnalysis.suggestions
-      ..dietaryProfileFingerprint = currentFingerprint;
+    // 6. Save the new analysis and BOTH fingerprints back to the database.
+    final updatedRecipe = recipe.copyWith(
+      healthRating: newAnalysis.rating,
+      healthSummary: newAnalysis.summary,
+      healthSuggestions: newAnalysis.suggestions,
+      dietaryProfileFingerprint: currentProfileFingerprint,
+      fingerprint: currentRecipeFingerprint, // Also save the recipe's fingerprint
+    );
 
     await _dbHelper.update(updatedRecipe);
     print("Updated cache for Recipe ID ${recipe.id} with new analysis.");
@@ -101,21 +105,15 @@ class HealthCheckService {
     return newAnalysis;
   }
 
-  // Helper method to save the dietary profile, for use in the settings screen.
-  Future<void> saveDietaryProfile(String profileText) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(dietaryProfileKey, profileText);
-  }
-
-  /// NEW: Sends a recipe and profile to the AI for a health analysis.
-  static Future<HealthAnalysisResult> getHealthAnalysis({
-    required String profileText,
+  /// Private method to handle the API call logic.
+  static Future<HealthAnalysisResult> _fetchHealthAnalysisFromApi({
+    required DietaryProfile profile,
     required Recipe recipe,
   }) async {
     final body = {
-      'health_check': true, // The new key to trigger the right logic
-      'dietary_profile': profileText,
-      'recipe_data': recipe.toMap(), // Send the full recipe data
+      'health_check': true,
+      'dietary_profile': profile.fullProfileText,
+      'recipe_data': recipe.toMap(),
     };
 
     final responseBody = await ApiHelper.analyzeRaw(body);

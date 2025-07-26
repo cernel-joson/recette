@@ -4,6 +4,13 @@ import '../models/ingredient_model.dart';
 import '../models/timing_info_model.dart';
 import '../services/recipe_parsing_service.dart';
 import '../helpers/database_helper.dart';
+import '../helpers/fingerprint_helper.dart';
+
+// Define a specific exception for this business rule.
+class RecipeExistsException implements Exception {
+  final String message;
+  RecipeExistsException(this.message);
+}
 
 class RecipeEditController with ChangeNotifier {
   final Recipe? _initialRecipe;
@@ -132,8 +139,10 @@ class RecipeEditController with ChangeNotifier {
     }
   }
 
+  /// Saves the form data to the database.
+  /// Throws a [RecipeExistsException] if a duplicate is found.
   Future<bool> saveForm() async {
-    final recipeToSave = Recipe(
+    final newRecipe = Recipe(
       id: _initialRecipe?.id,
       title: titleController.text,
       description: descriptionController.text,
@@ -146,6 +155,18 @@ class RecipeEditController with ChangeNotifier {
       otherTimings: otherTimings,
       sourceUrl: sourceUrl,
     );
+
+    final fingerprint = FingerprintHelper.generate(newRecipe);
+
+    // Only check for duplicates if it's a new recipe
+    if (newRecipe.id == null) {
+      final bool exists = await _db.doesRecipeExist(fingerprint);
+      if (exists) {
+        throw RecipeExistsException("An identical recipe already exists in your library.");
+      }
+    }
+
+    final recipeToSave = newRecipe.copyWith(fingerprint: fingerprint);
 
     try {
       if (recipeToSave.id != null) {

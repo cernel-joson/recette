@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
+import '../models/dietary_profile_model.dart';
+import 'profile_review_screen.dart'; // Import the new review screen
 
 /// A screen for viewing and editing the user's dietary profile.
 class DietaryProfileScreen extends StatefulWidget {
@@ -10,7 +12,10 @@ class DietaryProfileScreen extends StatefulWidget {
 }
 
 class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
-  final _controller = TextEditingController();
+  // Use two separate controllers for the text fields
+  final _rulesController = TextEditingController();
+  final _preferencesController = TextEditingController();
+
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -22,10 +27,13 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
   Future<void> _loadProfile() async {
     setState(() { _isLoading = true; });
-    final profileText = await ProfileService.loadProfile();
+    // Load the profile model from the service
+    final profile = await ProfileService.loadProfile();
     if (mounted) {
       setState(() {
-        _controller.text = profileText;
+        // Populate the controllers from the model
+        _rulesController.text = profile.rules;
+        _preferencesController.text = profile.preferences;
         _isLoading = false;
       });
     }
@@ -35,57 +43,41 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
     if (_isSaving) return;
     setState(() { _isSaving = true; });
 
-    final inputText = _controller.text;
-    if (inputText.isEmpty) {
-      await ProfileService.saveProfile('');
+    final currentProfile = DietaryProfile(
+      rules: _rulesController.text,
+      preferences: _preferencesController.text,
+    );
+
+    if (currentProfile.fullProfileText.isEmpty) {
+      await ProfileService.saveProfile(DietaryProfile());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile cleared.')),
         );
         Navigator.of(context).pop();
       }
+      setState(() { _isSaving = false; });
       return;
     }
 
     try {
-      // Step 1: Get AI review
-      final review = await ProfileService.reviewProfile(inputText);
+      // Step 1: Get AI review. This now returns a structured object.
+      final review = await ProfileService.reviewProfile(currentProfile);
 
-      // Step 2: Show confirmation dialog
-      final bool? saveConfirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Review Your Profile'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Here's a summary of what the AI understood. You can edit your text or save it as is.",
-                  style: TextStyle(fontStyle: FontStyle.italic),
-                ),
-                const Divider(height: 24),
-                Text(review),
-              ],
-            ),
+      // Step 2: Navigate to the new review screen.
+      // We await a result, which will be the final, user-approved profile.
+      final finalProfile = await Navigator.of(context).push<DietaryProfile>(
+        MaterialPageRoute(
+          builder: (context) => ProfileReviewScreen(
+            originalProfile: currentProfile,
+            review: review,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Let Me Edit'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Save Anyway'),
-            ),
-          ],
         ),
       );
 
-      // Step 3: Save if confirmed
-      if (saveConfirmed == true) {
-        await ProfileService.saveProfile(inputText);
+      // Step 3: If the user accepted and saved, the result will not be null.
+      if (finalProfile != null) {
+        await ProfileService.saveProfile(finalProfile);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -112,7 +104,8 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _rulesController.dispose();
+    _preferencesController.dispose();
     super.dispose();
   }
 
@@ -129,30 +122,52 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Section for Health Rules
                   const Text(
-                    'Describe your dietary goals, rules, and preferences in your own words below. The AI will use this information to help you plan meals and analyze recipes.',
-                    style: TextStyle(fontSize: 16),
+                    'Health Rules & Allergies',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null, // Allows the text field to expand
-                      expands: true,
-                      textAlignVertical: TextAlignVertical.top,
-                      decoration: const InputDecoration(
-                        hintText: 'e.g., "I need a heart-healthy diet, low in sodium (under 200mg per serving) and saturated fat. I also dislike cilantro."',
-                        border: OutlineInputBorder(),
-                      ),
+                  const Text(
+                    'Enter non-negotiable medical directives and allergies. The AI will treat these as hard constraints.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _rulesController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g., "I am diabetic and must avoid sugar. Low-sodium diet required (<2000mg/day). Allergic to peanuts."',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+
+                  // Section for Likes and Preferences
+                  const Text(
+                    'Likes, Dislikes & Preferences',
+                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    'Enter your personal tastes. The AI will treat these as soft suggestions.',
+                     style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _preferencesController,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g., "I prefer spicy food and dislike cilantro. I enjoy Mediterranean cuisine."',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const Spacer(), // Pushes the button to the bottom
+                  
                   ElevatedButton.icon(
                     onPressed: _isSaving ? null : _saveProfile,
                     icon: _isSaving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.save),
-                    label: const Text('Save Profile'),
+                    label: const Text('Review & Save Profile'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                     ),

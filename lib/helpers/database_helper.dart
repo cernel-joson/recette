@@ -9,7 +9,7 @@ class DatabaseHelper {
   static Database? _database;
   
   // Use a higher version number to trigger the onUpgrade method
-  static const int _dbVersion = 5;
+  static const int _dbVersion = 4;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -44,7 +44,8 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE recipes ( 
-        id $idType, 
+        id $idType,
+        fingerprint TEXT,
         title $textType,
         description $nullableTextType,
         prepTime $nullableTextType,
@@ -86,12 +87,7 @@ class DatabaseHelper {
     
     if (oldVersion < 4) {
       debugPrint("--- Upgrading from v3: Adding all new columns. ---");
-       // This is a safety net. We can check if columns exist before adding them
-       // to avoid errors if a migration is re-run.
-       await _addColumnIfNotExists(db, 'recipes', 'healthRating', 'TEXT');
-       await _addColumnIfNotExists(db, 'recipes', 'healthSummary', 'TEXT');
-       await _addColumnIfNotExists(db, 'recipes', 'healthSuggestions', 'TEXT');
-       await _addColumnIfNotExists(db, 'recipes', 'dietaryProfileFingerprint', 'TEXT');
+      await _addColumnIfNotExists(db, 'recipes', 'fingerprint', 'TEXT');
     }
     debugPrint("--- _upgradeDB complete. ---");
   }
@@ -135,7 +131,7 @@ class DatabaseHelper {
     });
   }
 
-  /// --- NEW: Fetches a single recipe by its ID. ---
+  /// Fetches a single recipe by its ID. ---
   Future<Recipe?> getRecipeById(int id) async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps =
@@ -144,5 +140,16 @@ class DatabaseHelper {
       return Recipe.fromMap(maps.first);
     }
     return null;
+  }
+  
+  // Method to check for a duplicate recipe by its fingerprint.
+  Future<bool> doesRecipeExist(String fingerprint) async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      where: 'fingerprint = ?',
+      whereArgs: [fingerprint],
+    );
+    return maps.isNotEmpty;
   }
 }
