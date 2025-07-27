@@ -10,13 +10,19 @@ class RecipeParsingService {
   /// Analyzes a recipe from a given URL.
   static Future<Recipe> analyzeUrl(String url) async {
     // This method remains unchanged.
-    return ApiHelper.analyze({'url': url});
+    return ApiHelper.analyze(
+      {'url': url},
+      model: AiModel.flash, // Use the more faster model for URL import
+    );
   }
 
   /// Analyzes a recipe from a block of unformatted text.
   static Future<Recipe> analyzeText(String text) async {
     // This method remains unchanged.
-    return ApiHelper.analyze({'text': text});
+    return ApiHelper.analyze(
+      {'text': text},
+      model: AiModel.flash, // Use the more faster model for text import
+    );
   }
 
   /// --- UPDATED: Analyzes a recipe from an image file path. ---

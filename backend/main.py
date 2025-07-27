@@ -49,6 +49,9 @@ Please return a single, clean JSON object with the following structure:
         "label": "The name of any other time (e.g., 'Rest Time', 'Marinate Time')",
         "duration": "The duration for that time (e.g., '10 mins')"
     }
+  ],
+  "tags": [
+      "A list of relevant tags like cuisine (e.g., 'Italian', 'Mexican'), meal type (e.g., 'Dinner', 'Dessert'), or key ingredients (e.g., 'Chicken', 'Pasta')."
   ]
 }
 

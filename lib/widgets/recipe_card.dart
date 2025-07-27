@@ -71,6 +71,16 @@ class RecipeCard extends StatelessWidget {
               ),
             ],
           ),
+          if (recipe.tags.isNotEmpty) ...[
+            const Divider(height: 32.0),
+            Text("Tags", style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8.0, // gap between adjacent chips
+              runSpacing: 4.0, // gap between lines
+              children: recipe.tags.map((tag) => Chip(label: Text(tag))).toList(),
+            ),
+          ],
           const Divider(height: 32.0),
 
           Text("Ingredients", style: Theme.of(context).textTheme.titleLarge),

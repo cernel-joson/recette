@@ -24,6 +24,7 @@ class Recipe implements Fingerprintable {
   String? healthSummary; // AI-generated summary
   List<String>? healthSuggestions; // AI-generated suggestions
   String? dietaryProfileFingerprint; // Hash of the profile used for the rating
+  List<String> tags;
 
   Recipe({
     this.id,
@@ -43,6 +44,7 @@ class Recipe implements Fingerprintable {
     this.healthSummary,
     this.healthSuggestions = const [],
     this.dietaryProfileFingerprint,
+    this.tags = const [], // NEW: Initialize in constructor
   });
 
   // --- Implementation of the Fingerprintable contract ---
@@ -80,6 +82,7 @@ class Recipe implements Fingerprintable {
     String? healthSummary,
     List<String>? healthSuggestions,
     String? dietaryProfileFingerprint,
+    List<String>? tags,
     bool isVariation = false, // Flag to indicate a variation is being created
   }) {
     return Recipe(
@@ -106,6 +109,9 @@ class Recipe implements Fingerprintable {
       healthSummary: isVariation ? null : (healthSummary ?? this.healthSummary),
       healthSuggestions: isVariation ? [] : (healthSuggestions ?? this.healthSuggestions),
       dietaryProfileFingerprint: isVariation ? null : (dietaryProfileFingerprint ?? this.dietaryProfileFingerprint),
+      // Prioritize the new tags list, but fall back to the existing
+      // tags list if no new one is provided.
+      tags: tags ?? this.tags,
     );
   }
 
@@ -151,6 +157,10 @@ class Recipe implements Fingerprintable {
     var healthSuggestionsList = json['healthSuggestions'] as List? ?? [];
     List<String> healthSuggestions =
         healthSuggestionsList.map((i) => i.toString()).toList();
+        
+    // It was incorrectly parsing json['instructions'] instead of json['tags'].
+    var tagsList = json['tags'] as List? ?? [];
+    List<String> tags = tagsList.map((tag) => tag.toString()).toList();
 
     return Recipe(
       title: json['title'] ?? 'No Title Provided',
@@ -167,6 +177,7 @@ class Recipe implements Fingerprintable {
       healthSummary: json['healthSummary'] ?? '',
       healthSuggestions: healthSuggestions,
       dietaryProfileFingerprint: json['dietaryProfileFingerprint'] ?? '',
+      tags: tags, // Use the correctly parsed list
     );
   }
 

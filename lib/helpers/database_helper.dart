@@ -9,7 +9,7 @@ class DatabaseHelper {
   static Database? _database;
   
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 5;
+  static const int _dbVersion = 6;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -59,6 +59,23 @@ class DatabaseHelper {
         dietaryProfileFingerprint TEXT
       )
     ''');
+    // Create a table for all unique tags
+    await db.execute('''
+      CREATE TABLE tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      )
+    ''');
+    // Create a "join table" to link recipes and tags
+    await db.execute('''
+      CREATE TABLE recipe_tags (
+        recipeId INTEGER,
+        tagId INTEGER,
+        FOREIGN KEY (recipeId) REFERENCES recipes (id) ON DELETE CASCADE,
+        FOREIGN KEY (tagId) REFERENCES tags (id) ON DELETE CASCADE,
+        PRIMARY KEY (recipeId, tagId)
+      )
+    ''');
   }
   
   // IMPORTANT: This method handles database schema updates for existing users.
@@ -85,11 +102,58 @@ class DatabaseHelper {
       debugPrint("--- Upgrading from v3: Adding all new columns. ---");
       await _addColumnIfNotExists(db, 'recipes', 'fingerprint', 'TEXT');
     }
+
     // --- NEW: Add the parentRecipeId column if upgrading from a version less than 5. ---
     if (oldVersion < 5) {
       await _addColumnIfNotExists(db, 'recipes', 'parentRecipeId', 'INTEGER');
     }
+
+    if (oldVersion < 6) {
+      await db.execute('''CREATE TABLE tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      )''');
+      await db.execute('''CREATE TABLE recipe_tags (
+        recipeId INTEGER,
+        tagId INTEGER,
+        FOREIGN KEY (recipeId) REFERENCES recipes (id) ON DELETE CASCADE,
+        FOREIGN KEY (tagId) REFERENCES tags (id) ON DELETE CASCADE,
+        PRIMARY KEY (recipeId, tagId)
+      )''');
+    }
     debugPrint("--- _upgradeDB complete. ---");
+  }
+
+  // --- NEW: Add methods to manage tags ---
+
+  /// Adds a list of tags to a specific recipe.
+  Future<void> addTagsToRecipe(int recipeId, List<String> tags) async {
+    final db = await instance.database;
+    for (String tagName in tags) {
+      // Insert tag if it doesn't exist, or get its ID if it does.
+      int tagId = await db.rawInsert(
+        'INSERT OR IGNORE INTO tags(name) VALUES(?)', [tagName.toLowerCase()]);
+      if (tagId == 0) { // If IGNORE was triggered, the tag exists. Get its id.
+        final List<Map<String, dynamic>> maps = await db.query(
+            'tags', where: 'name = ?', whereArgs: [tagName.toLowerCase()]);
+        tagId = maps.first['id'];
+      }
+      // Link the recipe and the tag in the join table.
+      await db.rawInsert(
+        'INSERT OR IGNORE INTO recipe_tags(recipeId, tagId) VALUES(?,?)',
+        [recipeId, tagId]);
+    }
+  }
+
+  /// Fetches all tags for a given recipe ID.
+  Future<List<String>> getTagsForRecipe(int recipeId) async {
+      final db = await instance.database;
+      final List<Map<String, dynamic>> result = await db.rawQuery('''
+          SELECT T.name FROM tags T
+          INNER JOIN recipe_tags RT ON T.id = RT.tagId
+          WHERE RT.recipeId = ?
+      ''', [recipeId]);
+      return result.map((map) => map['name'] as String).toList();
   }
   
   // Helper to prevent errors if an upgrade is attempted multiple times.
@@ -120,24 +184,38 @@ class DatabaseHelper {
     return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// --- UPDATED to fetch tags ---
   Future<List<Recipe>> getAllRecipes() async {
-    debugPrint("--- getAllRecipes called ---");
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps =
         await db.query('recipes', orderBy: 'title ASC');
-    debugPrint("--- query completed ---");
-    return List.generate(maps.length, (i) {
+
+    // Create a list of recipes from the maps.
+    List<Recipe> recipes = List.generate(maps.length, (i) {
       return Recipe.fromMap(maps[i]);
     });
+
+    // --- NEW: Loop through each recipe and fetch its tags ---
+    for (int i = 0; i < recipes.length; i++) {
+      final recipeTags = await getTagsForRecipe(recipes[i].id!);
+      recipes[i].tags = recipeTags; // Assign the fetched tags
+    }
+    
+    return recipes;
   }
 
-  /// Fetches a single recipe by its ID. ---
+  /// --- UPDATED to fetch tags ---
   Future<Recipe?> getRecipeById(int id) async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps =
         await db.query('recipes', where: 'id = ?', whereArgs: [id], limit: 1);
+
     if (maps.isNotEmpty) {
-      return Recipe.fromMap(maps.first);
+      final recipe = Recipe.fromMap(maps.first);
+      // --- NEW: Fetch and assign the tags for the single recipe ---
+      final recipeTags = await getTagsForRecipe(recipe.id!);
+      recipe.tags = recipeTags;
+      return recipe;
     }
     return null;
   }

@@ -33,6 +33,8 @@ class RecipeEditController with ChangeNotifier {
   bool isDirty = false;
   bool isAnalyzing = false;
 
+  late List<String> tags;
+
   RecipeEditController(this._initialRecipe, {this.parentRecipeId}) {
     // Initialize all state from the initial recipe or with default values
     _populateState(_initialRecipe);
@@ -50,6 +52,10 @@ class RecipeEditController with ChangeNotifier {
     instructions = List<String>.from(recipe?.instructions ?? []);
     otherTimings = List<TimingInfo>.from(recipe?.otherTimings ?? []);
     sourceUrl = recipe?.sourceUrl ?? '';
+
+    // --- POPULATE TAGS ---
+    tags = List<String>.from(recipe?.tags ?? []);
+
     notifyListeners();
   }
 
@@ -156,6 +162,10 @@ class RecipeEditController with ChangeNotifier {
       instructions: instructions,
       otherTimings: otherTimings,
       sourceUrl: sourceUrl,
+      // --- THIS IS THE FIX ---
+      // You must include the tags from the controller's state
+      // when building the new recipe object to be saved.
+      tags: tags,
     );
 
     final fingerprint = FingerprintHelper.generate(newRecipe);
@@ -172,9 +182,16 @@ class RecipeEditController with ChangeNotifier {
 
     try {
       if (recipeToSave.id != null) {
+        // --- HANDLE UPDATE ---
         await _db.update(recipeToSave);
+        // For an update, we also need to update the tags.
+        await _db.addTagsToRecipe(recipeToSave.id!, recipeToSave.tags);
       } else {
-        await _db.insert(recipeToSave);
+        // --- HANDLE INSERT ---
+        // 1. Insert the recipe and get its new ID.
+        final newId = await _db.insert(recipeToSave);
+        // 2. Use the new ID to save the associated tags.
+        await _db.addTagsToRecipe(newId, recipeToSave.tags);
       }
       isDirty = false; // Mark as clean after a successful save
       notifyListeners();
