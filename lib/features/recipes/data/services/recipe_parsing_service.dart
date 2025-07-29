@@ -9,32 +9,30 @@ import 'package:intelligent_nutrition_app/core/services/api_helper.dart';
 class RecipeParsingService {
   /// Analyzes a recipe from a given URL.
   static Future<Recipe> analyzeUrl(String url) async {
-    // This method remains unchanged.
-    return ApiHelper.analyze(
+    final Map<String, dynamic> data = await ApiHelper.analyzeRaw(
       {'url': url},
-      model: AiModel.flash, // Use the more faster model for URL import
+      model: AiModel.flash,
     );
+    return Recipe.fromJson(data, url);
   }
 
   /// Analyzes a recipe from a block of unformatted text.
   static Future<Recipe> analyzeText(String text) async {
-    // This method remains unchanged.
-    return ApiHelper.analyze(
+    final Map<String, dynamic> data = await ApiHelper.analyzeRaw(
       {'text': text},
-      model: AiModel.flash, // Use the more faster model for text import
+      model: AiModel.flash,
     );
+    return Recipe.fromJson(data, 'Pasted Text');
   }
 
   /// --- UPDATED: Analyzes a recipe from an image file path. ---
   static Future<Recipe> analyzeImage(String imagePath) async {
-    // 1. Read the image file as bytes from the given path.
     final imageBytes = await File(imagePath).readAsBytes();
-    // 2. Convert the bytes to a Base64 encoded string.
     final base64Image = base64Encode(imageBytes);
-    // 3. Call the generic analysis function with the image data.
-    return ApiHelper.analyze(
+    final Map<String, dynamic> data = await ApiHelper.analyzeRaw(
       {'image': base64Image},
-      model: AiModel.pro, // Use the more powerful model for OCR
+      model: AiModel.pro,
     );
+    return Recipe.fromJson(data, 'Scanned Content');
   }
 }

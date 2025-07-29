@@ -40,14 +40,4 @@ class ApiHelper {
       throw Exception('Failed to connect to the server: ${e.toString()}');
     }
   }
-
-  // --- The original _analyze method now uses analyzeRaw ---
-  static Future<Recipe> analyze(
-    Map<String, String> body, {
-    AiModel model = AiModel.pro
-  }) async {
-    final Map<String, dynamic> data = await analyzeRaw(body, model: model);
-    final String sourceUrl = body['url'] ?? (body['image'] != null ? 'Scanned Content' : 'Pasted Text');
-    return Recipe.fromJson(data, sourceUrl);
-  }
 }

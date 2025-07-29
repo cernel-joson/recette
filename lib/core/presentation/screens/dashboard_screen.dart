@@ -3,10 +3,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/core/presentation/widgets/dashboard_card.dart';
-import 'package:intelligent_nutrition_app/features/recipes/presentation/screens/screens.dart';
+import 'package:intelligent_nutrition_app/features/recipes/recipes.dart';
+import 'package:intelligent_nutrition_app/core/core.dart';
 import 'package:intelligent_nutrition_app/main.dart'; // Import main.dart to get access to the navigatorKey
 import 'package:intelligent_nutrition_app/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
 
