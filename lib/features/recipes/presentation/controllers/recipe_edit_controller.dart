@@ -143,6 +143,12 @@ class RecipeEditController with ChangeNotifier {
       notifyListeners();
     }
   }
+  
+  void updateTags(List<String> newTags) {
+    tags = newTags;
+    _markDirty();
+    notifyListeners();
+  }
 
   /// Saves the form data to the database.
   /// Throws a [RecipeExistsException] if a duplicate is found.

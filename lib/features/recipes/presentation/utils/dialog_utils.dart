@@ -232,7 +232,7 @@ class DialogUtils {
 
     // If a change happened on the edit screen, tell the controller to reload.
     if (result == true) {
-      controller.loadRecipes();
+      controller.loadInitialRecipes();
     }
   }
 }

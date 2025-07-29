@@ -246,4 +246,27 @@ class DatabaseHelper {
     );
     return List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
   }
+
+  /// NEW: A generic search method for recipes.
+  Future<List<Recipe>> searchRecipes(String whereClause, List<Object?> whereArgs) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      where: whereClause,
+      whereArgs: whereArgs,
+      orderBy: 'title ASC',
+    );
+
+    if (maps.isEmpty) {
+      return [];
+    }
+    
+    // As before, we need to hydrate the recipes with their tags.
+    List<Recipe> recipes = List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
+    for (int i = 0; i < recipes.length; i++) {
+      recipes[i].tags = await getTagsForRecipe(recipes[i].id!);
+    }
+    
+    return recipes;
+  }
 }

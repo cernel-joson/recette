@@ -255,7 +255,16 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
                   ]),
                   const SizedBox(height: 24),
                   _buildSection(context, controller, 'Other Timings', controller.otherTimings, _addOtherTiming, _editOtherTiming, (ctrl, idx) => ctrl.removeOtherTiming(idx)),
+                  // ... after the other sections ...
                   const SizedBox(height: 24),
+                  
+                  // --- Use your new custom widget ---
+                  CustomChipInput(
+                    initialChips: controller.tags,
+                    onChipsChanged: (newTags) {
+                      controller.updateTags(newTags);
+                    },
+                  ),
                   _buildSection(context, controller, 'Ingredients', controller.ingredients, _addIngredient, _editIngredient, (ctrl, idx) => ctrl.removeIngredient(idx)),
                   const SizedBox(height: 24),
                   _buildSection(context, controller, 'Instructions', controller.instructions, (ctx, ctrl) => ctrl.addInstruction(), _editInstruction, (ctrl, idx) => ctrl.removeInstruction(idx)),

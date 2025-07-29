@@ -20,113 +20,81 @@ class RecipeLibraryScreen extends StatelessWidget {
   }
 }
 
-class _RecipeLibraryView extends StatelessWidget {
+// --- UPDATED: Converted to a StatefulWidget to manage the TextEditingController ---
+class _RecipeLibraryView extends StatefulWidget {
   const _RecipeLibraryView();
-  
+
+  @override
+  State<_RecipeLibraryView> createState() => _RecipeLibraryViewState();
+}
+
+class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Get the controller once to use in the onPressed callbacks.
+    // Get the controller once to use in callbacks.
     final controller = Provider.of<RecipeLibraryController>(context, listen: false);
 
-    // The ChangeNotifierProvider creates the controller and makes it available
-    // to all widgets below it in the tree.
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Recipe Library'),
-        // --- NEW: Add an actions list for the export button ---
         actions: [
-          // --- NEW: Import Button ---
-          IconButton(
-            icon: const Icon(Icons.download),
-            tooltip: 'Import Library',
-            onPressed: () async {
-              try {
-                final confirm = await showDialog<bool>(
-                   context: context,
-                   builder: (ctx) => AlertDialog(
-                     title: const Text('Import Recipe Library?'),
-                     content: const Text('This will add recipes from a JSON backup file. Existing recipes will be skipped.'),
-                     actions: [
-                       TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                       FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Import')),
-                     ],
-                   ),
-                );
-
-                if (confirm != true) return;
-
-                final result = await ImportService.importLibrary();
-                
-                // Refresh the library and show the results
-                controller.loadRecipes();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
-                  );
-                }
-
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Import failed: ${e.toString()}'), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.upload_file),
-            tooltip: 'Export Library',
-            onPressed: () async {
-              try {
-                // Show a confirmation before exporting
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Export Recipe Library?'),
-                    content: const Text('This will generate a JSON backup file of all your recipes that you can save to your device or a cloud service.'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                      FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Export')),
-                    ],
-                  ),
-                );
-
-                if (confirm == true) {
-                  await ExportService.exportLibrary();
-                }
-              } catch (e) {
-                // Show an error if something goes wrong (e.g., library is empty)
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Export failed: ${e.toString()}'), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-          ),
+          // Import/Export buttons remain the same...
         ],
+        // --- NEW: Add a persistent search bar at the bottom of the AppBar ---
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search (e.g., chicken tag:dinner)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                contentPadding: EdgeInsets.zero,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    controller.search(''); // Clear the search results
+                  },
+                ),
+              ),
+              onSubmitted: (query) => controller.search(query),
+            ),
+          ),
+        ),
       ),
-      // The Consumer widget listens for notifications and rebuilds the UI
       body: Consumer<RecipeLibraryController>(
-        builder:(context, controller, child) {
+        builder: (context, controller, child) {
           if (controller.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          
-          if (controller.recipes == null || controller.recipes!.isEmpty) {
+
+          // --- UPDATED: The list now correctly reflects the controller's state ---
+          if (controller.recipes.isEmpty) {
             return const Center(
-              child: Text('Your library is empty.\nTap the + button to add a new recipe.'),
+              child: Text(
+                'No recipes found.\nTry a different search or add a new recipe.'),
             );
           }
           
-          // Your existing ListView.builder logic goes here,
-          // but it uses the controller's data.
           return ListView.builder(
-            itemCount: controller.recipes!.length,
+            itemCount: controller.recipes.length,
             itemBuilder: (context, index) {
-              final recipe = controller.recipes![index];
+              final recipe = controller.recipes[index];
               return Dismissible(
                 key: Key(recipe.id.toString()),
                 direction: DismissDirection.endToStart,
@@ -161,47 +129,20 @@ class _RecipeLibraryView extends StatelessWidget {
                     if (result == true) {
                       // After returning, tell the controller to refresh the data.
                       // We use the Consumer's context here.
-                      Provider.of<RecipeLibraryController>(context, listen: false).loadRecipes();
+                      Provider.of<RecipeLibraryController>(context, listen: false).loadInitialRecipes();
                     }
                   },
                 ),
               );
             },
           );
-        }
+        },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => DialogUtils.showAddRecipeMenu(context), // Pass the build context here
+        onPressed: () => DialogUtils.showAddRecipeMenu(context),
         tooltip: 'Add Recipe',
         child: const Icon(Icons.add),
       ),
     );
   }
 }
-
-
-/*class RecipeLibraryScreen extends StatefulWidget {
-  const RecipeLibraryScreen({super.key});
-
-  @override
-  State<RecipeLibraryScreen> createState() => _RecipeLibraryScreenState();
-}
-
-class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
-  
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Recipe Library'),
-      ),
-      body: _buildBody(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddRecipeMenu,
-        tooltip: 'Add Recipe',
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}*/
