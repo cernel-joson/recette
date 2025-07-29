@@ -269,4 +269,11 @@ class DatabaseHelper {
     
     return recipes;
   }
+
+  /// NEW: Fetches all unique tags from the database.
+  Future<List<String>> getAllUniqueTags() async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
+    return result.map((map) => map['name'] as String).toList();
+  }
 }

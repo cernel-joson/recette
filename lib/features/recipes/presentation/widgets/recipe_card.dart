@@ -78,7 +78,17 @@ class RecipeCard extends StatelessWidget {
             Wrap(
               spacing: 8.0, // gap between adjacent chips
               runSpacing: 4.0, // gap between lines
-              children: recipe.tags.map((tag) => Chip(label: Text(tag))).toList(),
+              // --- THIS IS THE CHANGE ---
+              children: recipe.tags.map((tag) {
+                return ActionChip(
+                  label: Text(tag),
+                  onPressed: () {
+                    // When a tag is pressed, pop the current screen (RecipeViewScreen)
+                    // and return a formatted search query as the result.
+                    Navigator.of(context).pop('tag:$tag');
+                  },
+                );
+              }).toList(),
             ),
           ],
           const Divider(height: 32.0),

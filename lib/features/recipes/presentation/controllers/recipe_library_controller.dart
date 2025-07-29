@@ -13,12 +13,28 @@ class RecipeLibraryController with ChangeNotifier {
   
   bool _isLoading = true;
   bool _isSearchActive = false; // --- NEW: Flag to track search state ---
+  
+  // --- NEW: Add property to track navigation state ---
+  int? _navigatedFromRecipeId;
+
+  // --- NEW: Public getter for the UI to read the state ---
+  int? get navigatedFromRecipeId => _navigatedFromRecipeId;
 
   List<Recipe> get recipes => _isSearchActive ? _searchResults : _recipes;
   bool get isLoading => _isLoading;
 
   RecipeLibraryController() {
     loadInitialRecipes();
+  }
+
+  // --- NEW: Methods to manage the navigation state ---
+  void setNavigationOrigin(int recipeId) {
+    _navigatedFromRecipeId = recipeId;
+    // No need to notify listeners, this state is for the next build.
+  }
+
+  void clearNavigationOrigin() {
+    _navigatedFromRecipeId = null;
   }
 
   /// Loads the initial, default view (e.g., recent recipes).
@@ -32,6 +48,7 @@ class RecipeLibraryController with ChangeNotifier {
     _recipes = recipeList;
     _isLoading = false;
     _isSearchActive = false;
+    clearNavigationOrigin(); // Clear navigation state on a full reload
     notifyListeners();
   }
 
@@ -41,6 +58,7 @@ class RecipeLibraryController with ChangeNotifier {
       // If the query is empty, revert to the initial state.
       _isSearchActive = false;
       _searchResults = [];
+      clearNavigationOrigin(); // Clear navigation state on a full reload
       notifyListeners();
       return;
     }
