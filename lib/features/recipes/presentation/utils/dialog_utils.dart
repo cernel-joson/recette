@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'package:provider/provider.dart';
-import '../controllers/recipe_library_controller.dart';
-import '../../data/models/recipe_model.dart';
-import '../screens/recipe_edit_screen.dart';
+import 'package:intelligent_nutrition_app/features/recipes/presentation/controllers/controllers.dart';
+import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:intelligent_nutrition_app/features/recipes/presentation/screens/recipe_edit_screen.dart';
 
 class DialogUtils {
   /// Shows a modal bottom sheet with options for adding a new recipe.

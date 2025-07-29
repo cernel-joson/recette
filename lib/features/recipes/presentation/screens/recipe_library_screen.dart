@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'recipe_view_screen.dart'; // Import the new view screen
-import '../controllers/recipe_library_controller.dart';
+import 'package:intelligent_nutrition_app/features/recipes/presentation/controllers/controllers.dart';
 import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
-import 'package:intelligent_nutrition_app/features/recipes/presentation/widgets/widgets.dart';
+import 'package:intelligent_nutrition_app/features/recipes/presentation/utils/dialog_utils.dart';
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({super.key});

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
 import 'package:intelligent_nutrition_app/features/recipes/presentation/widgets/widgets.dart';
-import 'package:intelligent_nutrition_app/features/recipes/presentation/controllers/recipe_edit_controller.dart';
+import 'package:intelligent_nutrition_app/features/recipes/presentation/controllers/controllers.dart';
 
 /// A screen for creating a new recipe or editing an existing one.
 class RecipeEditScreen extends StatelessWidget {
