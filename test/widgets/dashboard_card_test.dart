@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intelligent_nutrition_app/widgets/dashboard_card.dart';
+import 'package:intelligent_nutrition_app/core/presentation/widgets/dashboard_card.dart';
 
 // A helper function to wrap our widget in a MaterialApp.
 // This is necessary because widgets like Card and Icon need access to

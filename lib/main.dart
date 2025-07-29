@@ -1,7 +1,7 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'screens/dashboard_screen.dart';
+import 'package:intelligent_nutrition_app/core/presentation/screens/dashboard_screen.dart';
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
 // from anywhere in the app, which is essential for the share handler.
