@@ -276,4 +276,35 @@ class DatabaseHelper {
     final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
     return result.map((map) => map['name'] as String).toList();
   }
+
+  /// NEW: Finds candidate recipes that share key ingredients.
+  Future<List<Recipe>> findCandidateMatches(int newRecipeId, List<String> keyIngredients) async {
+    final db = await instance.database;
+    
+    // Create a list of `LIKE` clauses for the WHERE statement.
+    // We search the 'ingredients' JSON blob for the names of the key ingredients.
+    final whereClauses = keyIngredients.map((ing) => 'ingredients LIKE ?').join(' OR ');
+    
+    // Create the arguments for the query, wrapping each ingredient name in wildcards.
+    final whereArgs = keyIngredients.map((ing) => '%"name":"%$ing%"%').toList();
+    
+    // Exclude the recipe we are currently saving.
+    final finalWhere = 'id != ? AND ($whereClauses)';
+    final finalArgs = [newRecipeId, ...whereArgs];
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      where: finalWhere,
+      whereArgs: finalArgs,
+      limit: 10, // Limit to a reasonable number of candidates
+    );
+    
+    // The rest of the logic to hydrate recipes with tags remains the same.
+    List<Recipe> recipes = List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
+    for (int i = 0; i < recipes.length; i++) {
+      recipes[i].tags = await getTagsForRecipe(recipes[i].id!);
+    }
+    
+    return recipes;
+  }
 }

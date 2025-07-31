@@ -19,10 +19,24 @@ class HealthAnalysisResult {
   });
 
   factory HealthAnalysisResult.fromJson(Map<String, dynamic> json) {
+    // --- THIS IS THE FIX ---
+    // Make the parsing logic defensive against incorrect types from the AI.
+    final suggestionsData = json['suggestions'];
+    List<String> suggestionsList = [];
+
+    if (suggestionsData is List) {
+      // If it's a list, convert it as expected.
+      suggestionsList = suggestionsData.map((item) => item.toString()).toList();
+    } else if (suggestionsData is String) {
+      // Failsafe: if the AI returns a single string, split it by commas
+      // or just wrap it in a list to prevent a crash.
+      suggestionsList = [suggestionsData];
+    }
+
     return HealthAnalysisResult(
       rating: json['health_rating'] ?? 'UNKNOWN',
       summary: json['summary'] ?? 'No summary provided.',
-      suggestions: List<String>.from(json['suggestions'] ?? []),
+      suggestions: suggestionsList, // Use the safely parsed list
     );
   }
 }
@@ -31,9 +45,6 @@ class HealthAnalysisResult {
 // incorporating the caching mechanism.
 class HealthCheckService {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-
-  // The key used to store and retrieve the dietary profile from SharedPreferences.
-  static const String dietaryProfileKey = 'dietary_profile_text';
 
   /// Gets the health analysis for a given recipe, using a cache-aware strategy.
   ///
@@ -47,83 +58,55 @@ class HealthCheckService {
   ///    database for future use.
   ///
   /// [recipe] The recipe to be analyzed.
-  /// Returns a Map containing the 'rating' and 'summary'.
+  /// Returns a Map containing the 'rating' and 'summary'.// --- THIS PUBLIC METHOD STAYS, BUT WILL BE SIMPLIFIED ---
   Future<HealthAnalysisResult> getHealthAnalysisForRecipe(Recipe recipe) async {
-    // 1. Load the user's current dietary profile object.
     final currentProfile = await ProfileService.loadProfile();
+    // It now calls the static, reusable logic
+    return _getOrFetchHealthAnalysis(recipe, currentProfile);
+  }
 
-    if (currentProfile.fullProfileText.isEmpty) {
-      return HealthAnalysisResult(
-        rating: 'UNRATED',
-        summary: 'Please set your dietary profile to get a health rating.',
-        suggestions: [],
-      );
-    }
+  // --- NEW: STATIC, REUSABLE LOGIC ---
 
-    // 2. Generate fingerprints for BOTH the current profile and the recipe.
-    final currentProfileFingerprint = FingerprintHelper.generate(currentProfile);
+  /// Checks if a recipe's cached health data is valid against a given profile.
+  static bool isHealthCacheValid(Recipe recipe, DietaryProfile profile) {
+    final currentProfileFingerprint = FingerprintHelper.generate(profile);
     final currentRecipeFingerprint = FingerprintHelper.generate(recipe);
 
-    // 3. Check if the cached data is valid (Cache Hit).
-    // A valid cache now requires THREE conditions to be met.
-    final bool isCacheValid = recipe.healthRating != null &&
+    return recipe.healthRating != null &&
         recipe.dietaryProfileFingerprint == currentProfileFingerprint &&
         recipe.fingerprint == currentRecipeFingerprint;
+  }
 
-    print("recipe.healthRating: ${recipe.healthRating}");
-    print("${recipe.dietaryProfileFingerprint} == ${currentProfileFingerprint}?");
-    print("${recipe.fingerprint} == ${currentRecipeFingerprint}?");
-
-    if (isCacheValid) {
-      print("CACHE HIT for Recipe ID ${recipe.id}! Using stored health rating.");
+  /// The core logic, now extracted. It returns the analysis but DOES NOT make an API call if the cache is valid.
+  static Future<HealthAnalysisResult?> getCachedAnalysis(Recipe recipe, DietaryProfile profile) async {
+    if (isHealthCacheValid(recipe, profile)) {
+      debugPrint("CACHE HIT for Recipe ID ${recipe.id}! Using stored health rating.");
       return HealthAnalysisResult(
         rating: recipe.healthRating!,
         summary: recipe.healthSummary ?? 'No summary available.',
         suggestions: recipe.healthSuggestions ?? [],
       );
     }
-
-    // 4. If we reach here, it's a Cache Miss.
-    print("CACHE MISS for Recipe ID ${recipe.id}. Fetching new rating from API.");
-
-    // 5. Make the actual API call to get a fresh analysis.
-    final newAnalysis = await _fetchHealthAnalysisFromApi(
-      profile: currentProfile,
-      recipe: recipe,
-    );
-
-    // 6. Save the new analysis and BOTH fingerprints back to the database.
-    final updatedRecipe = recipe.copyWith(
-      healthRating: newAnalysis.rating,
-      healthSummary: newAnalysis.summary,
-      healthSuggestions: newAnalysis.suggestions,
-      dietaryProfileFingerprint: currentProfileFingerprint,
-      fingerprint: currentRecipeFingerprint,
-    );
-
-    // --- THIS IS THE FIX ---
-    // The health check results must be saved to the database to update the cache.
-    await _dbHelper.update(updatedRecipe);
-    debugPrint("Updated cache for Recipe ID ${recipe.id} with new analysis.");
-
-    return newAnalysis;
+    return null; // Return null on a cache miss
   }
 
-  /// Private method to handle the API call logic.
-  static Future<HealthAnalysisResult> _fetchHealthAnalysisFromApi({
-    required DietaryProfile profile,
-    required Recipe recipe,
-  }) async {
-    final body = {
-      'health_check': true,
-      'dietary_profile': profile.fullProfileText,
-      'recipe_data': recipe.toMap(),
-    };
+  /// A private, static version of the original method.
+  static Future<HealthAnalysisResult> _getOrFetchHealthAnalysis(Recipe recipe, DietaryProfile profile) async {
+    final cachedResult = await getCachedAnalysis(recipe, profile);
+    if (cachedResult != null) return cachedResult;
 
-    final responseBody = await ApiHelper.analyzeRaw(
-      body,
-      model: AiModel.flash, // Use the faster, cheaper model
-    );
-    return HealthAnalysisResult.fromJson(responseBody);
+    // On a cache miss, this makes a standalone API call.
+    debugPrint("CACHE MISS for Recipe ID ${recipe.id}. Fetching new rating from API.");
+    final body = {
+      'enhancement_request': {
+        'tasks': ['healthCheck'],
+        'recipe_data': [recipe.toMap()],
+        'dietary_profile': profile.fullProfileText,
+      }
+    };
+    final responseBody = await ApiHelper.analyzeRaw(body, model: AiModel.flash);
+    final resultData = responseBody['results'][0]['health_analysis'];
+    
+    return HealthAnalysisResult.fromJson(resultData);
   }
 }

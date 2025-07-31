@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'recipe_view_screen.dart'; // Import the new view screen
+import 'package:intelligent_nutrition_app/features/recipes/presentation/screens/recipe_view_screen.dart'; // Import the new view screen
 import 'package:intelligent_nutrition_app/features/recipes/presentation/controllers/controllers.dart';
 import 'package:intelligent_nutrition_app/features/recipes/presentation/utils/dialog_utils.dart';
 import 'package:intelligent_nutrition_app/features/recipes/presentation/widgets/widgets.dart';
 import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
+import 'package:intelligent_nutrition_app/core/presentation/widgets/widgets.dart';
+
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({super.key});
@@ -239,6 +241,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                       );
                     },
                     child: ListTile(
+                      leading: HealthRatingIcon(healthRating: recipe.healthRating), // NEW
                       title: Text(recipe.title),
                       subtitle: Text(
                         recipe.description,

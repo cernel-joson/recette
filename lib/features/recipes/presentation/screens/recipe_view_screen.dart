@@ -3,9 +3,10 @@ import 'package:share_plus/share_plus.dart'; // Import the new share package
 import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
 import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
 import 'package:intelligent_nutrition_app/features/recipes/presentation/widgets/widgets.dart';
-import 'recipe_edit_screen.dart';
+import 'package:intelligent_nutrition_app/features/recipes/presentation/screens/recipe_edit_screen.dart';
 import 'package:intelligent_nutrition_app/core/utils/utils.dart';
 import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
+import 'package:intelligent_nutrition_app/core/presentation/widgets/widgets.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete, createVariation }
@@ -35,6 +36,9 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   bool _isLoadingHealthCheck = true;
   HealthAnalysisResult? _healthAnalysis;
 
+  // --- NEW: Instantiate the new enhancement service ---
+  final AiEnhancementService _enhancementService = AiEnhancementService();
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +65,54 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
         _parentRecipe = parent;
         _variations = variations;
       });
+    }
+  }
+
+  // --- NEW: Method to show the dialog and handle the service call ---
+  Future<void> _showAiAnalysisDialog() async {
+    if (_currentRecipe == null) return;
+
+    // 1. Show the dialog and await the user's selection of tasks
+    final selectedTasks = await showDialog<Set<AiEnhancementTask>>(
+      context: context,
+      builder: (_) => const AiEnhancementDialog(),
+    );
+
+    // If the user cancelled, the result will be null
+    if (selectedTasks == null || selectedTasks.isEmpty || !mounted) return;
+
+    // 2. Show a loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 3. Call the service with the selected tasks
+      final updatedRecipe = await _enhancementService.enhanceSingleRecipe(
+        recipe: _currentRecipe!,
+        tasks: selectedTasks,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Analysis complete!'), backgroundColor: Colors.green),
+        );
+        // Refresh the entire screen with the new, updated recipe data
+        setState(() {
+          _currentRecipe = updatedRecipe;
+          _didChange = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -272,7 +324,13 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_currentRecipe?.title ?? 'Loading...'),
+          title: Row( // NEW
+            children: [
+              Expanded(child: Text(_currentRecipe?.title ?? 'Loading...')),
+              if (_currentRecipe != null)
+                HealthRatingIcon(healthRating: _currentRecipe!.healthRating),
+            ],
+          ),
           leading: BackButton(
             onPressed: () => Navigator.of(context).pop(_didChange),
           ),
@@ -318,10 +376,12 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
+                    // --- THIS IS THE CHANGE ---
+                    // The "Check" button is now the "Analyze" button
                     TextButton.icon(
-                      icon: const Icon(Icons.health_and_safety_outlined),
-                      label: const Text('Check'),
-                      onPressed: _performHealthCheck,
+                      icon: const Icon(Icons.auto_awesome), // A more fitting icon
+                      label: const Text('Analyze'),
+                      onPressed: _showAiAnalysisDialog, // Calls our new method
                     ),
                     TextButton.icon(
                       icon: const Icon(Icons.edit_outlined),

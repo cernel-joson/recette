@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../data/models/recipe_model.dart';
-import '../../../../core/presentation/widgets/info_chip.dart';
+import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:intelligent_nutrition_app/core/presentation/widgets/widgets.dart';
 
 /// A widget that displays the contents of a recipe in a card-like format.
 class RecipeCard extends StatelessWidget {
@@ -71,6 +71,35 @@ class RecipeCard extends StatelessWidget {
               ),
             ],
           ),
+          // --- NEW: Health Analysis Section ---
+          if (recipe.healthRating != null && recipe.healthRating != 'UNRATED')
+            Card(
+              color: Colors.blueGrey[50],
+              elevation: 0,
+              child: ExpansionTile(
+                leading: HealthRatingIcon(healthRating: recipe.healthRating),
+                title: Text(
+                  'Health Analysis',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                subtitle: Text(recipe.healthSummary ?? 'Tap to see suggestions.'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: recipe.healthSuggestions
+                              ?.map((s) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Text('• $s'),
+                                  ))
+                              .toList() ??
+                          [],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (recipe.tags.isNotEmpty) ...[
             const Divider(height: 32.0),
             Text("Tags", style: Theme.of(context).textTheme.titleLarge),

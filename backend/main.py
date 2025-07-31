@@ -153,6 +153,56 @@ def scrape_text_from_url(url):
     except requests.exceptions.RequestException as e:
         raise Exception(f'Failed to fetch or scrape URL: {e}')
 
+# --- NEW: A more robust prompt function for the enhancement service ---
+def get_enhancement_prompt(tasks):
+    """Dynamically builds a more robust prompt for AI enhancement tasks."""
+
+    # --- 1. Define the complete JSON structure we expect ---
+    json_template = {
+        "results": [
+            {
+                "tags": "...",
+                "health_analysis": {
+                    "health_rating": "...",
+                    "summary": "...",
+                    "suggestions": ["..."]
+                }
+            }
+        ]
+    }
+
+    # --- 2. Build the instruction list dynamically ---
+    prompt_parts = [
+        "You are an expert recipe and nutritional analysis API. Your job is to perform a set of tasks on the provided recipe data and return a single, clean JSON object. Your response MUST strictly follow the structure defined in the 'JSON_RESPONSE_TEMPLATE'.",
+    ]
+
+    task_descriptions = []
+    if "generateTags" in tasks:
+        task_descriptions.append("- **generateTags**: Analyze the recipe's title and ingredients to generate a JSON array of 5-7 relevant tags (e.g., cuisine, meal type, key ingredient). Populate the 'tags' field in the template with this array.")
+    
+    if "healthCheck" in tasks:
+        task_descriptions.append("- **healthCheck**: Analyze the recipe against the user's dietary profile. Populate the 'health_analysis' object in the template with a 'health_rating' ('GREEN', 'YELLOW', or 'RED'), a one-sentence 'summary', and a list of 'suggestions'.")
+    
+    if "findSimilar" in tasks:
+        # Handling findSimilar separately as it has a different output structure
+        return """
+          You are an expert recipe analyst. Compare the 'PRIMARY RECIPE' to the 'CANDIDATE RECIPES'.
+          Based on title and ingredients, identify which candidates are semantically very similar (a variation of the same core dish).
+          Return a single JSON object with ONE key: 'similar_recipe_ids', containing a list of the integer IDs of ONLY the similar recipes.
+        """
+
+    # --- 3. Assemble the final prompt ---
+    prompt_parts.append("\n**TASKS TO PERFORM:**")
+    prompt_parts.extend(task_descriptions)
+    
+    prompt_parts.append("\n**JSON_RESPONSE_TEMPLATE:**")
+    prompt_parts.append("```json")
+    prompt_parts.append(json.dumps(json_template, indent=2))
+    prompt_parts.append("```")
+    prompt_parts.append("IMPORTANT: If a requested task cannot be completed or is not applicable, return the corresponding key with a default value (e.g., an empty list `[]` or an empty object `{}`), but always include the key to maintain the structure.")
+
+    return "\n".join(prompt_parts)
+
 # --- Main Cloud Function ---
 @functions_framework.http
 def recipe_analyzer_api(request):
@@ -186,8 +236,35 @@ def recipe_analyzer_api(request):
         # --- CORRECTED: Initialize prompt_parts as an empty list ---
         prompt_parts = []
 
+        # --- NEW: Enhancement Request Handling ---
+        # --- Enhancement Request Handling ---
+        if 'enhancement_request' in request_json:
+            enhancement_data = request_json['enhancement_request']
+            tasks = enhancement_data.get('tasks', [])
+            
+            # This is now the primary way to call the prompt builder
+            prompt = get_enhancement_prompt(tasks)
+            prompt_parts.append(prompt)
+
+            if 'findSimilar' in tasks:
+                new_recipe = enhancement_data['recipe_data'][0]
+                candidates = enhancement_data.get('candidate_recipes', [])
+                prompt_parts.append("\n--- PRIMARY RECIPE ---")
+                prompt_parts.append(json.dumps(new_recipe))
+                prompt_parts.append("\n--- CANDIDATE RECIPES ---")
+                prompt_parts.append(json.dumps(candidates))
+            else:
+                recipe = enhancement_data['recipe_data'][0]
+                dietary_profile = enhancement_data.get('dietary_profile', '')
+                prompt_parts.append("\n--- PRIMARY RECIPE ---")
+                prompt_parts.append(json.dumps(recipe))
+                if dietary_profile and 'healthCheck' in tasks:
+                    prompt_parts.append("\n--- DIETARY PROFILE ---")
+                    prompt_parts.append(dietary_profile)
+
+        # --- Original Recipe Parsing Logic (URL, Text, Image) ---
         # Prepare the prompt based on whether a URL, text, or image was provided.
-        if 'health_check' in request_json:
+        elif 'health_check' in request_json:
             profile = request_json.get('dietary_profile')
             recipe = request_json.get('recipe_data')
             if not profile or not recipe:
