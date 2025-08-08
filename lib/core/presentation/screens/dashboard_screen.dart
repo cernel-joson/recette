@@ -7,6 +7,7 @@ import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/main.dart'; // Import main.dart to get access to the navigatorKey
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
+import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart'; // Add this import
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -125,6 +126,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
             ),
+            // --- NEW INVENTORY CARD ---
+            DashboardCard(
+              icon: Icons.kitchen_outlined,
+              title: 'My Inventory',
+              subtitle: 'Track the food you have on hand',
+              onTap: () {
+                 Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const InventoryScreen()),
+                );
+              },
+            ),
+            // --- END NEW CARD ---
             const SizedBox(height: 8),
             // NEW: Add a card for the Dietary Profile
             DashboardCard(

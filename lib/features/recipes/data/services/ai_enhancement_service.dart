@@ -45,24 +45,28 @@ class AiEnhancementService {
           'dietary_profile': currentProfile.fullProfileText,
         }
       };
+
       // Assign the result to the response variable.
-      response = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
-      final resultData = response['results'][0];
+      // Safely cast the response
+      response = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro) as Map<String, dynamic>?;
 
-      // --- THIS IS THE FIX ---
-      // Apply the same defensive parsing logic for tags.
-      final tagsData = resultData['tags'];
-      List<String> newTags = recipeToUpdate.tags; // Default to the existing tags
+      // Add a null check before accessing the response data
+      if (response != null && response['results'] is List && (response['results'] as List).isNotEmpty) {
+          final resultData = response['results'][0];
 
-      if (tagsData is List) {
-        newTags = tagsData.map((item) => item.toString()).toList();
-      } else if (tagsData is String) {
-        newTags = [tagsData];
+          final tagsData = resultData['tags'];
+          List<String> newTags = recipeToUpdate.tags; 
+
+          if (tagsData is List) {
+            newTags = tagsData.map((item) => item.toString()).toList();
+          } else if (tagsData is String) {
+            newTags = [tagsData];
+          }
+
+          recipeToUpdate = recipeToUpdate.copyWith(
+            tags: newTags,
+          );
       }
-
-      recipeToUpdate = recipeToUpdate.copyWith(
-        tags: newTags,
-      );
     }
 
     // 4. Apply the health results and save.
@@ -117,6 +121,26 @@ class AiEnhancementService {
     
     // The response would be something like {"similar_recipe_ids": [12, 78]}
     return List<int>.from(response['similar_recipe_ids'] ?? []);
+  }
+
+  /// --- NEW METHOD FOR QUICK NUTRITIONAL ANALYSIS ---
+  /// Takes a block of text and returns a map of nutritional info.
+  Future<Map<String, dynamic>> getNutritionalAnalysisForText(String text) async {
+    if (text.trim().isEmpty) return {};
+
+    final requestBody = {
+      'nutritional_estimation_request': {'text': text}
+    };
+    
+    // Use the fast and cheap flash model for this simple task.
+    final response = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash);
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+    
+    // Return an empty map if the response is not in the expected format
+    return {};
   }
 
   // Future method for bulk health checks would go here.

@@ -140,6 +140,76 @@ def get_health_check_prompt(profile_text, recipe_data):
       "suggestions": [ "..." ]
     }}
     """
+    
+# --- REVISED PROMPT WITH NUANCED ANALYSIS ---
+def get_nutritional_estimation_prompt(recipe_text):
+    """Creates the prompt for estimating nutritional information from text."""
+    return f"""
+    You are a meticulous nutritional analyst. Your task is to analyze the provided recipe text and calculate the estimated nutritional information PER SERVING.
+
+    Follow these steps to arrive at your answer:
+    1.  First, identify the total number of servings for the recipe. If not specified, assume 4 servings.
+    2.  Scan the ingredient list for keywords that modify nutritional content, such as "low-sodium", "unsalted", "reduced-sugar", or "light". You MUST adjust your calculations based on these modifiers. For example, "low-sodium chicken stock" has significantly less sodium than regular stock.
+    3.  For standard ingredients, use the following conversion factors as a baseline:
+        - 1 teaspoon of table salt = 2300mg sodium
+        - 1 tablespoon of table salt = 6900mg sodium
+        - 1 tablespoon of soy sauce = 900mg sodium
+        - 1 cup of REGULAR chicken/beef/vegetable stock = 800mg sodium
+        - 1 teaspoon of sugar = 4g sugar
+        - 1 tablespoon of sugar = 12g sugar
+        - 1 tablespoon of honey/maple syrup = 17g sugar
+    4.  For any ingredients not listed, use your general nutritional knowledge to estimate their values.
+    5.  Sum the totals for all relevant nutrients.
+    6.  Divide the total amount of each nutrient by the number of servings to get the per-serving value.
+    7.  Finally, format your per-serving calculations into the required JSON object.
+
+    You MUST return a single, clean JSON object with the EXACT following structure. Do not add, remove, or change any of the keys.
+
+    {{
+      "calories": "...",
+      "protein_grams": "...",
+      "carbohydrates_grams": "...",
+      "sugar_grams": "...",
+      "fat_grams": "...",
+      "saturated_fat_grams": "...",
+      "sodium_milligrams": "...",
+      "fiber_grams": "...",
+      "cholesterol_milligrams": "..."
+    }}
+
+    - All values must be returned as strings, rounded to the nearest whole number.
+    - If a specific value cannot be determined, you MUST return "N/A" for that key.
+    - Do not include any text, notes, or formatting before or after the JSON object.
+
+    Here is the recipe text to analyze:
+    ---
+    {recipe_text}
+    ---
+    """
+
+def get_inventory_parse_prompt(inventory_text):
+    """Creates the prompt for parsing a block of inventory text."""
+    return f"""
+    You are an expert inventory parsing API. Your job is to analyze the raw text, which contains a list of food items, and extract each item into a structured format.
+
+    Please return a single, clean JSON array of objects with the following structure:
+    [
+      {{
+        "name": "The core name of the ingredient",
+        "quantity": "The quantity, if available (e.g., '2', '1/2', 'a splash')",
+        "unit": "The unit of measurement, if available (e.g., 'cup', 'tbsp', 'gallon')"
+      }}
+    ]
+
+    - If a line does not appear to be a distinct item, ignore it.
+    - Do not include any text or formatting before or after the JSON array.
+    - If the input text is empty or contains no items, return an empty array [].
+
+    Here is the raw text to analyze:
+    ---
+    {inventory_text}
+    ---
+    """
 
 # --- Helper Function for Scraping ---
 def scrape_text_from_url(url):
@@ -262,6 +332,16 @@ def recipe_analyzer_api(request):
                     prompt_parts.append("\n--- DIETARY PROFILE ---")
                     prompt_parts.append(dietary_profile)
 
+        # --- NEW: Inventory Import Request Handling ---
+        elif 'inventory_import_request' in request_json:
+            inventory_text = request_json['inventory_import_request']['text']
+            prompt = get_inventory_parse_prompt(inventory_text)
+            prompt_parts = [prompt]
+        # --- NEW: NUTRITIONAL ESTIMATION REQUEST HANDLING ---
+        elif 'nutritional_estimation_request' in request_json:
+            recipe_text = request_json['nutritional_estimation_request']['text']
+            prompt = get_nutritional_estimation_prompt(recipe_text)
+            prompt_parts = [prompt]
         # --- Original Recipe Parsing Logic (URL, Text, Image) ---
         # Prepare the prompt based on whether a URL, text, or image was provided.
         elif 'health_check' in request_json:

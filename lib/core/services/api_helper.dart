@@ -12,8 +12,9 @@ class ApiHelper {
   static const String _cloudFunctionUrl =
       "https://recipe-analyzer-api-1004204297555.us-central1.run.app";
 
-  /// A private, generic analysis function that returns the raw JSON map.
-  static Future<Map<String, dynamic>> analyzeRaw(
+  /// A private, generic analysis function that returns the raw JSON.
+  /// It now returns Future<dynamic> to handle both Map and List responses.
+  static Future<dynamic> analyzeRaw(
       Map<String, dynamic> body, {
       AiModel model = AiModel.pro
   }) async {
@@ -31,6 +32,7 @@ class ApiHelper {
       );
 
       if (response.statusCode == 200) {
+        // Return the decoded body directly, which could be a Map or a List.
         return json.decode(response.body);
       } else {
         throw Exception(

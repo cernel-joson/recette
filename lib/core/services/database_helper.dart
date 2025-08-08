@@ -1,3 +1,5 @@
+// lib/core/services/database_helper.dart
+
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
@@ -9,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
   
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 6;
+  static const int _dbVersion = 7;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -37,7 +39,7 @@ class DatabaseHelper {
 
   // This method is called when the database is created for the first time.
   Future _createDB(Database db, int version) async {
-    // This now includes the parentRecipeId column from the start.
+    // --- Recipe Tables ---
     await db.execute('''
       CREATE TABLE recipes ( 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,14 +61,12 @@ class DatabaseHelper {
         dietaryProfileFingerprint TEXT
       )
     ''');
-    // Create a table for all unique tags
     await db.execute('''
       CREATE TABLE tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE
       )
     ''');
-    // Create a "join table" to link recipes and tags
     await db.execute('''
       CREATE TABLE recipe_tags (
         recipeId INTEGER,
@@ -76,38 +76,31 @@ class DatabaseHelper {
         PRIMARY KEY (recipeId, tagId)
       )
     ''');
+
+    // --- NEW: Inventory Tables ---
+    await _createInventoryTables(db);
   }
   
   // IMPORTANT: This method handles database schema updates for existing users.
-  // It's called when the _dbVersion is higher than the version on the user's device.
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     debugPrint("--- executing _upgradeDB (Upgrading from v$oldVersion to v$newVersion) ---");
     
+    // Migrations from previous versions...
     if (oldVersion < 2) {
-      debugPrint("--- Upgrading from v1: Adding all new columns. ---");
-      await db.execute("ALTER TABLE recipes ADD COLUMN otherTimings TEXT");
+      await _addColumnIfNotExists(db, 'recipes', 'otherTimings', 'TEXT');
     }
-    
     if (oldVersion < 3) {
-      debugPrint("--- Upgrading from v2: Adding all new columns. ---");
-      // We are upgrading from version 2 to 3.
-      // Add the new columns without deleting existing data.
-      await db.execute('ALTER TABLE recipes ADD COLUMN healthRating TEXT');
-      await db.execute('ALTER TABLE recipes ADD COLUMN healthSummary TEXT');
-      await db.execute('ALTER TABLE recipes ADD COLUMN healthSuggestions TEXT');
-      await db.execute('ALTER TABLE recipes ADD COLUMN dietaryProfileFingerprint TEXT');
+      await _addColumnIfNotExists(db, 'recipes', 'healthRating', 'TEXT');
+      await _addColumnIfNotExists(db, 'recipes', 'healthSummary', 'TEXT');
+      await _addColumnIfNotExists(db, 'recipes', 'healthSuggestions', 'TEXT');
+      await _addColumnIfNotExists(db, 'recipes', 'dietaryProfileFingerprint', 'TEXT');
     }
-    
     if (oldVersion < 4) {
-      debugPrint("--- Upgrading from v3: Adding all new columns. ---");
       await _addColumnIfNotExists(db, 'recipes', 'fingerprint', 'TEXT');
     }
-
-    // --- NEW: Add the parentRecipeId column if upgrading from a version less than 5. ---
     if (oldVersion < 5) {
       await _addColumnIfNotExists(db, 'recipes', 'parentRecipeId', 'INTEGER');
     }
-
     if (oldVersion < 6) {
       await db.execute('''CREATE TABLE tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,7 +114,53 @@ class DatabaseHelper {
         PRIMARY KEY (recipeId, tagId)
       )''');
     }
+    
+    // --- NEW: Migration for Inventory System ---
+    if (oldVersion < 7) {
+        debugPrint("--- Upgrading from v6 to v7: Adding Inventory Tables ---");
+        await _createInventoryTables(db);
+    }
     debugPrint("--- _upgradeDB complete. ---");
+  }
+
+  // --- NEW: Helper to create inventory tables to avoid duplication ---
+  Future<void> _createInventoryTables(Database db) async {
+      await db.execute('''
+        CREATE TABLE locations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            icon_name TEXT
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            brand TEXT,
+            quantity TEXT,
+            unit TEXT,
+            location_id INTEGER,
+            category_id INTEGER,
+            health_rating TEXT,
+            notes TEXT,
+            FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // --- NEW: Insert default locations ---
+      var batch = db.batch();
+      batch.insert('locations', {'name': 'Pantry'});
+      batch.insert('locations', {'name': 'Fridge'});
+      batch.insert('locations', {'name': 'Freezer'});
+      batch.insert('locations', {'name': 'Spice Rack'});
+      await batch.commit(noResult: true);
   }
 
   /// Adds a list of tags to a specific recipe atomically.
@@ -129,12 +168,8 @@ class DatabaseHelper {
     final db = await instance.database;
     
     await db.transaction((txn) async {
-      // Step 1: Delete all existing tags for this recipe.
       await txn.delete('recipe_tags', where: 'recipeId = ?', whereArgs: [recipeId]);
-
-      // Step 2: Loop through and add the new tags.
       for (String tagName in tags) {
-        // Get tag ID or insert it if new.
         var existingTag = await txn.query('tags', where: 'name = ?', whereArgs: [tagName.toLowerCase()]);
         int tagId;
         if (existingTag.isEmpty) {
@@ -142,8 +177,6 @@ class DatabaseHelper {
         } else {
           tagId = existingTag.first['id'] as int;
         }
-        
-        // Link recipe and tag.
         await txn.insert('recipe_tags', {'recipeId': recipeId, 'tagId': tagId});
       }
     });
@@ -160,7 +193,6 @@ class DatabaseHelper {
       return result.map((map) => map['name'] as String).toList();
   }
   
-  // Helper to prevent errors if an upgrade is attempted multiple times.
   Future<void> _addColumnIfNotExists(Database db, String tableName, String columnName, String columnType) async {
     var result = await db.rawQuery("PRAGMA table_info($tableName)");
     var columnNames = result.map((row) => row['name'] as String).toList();
@@ -188,27 +220,23 @@ class DatabaseHelper {
     return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// --- UPDATED to fetch tags ---
   Future<List<Recipe>> getAllRecipes() async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps =
         await db.query('recipes', orderBy: 'title ASC');
 
-    // Create a list of recipes from the maps.
     List<Recipe> recipes = List.generate(maps.length, (i) {
       return Recipe.fromMap(maps[i]);
     });
 
-    // --- NEW: Loop through each recipe and fetch its tags ---
     for (int i = 0; i < recipes.length; i++) {
       final recipeTags = await getTagsForRecipe(recipes[i].id!);
-      recipes[i].tags = recipeTags; // Assign the fetched tags
+      recipes[i].tags = recipeTags;
     }
     
     return recipes;
   }
 
-  /// --- UPDATED to fetch tags ---
   Future<Recipe?> getRecipeById(int id) async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps =
@@ -216,7 +244,6 @@ class DatabaseHelper {
 
     if (maps.isNotEmpty) {
       final recipe = Recipe.fromMap(maps.first);
-      // --- NEW: Fetch and assign the tags for the single recipe ---
       final recipeTags = await getTagsForRecipe(recipe.id!);
       recipe.tags = recipeTags;
       return recipe;
@@ -224,7 +251,6 @@ class DatabaseHelper {
     return null;
   }
   
-  // Method to check for a duplicate recipe by its fingerprint.
   Future<bool> doesRecipeExist(String fingerprint) async {
     Database db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -235,7 +261,6 @@ class DatabaseHelper {
     return maps.isNotEmpty;
   }
 
-  /// --- NEW: Fetches all variations for a given parent recipe ID. ---
   Future<List<Recipe>> getVariationsForRecipe(int parentId) async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -247,7 +272,6 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
   }
 
-  /// NEW: A generic search method for recipes.
   Future<List<Recipe>> searchRecipes(String whereClause, List<Object?> whereArgs) async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -261,7 +285,6 @@ class DatabaseHelper {
       return [];
     }
     
-    // As before, we need to hydrate the recipes with their tags.
     List<Recipe> recipes = List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
     for (int i = 0; i < recipes.length; i++) {
       recipes[i].tags = await getTagsForRecipe(recipes[i].id!);
@@ -270,25 +293,18 @@ class DatabaseHelper {
     return recipes;
   }
 
-  /// NEW: Fetches all unique tags from the database.
   Future<List<String>> getAllUniqueTags() async {
     final db = await instance.database;
     final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
     return result.map((map) => map['name'] as String).toList();
   }
 
-  /// NEW: Finds candidate recipes that share key ingredients.
   Future<List<Recipe>> findCandidateMatches(int newRecipeId, List<String> keyIngredients) async {
     final db = await instance.database;
     
-    // Create a list of `LIKE` clauses for the WHERE statement.
-    // We search the 'ingredients' JSON blob for the names of the key ingredients.
     final whereClauses = keyIngredients.map((ing) => 'ingredients LIKE ?').join(' OR ');
-    
-    // Create the arguments for the query, wrapping each ingredient name in wildcards.
     final whereArgs = keyIngredients.map((ing) => '%"name":"%$ing%"%').toList();
     
-    // Exclude the recipe we are currently saving.
     final finalWhere = 'id != ? AND ($whereClauses)';
     final finalArgs = [newRecipeId, ...whereArgs];
 
@@ -296,10 +312,9 @@ class DatabaseHelper {
       'recipes',
       where: finalWhere,
       whereArgs: finalArgs,
-      limit: 10, // Limit to a reasonable number of candidates
+      limit: 10,
     );
     
-    // The rest of the logic to hydrate recipes with tags remains the same.
     List<Recipe> recipes = List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
     for (int i = 0; i < recipes.length; i++) {
       recipes[i].tags = await getTagsForRecipe(recipes[i].id!);

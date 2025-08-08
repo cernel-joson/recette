@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_edit_screen.dart';
+import 'package:recette/features/recipes/data/services/ai_enhancement_service.dart'; // Import the service
 
 class DialogUtils {
   /// Shows a modal bottom sheet with options for adding a new recipe.
@@ -61,8 +62,105 @@ class DialogUtils {
                   _handleOcrScan(context, ImageSource.gallery); // Pass the main screen's context
                 },
               ),
+              const Divider(), // --- NEW ---
+              ListTile( // --- NEW ---
+                leading: const Icon(Icons.analytics_outlined, color: Colors.blue),
+                title: const Text('Quick Nutritional Analysis'),
+                onTap: () {
+                  Navigator.pop(bottomSheetContext);
+                  _showNutritionDialog(context); // Call our new dialog
+                },
+              ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  // --- NEW DIALOG FOR NUTRITIONAL ANALYSIS ---
+  static void _showNutritionDialog(BuildContext context) {
+    final textController = TextEditingController();
+    bool isLoading = false;
+    Map<String, dynamic>? nutritionData;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (builderContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Quick Nutritional Analysis'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Paste a recipe below to get an estimated nutritional breakdown per serving."),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: textController,
+                      maxLines: 8,
+                      decoration: const InputDecoration(
+                        hintText: 'Paste your recipe text here...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    if (isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    if (nutritionData != null) ...[
+                      const Divider(height: 24),
+                      Text('Estimated Nutrition:', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      // Display all the new, detailed fields
+                      Text('• Calories: ${nutritionData!['calories'] ?? 'N/A'}'),
+                      Text('• Protein: ${nutritionData!['protein_grams'] ?? 'N/A'} g'),
+                      Text('• Carbohydrates: ${nutritionData!['carbohydrates_grams'] ?? 'N/A'} g'),
+                      Text('• Sugar: ${nutritionData!['sugar_grams'] ?? 'N/A'} g'),
+                      Text('• Fat: ${nutritionData!['fat_grams'] ?? 'N/A'} g'),
+                      Text('• Saturated Fat: ${nutritionData!['saturated_fat_grams'] ?? 'N/A'} g'),
+                      Text('• Fiber: ${nutritionData!['fiber_grams'] ?? 'N/A'} g'),
+                      Text('• Sodium: ${nutritionData!['sodium_milligrams'] ?? 'N/A'} mg'),
+                      Text('• Cholesterol: ${nutritionData!['cholesterol_milligrams'] ?? 'N/A'} mg'),
+                    ]
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Close'),
+                ),
+                FilledButton(
+                  onPressed: isLoading ? null : () async {
+                    if (textController.text.isEmpty) return;
+                    setDialogState(() {
+                      isLoading = true;
+                      nutritionData = null;
+                    });
+                    
+                    try {
+                      final service = AiEnhancementService();
+                      final result = await service.getNutritionalAnalysisForText(textController.text);
+                       setDialogState(() {
+                        nutritionData = result;
+                        isLoading = false;
+                      });
+                    } catch (e) {
+                       setDialogState(() { isLoading = false; });
+                       ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+                       );
+                    }
+                  },
+                  child: const Text('Analyze'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
