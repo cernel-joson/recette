@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 
 enum AiModel { pro, flash }
 

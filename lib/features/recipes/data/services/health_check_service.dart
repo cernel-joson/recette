@@ -1,9 +1,9 @@
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/models/dietary_profile_model.dart'; // Import the profile model
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
-import 'package:intelligent_nutrition_app/core/utils/utils.dart';
-import 'package:intelligent_nutrition_app/core/services/api_helper.dart'; // Assuming you have an ApiHelper for the actual API call
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart'; // Import the profile model
+import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/core/utils/utils.dart';
+import 'package:recette/core/services/api_helper.dart'; // Assuming you have an ApiHelper for the actual API call
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:flutter/foundation.dart';
 
 /// A data class to hold the result of a health analysis.

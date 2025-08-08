@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:flutter/foundation.dart';
 
 class DatabaseHelper {

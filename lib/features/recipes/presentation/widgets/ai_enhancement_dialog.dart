@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/services/ai_enhancement_service.dart';
+import 'package:recette/features/recipes/data/services/ai_enhancement_service.dart';
 
 class AiEnhancementDialog extends StatefulWidget {
   const AiEnhancementDialog({super.key});

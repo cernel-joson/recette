@@ -1,7 +1,7 @@
-import 'package:intelligent_nutrition_app/core/core.dart';
-import 'package:intelligent_nutrition_app/features/recipes/recipes.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/core/core.dart';
+import 'package:recette/features/recipes/recipes.dart';
+import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 
 
 // Enum to define the different kinds of analysis a user can request.

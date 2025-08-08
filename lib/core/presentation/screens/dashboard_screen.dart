@@ -3,10 +3,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'package:intelligent_nutrition_app/features/recipes/recipes.dart';
-import 'package:intelligent_nutrition_app/core/core.dart';
-import 'package:intelligent_nutrition_app/main.dart'; // Import main.dart to get access to the navigatorKey
-import 'package:intelligent_nutrition_app/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
+import 'package:recette/features/recipes/recipes.dart';
+import 'package:recette/core/core.dart';
+import 'package:recette/main.dart'; // Import main.dart to get access to the navigatorKey
+import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -107,7 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Intelligent Nutrition'),
+        title: const Text('Recette'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),

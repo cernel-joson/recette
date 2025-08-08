@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 
 void main() {
   // A group is used to organize related tests together.

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/dietary_profile_model.dart';
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 
 /// A screen that allows the user to review and accept AI-suggested
 /// refinements to their dietary profile.

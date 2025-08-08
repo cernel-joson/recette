@@ -1,5 +1,5 @@
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 
 class SearchService {
   final DatabaseHelper _db = DatabaseHelper.instance;

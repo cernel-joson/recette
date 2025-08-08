@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/core/presentation/widgets/widgets.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/core/presentation/widgets/widgets.dart';
 
 /// A widget that displays the contents of a recipe in a card-like format.
 class RecipeCard extends StatelessWidget {

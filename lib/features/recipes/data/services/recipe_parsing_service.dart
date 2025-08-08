@@ -2,8 +2,8 @@
 
 import 'dart:convert';
 import 'dart:io'; // Import dart:io to use the File class.
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/core/services/api_helper.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/core/services/api_helper.dart';
 
 /// A helper class to handle all communication with the back-end API.
 class RecipeParsingService {

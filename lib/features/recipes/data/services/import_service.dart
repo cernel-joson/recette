@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
-import 'package:intelligent_nutrition_app/core/utils/utils.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/core/utils/utils.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 
 /// A data class to hold the result of an import operation.
 class ImportResult {

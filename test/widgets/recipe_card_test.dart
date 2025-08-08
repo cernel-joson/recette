@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/features/recipes/presentation/widgets/widgets.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 
 // A helper function to wrap our widget in a MaterialApp.
 Widget makeTestableWidget({required Widget child}) {

@@ -1,4 +1,4 @@
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 
 /// A helper class to format a Recipe object into a plain text string.
 class TextFormatter {

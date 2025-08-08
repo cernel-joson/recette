@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
-import 'package:intelligent_nutrition_app/core/utils/utils.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/core/utils/utils.dart';
 
 // Define a specific exception for this business rule.
 class RecipeExistsException implements Exception {

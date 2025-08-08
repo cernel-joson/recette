@@ -1,4 +1,4 @@
-import 'package:intelligent_nutrition_app/core/utils/utils.dart';
+import 'package:recette/core/utils/utils.dart';
 
 /// A model to represent the user's dietary profile.
 ///

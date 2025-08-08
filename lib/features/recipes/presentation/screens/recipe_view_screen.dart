@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart'; // Import the new share package
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
-import 'package:intelligent_nutrition_app/features/recipes/presentation/widgets/widgets.dart';
-import 'package:intelligent_nutrition_app/features/recipes/presentation/screens/recipe_edit_screen.dart';
-import 'package:intelligent_nutrition_app/core/utils/utils.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/services/services.dart';
-import 'package:intelligent_nutrition_app/core/presentation/widgets/widgets.dart';
+import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
+import 'package:recette/features/recipes/presentation/screens/recipe_edit_screen.dart';
+import 'package:recette/core/utils/utils.dart';
+import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/core/presentation/widgets/widgets.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete, createVariation }

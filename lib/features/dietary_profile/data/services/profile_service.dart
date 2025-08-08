@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intelligent_nutrition_app/core/services/api_helper.dart';
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/models/dietary_profile_model.dart'; // Import the new model
+import 'package:recette/core/services/api_helper.dart';
+import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart'; // Import the new model
 
 /// A new data class to hold the structured review from the AI.
 class ProfileReview {

@@ -1,4 +1,4 @@
-# intelligent_nutrition_app
+# Recette
 
 A new Flutter project.
 

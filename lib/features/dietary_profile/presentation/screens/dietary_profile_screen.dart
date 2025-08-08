@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/services/profile_service.dart';
-import 'package:intelligent_nutrition_app/features/dietary_profile/data/models/dietary_profile_model.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
 import 'profile_review_screen.dart'; // Import the new review screen
 
 /// A screen for viewing and editing the user's dietary profile.

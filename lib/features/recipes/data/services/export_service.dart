@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
+import 'package:recette/core/services/database_helper.dart';
 
 class ExportService {
   /// Fetches all recipes, converts them to a JSON file, and triggers sharing.

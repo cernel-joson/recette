@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intelligent_nutrition_app/core/services/database_helper.dart';
+import 'package:recette/core/services/database_helper.dart';
 
 class FilterBottomSheet extends StatefulWidget {
   const FilterBottomSheet({super.key});

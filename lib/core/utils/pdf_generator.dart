@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:intelligent_nutrition_app/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 
 /// A helper class to handle the generation, printing, and sharing of recipe PDFs.
 class PdfGenerator {
