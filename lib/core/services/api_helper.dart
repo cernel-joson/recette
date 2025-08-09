@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:recette/features/recipes/data/models/models.dart';
 
 enum AiModel { pro, flash }
 

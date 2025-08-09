@@ -1,6 +1,8 @@
 import 'package:recette/core/services/api_helper.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/features/inventory/data/models/inventory_models.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart'; // Import profile service
+
 
 class InventoryService {
   final _db = DatabaseHelper.instance;
@@ -120,5 +122,37 @@ class InventoryService {
   Future<void> deleteCategory(int id) async {
     final db = await _db.database;
     await db.delete('categories', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- NEW METHOD FOR MEAL IDEAS ---
+  Future<List<Map<String, dynamic>>> getMealIdeas({String userIntent = ''}) async {
+    // 1. Gather the context
+    final inventoryItems = await getInventory();
+    final profile = await ProfileService.loadProfile();
+
+    // Convert inventory items to a simple list of strings for the prompt
+    final inventoryList = inventoryItems.map((item) {
+      return '${item.quantity ?? ''} ${item.unit ?? ''} ${item.name}'.trim();
+    }).toList();
+
+    // 2. Build the request payload
+    final requestBody = {
+      'meal_suggestion_request': {
+        'inventory': inventoryList,
+        'dietary_profile': profile.fullProfileText,
+        'user_intent': userIntent,
+      }
+    };
+
+    // 3. Call the API
+    final response = await ApiHelper.analyzeRaw(requestBody);
+
+    // 4. Return the structured result
+    if (response is List) {
+      // Ensure all items in the list are of the correct type
+      return List<Map<String, dynamic>>.from(response.map((item) => Map<String, dynamic>.from(item)));
+    }
+
+    return []; // Return an empty list on failure
   }
 }

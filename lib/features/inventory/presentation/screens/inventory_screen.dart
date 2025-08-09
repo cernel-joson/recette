@@ -121,6 +121,79 @@ class _InventoryScreenState extends State<InventoryScreen> {
       _refreshInventory();
     }
   }
+  
+  // --- NEW METHOD TO HANDLE THE "WHAT CAN I MAKE?" FLOW ---
+  void _showMealIdeasDialog() async {
+    final intentController = TextEditingController();
+
+    // 1. Ask the user for their intent
+    final userIntent = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("What's the situation?"),
+        content: TextField(
+          controller: intentController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: "e.g., 'I'm tired and need something quick.'",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(intentController.text),
+            child: const Text('Get Ideas'),
+          ),
+        ],
+      ),
+    );
+
+    if (userIntent == null || !mounted) return; // User cancelled
+
+    // 2. Show a loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 3. Call the service and get the results
+      final ideas = await _inventoryService.getMealIdeas(userIntent: userIntent);
+      if (mounted) Navigator.of(context).pop(); // Close loading dialog
+
+      // 4. Display the results
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Meal Ideas'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: ideas.map((idea) => ListTile(
+                title: Text(idea['title'] ?? 'No Title'),
+                subtitle: Text(idea['description'] ?? 'No Description'),
+              )).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+          ],
+        ),
+      );
+
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +201,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
       appBar: AppBar(
         title: const Text('My Inventory'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () => _showItemDialog(),
+            tooltip: 'Add Item',
+          ),
           IconButton(
             icon: const Icon(Icons.upload_file),
             onPressed: _exportInventory,
@@ -140,7 +218,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-      // Replaced FutureBuilder with a direct check on the state variables.
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _items == null || _items!.isEmpty
@@ -163,10 +240,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     );
                   },
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showItemDialog,
-        tooltip: 'Add Item',
-        child: const Icon(Icons.add),
+      // --- NEW FAB ---
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showMealIdeasDialog,
+        tooltip: 'Get Meal Ideas',
+        icon: const Icon(Icons.lightbulb_outline),
+        label: const Text('What can I make?'),
       ),
     );
   }
