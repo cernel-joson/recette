@@ -61,6 +61,9 @@ def recipe_analyzer_api(request):
         # This is now a clean, simple block that delegates work.
         if 'url' in request_json or 'text' in request_json or 'image' in request_json:
             response_data = recipe_parser.handle_recipe_parsing(request_json, model)
+            # --- NEW: MEAL SUGGESTION REQUEST HANDLING ---
+        elif 'meal_suggestion_request' in request_json:
+            response_data = inventory_service.handle_meal_suggestion(request_json, models.get("pro"))
         elif 'enhancement_request' in request_json:
             response_data = enhancement_service.handle_enhancement(request_json, model)
         elif 'inventory_import_request' in request_json:

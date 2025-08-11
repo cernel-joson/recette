@@ -190,6 +190,32 @@ def get_inventory_parse_prompt(inventory_text):
     ---
     """
 
+def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
+    """Creates a sophisticated prompt for generating context-aware meal ideas."""
+    return f"""
+    You are an empathetic and expert kitchen assistant. Your goal is to help the user decide what to make by providing simple, actionable, and relevant meal ideas.
+
+    Analyze the complete context provided below.
+
+    **CONTEXT:**
+    - **User's Dietary Profile:** {dietary_profile}
+    - **Current Inventory:** {inventory_list}
+    - **User's Immediate Situation:** {user_intent}
+
+    **YOUR TASK:**
+    Based on all of the provided context, suggest 3 to 5 simple meal ideas. For each idea, provide a title and a brief, one-sentence description explaining why it's a good fit for the user's situation.
+
+    Return a single, clean JSON array of objects with the following structure:
+    [
+      {{
+        "title": "...",
+        "description": "..."
+      }}
+    ]
+
+    - Do not include any text or formatting before or after the JSON array.
+    """
+
 # --- NEW: A more robust prompt function for the enhancement service ---
 def get_enhancement_prompt(tasks):
     """Dynamically builds a more robust prompt for AI enhancement tasks."""
