@@ -9,7 +9,12 @@ import 'package:recette/core/presentation/widgets/widgets.dart';
 
 
 class RecipeLibraryScreen extends StatelessWidget {
-  const RecipeLibraryScreen({super.key});
+  const RecipeLibraryScreen({
+    super.key,
+    this.isSelecting = false, // New parameter to indicate if we're selecting a recipe
+  });
+  
+  final bool isSelecting;
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +23,15 @@ class RecipeLibraryScreen extends StatelessWidget {
       create: (_) => RecipeLibraryController(),
       // 2. The actual UI is now built by a child widget that has
       //    access to the provider.
-      child: const _RecipeLibraryView(),
+      child: _RecipeLibraryView(isSelecting: isSelecting),
     );
   }
 }
 
 // --- UPDATED: Converted to a StatefulWidget to manage the TextEditingController ---
 class _RecipeLibraryView extends StatefulWidget {
-  const _RecipeLibraryView();
+  const _RecipeLibraryView({required this.isSelecting});
+  final bool isSelecting;
 
   @override
   State<_RecipeLibraryView> createState() => _RecipeLibraryViewState();
@@ -249,6 +255,10 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       onTap: () async {
+                        if (widget.isSelecting) {
+                          Navigator.of(context).pop(recipe.id);
+                          return;
+                        }
                         // We now expect a dynamic result, which could be a bool or a String.
                         final dynamic result = await Navigator.push<dynamic>(
                           context,

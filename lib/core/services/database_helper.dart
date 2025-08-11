@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
   
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 7;
+  static const int _dbVersion = 8;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -79,6 +79,10 @@ class DatabaseHelper {
 
     // --- NEW: Inventory Tables ---
     await _createInventoryTables(db);
+
+      // --- NEW: Add tables for new features ---
+    await _createShoppingListTables(db);
+    await _createMealPlanTables(db);
   }
   
   // IMPORTANT: This method handles database schema updates for existing users.
@@ -120,6 +124,14 @@ class DatabaseHelper {
         debugPrint("--- Upgrading from v6 to v7: Adding Inventory Tables ---");
         await _createInventoryTables(db);
     }
+
+    // --- NEW: Migration for Shopping List & Meal Plan ---
+    if (oldVersion < 8) {
+        debugPrint("--- Upgrading from v7 to v8: Adding Shopping List & Meal Plan Tables ---");
+        await _createShoppingListTables(db);
+        await _createMealPlanTables(db);
+    }
+
     debugPrint("--- _upgradeDB complete. ---");
   }
 
@@ -161,6 +173,33 @@ class DatabaseHelper {
       batch.insert('locations', {'name': 'Freezer'});
       batch.insert('locations', {'name': 'Spice Rack'});
       await batch.commit(noResult: true);
+  }
+
+  // --- NEW: Helper for Shopping List ---
+  Future<void> _createShoppingListTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE shopping_list_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        is_checked INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+  }
+
+  // --- NEW: Helper for Meal Plan ---
+  Future<void> _createMealPlanTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE meal_plan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        breakfast_recipe_id INTEGER,
+        lunch_recipe_id INTEGER,
+        dinner_recipe_id INTEGER,
+        FOREIGN KEY (breakfast_recipe_id) REFERENCES recipes (id) ON DELETE SET NULL,
+        FOREIGN KEY (lunch_recipe_id) REFERENCES recipes (id) ON DELETE SET NULL,
+        FOREIGN KEY (dinner_recipe_id) REFERENCES recipes (id) ON DELETE SET NULL
+      )
+    ''');
   }
 
   /// Adds a list of tags to a specific recipe atomically.

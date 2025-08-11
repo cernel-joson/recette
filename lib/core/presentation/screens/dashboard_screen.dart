@@ -8,6 +8,8 @@ import 'package:recette/core/core.dart';
 import 'package:recette/main.dart'; // Import main.dart to get access to the navigatorKey
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
 import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart'; // Add this import
+import 'package:recette/features/shopping_list/presentation/screens/shopping_list_screen.dart';
+import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen.dart';
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -154,14 +156,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
             ),
+            // ... After Dietary Profile Card
+            const SizedBox(height: 8),
             DashboardCard(
               icon: Icons.calendar_month_outlined,
               title: 'Meal Planner',
               subtitle: 'Plan your meals for the week ahead',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Meal Planner coming soon!')),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const MealPlanScreen()));
+              },
+            ),
+            const SizedBox(height: 8),
+            DashboardCard(
+              icon: Icons.shopping_cart_outlined,
+              title: 'Shopping List',
+              subtitle: 'Create and manage your grocery lists',
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const ShoppingListScreen()));
               },
             ),
           ],
