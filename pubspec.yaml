@@ -36,6 +36,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
   # Declare the fonts so the app can use them.
   fonts:
     - family: NotoSans
