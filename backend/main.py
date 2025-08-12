@@ -15,7 +15,7 @@ import health_check_service
 import profile_service
 
 # --- Initialization ---
-PROJECT_ID = "winged-oath-465602-i5"
+PROJECT_ID = "recette-fdf64"
 GCP_REGION = "us-central1"
 
 vertexai.init(project=PROJECT_ID, location=GCP_REGION)
