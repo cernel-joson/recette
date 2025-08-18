@@ -1,8 +1,11 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart'; // Import the generated file
 import 'package:recette/core/presentation/screens/dashboard_screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
 // from anywhere in the app, which is essential for the share handler.
@@ -15,6 +18,18 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // --- NEW CRASHLYTICS SETUP ---
+  // Pass all uncaught "fatal" errors from the framework to Crashlytics
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+  // --- END NEW SETUP ---
+  
   runApp(const RecetteApp());
 }
 
