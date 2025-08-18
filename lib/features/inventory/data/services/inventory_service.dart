@@ -7,6 +7,53 @@ import 'package:recette/features/dietary_profile/data/services/profile_service.d
 class InventoryService {
   final _db = DatabaseHelper.instance;
 
+  // --- NEW: Method to move a batch of items to a new location ---
+  Future<void> moveItemsToLocation(List<int> itemIds, int locationId) async {
+    if (itemIds.isEmpty) return;
+    final db = await _db.database;
+    await db.transaction((txn) async {
+      for (final itemId in itemIds) {
+        await txn.update(
+          'inventory',
+          {'location_id': locationId},
+          where: 'id = ?',
+          whereArgs: [itemId],
+        );
+      }
+    });
+  }
+  
+  // --- NEW: Method to get inventory grouped by location ---
+  Future<Map<String, List<InventoryItem>>> getGroupedInventory() async {
+    final db = await _db.database;
+
+    // 1. Fetch all locations and all items in parallel
+    final locationsFuture = getLocations();
+    final itemsFuture = db.query('inventory', orderBy: 'name ASC');
+    
+    final locations = await locationsFuture;
+    final itemMaps = await itemsFuture;
+    
+    final items = List.generate(itemMaps.length, (i) => InventoryItem.fromMap(itemMaps[i]));
+
+    // 2. Create a lookup map for location names
+    final locationMap = {for (var loc in locations) loc.id!: loc.name};
+
+    // 3. Group items by location name
+    final groupedItems = <String, List<InventoryItem>>{};
+
+    for (final item in items) {
+      final locationName = locationMap[item.locationId] ?? 'Uncategorized';
+      if (groupedItems.containsKey(locationName)) {
+        groupedItems[locationName]!.add(item);
+      } else {
+        groupedItems[locationName] = [item];
+      }
+    }
+
+    return groupedItems;
+  }
+
   // --- Item Management ---
   Future<List<InventoryItem>> getInventory() async {
     final db = await _db.database;
@@ -29,51 +76,58 @@ class InventoryService {
     await db.delete('inventory', where: 'id = ?', whereArgs: [id]);
   }
   
-  // --- NEW: Import/Export Logic ---
-
-  /// Exports the entire inventory to a simple, formatted text string.
+  /// Exports the entire inventory to a simple, formatted text string with location headings.
   Future<String> getInventoryAsText() async {
-    final items = await getInventory();
-    if (items.isEmpty) {
+    final groupedItems = await getGroupedInventory();
+    if (groupedItems.isEmpty) {
       return 'Inventory is empty.';
     }
     
     final buffer = StringBuffer();
-    buffer.writeln('My Kitchen Inventory:');
-    buffer.writeln('---------------------');
     
-    for (var item in items) {
-      final quantity = item.quantity ?? '';
-      final unit = item.unit ?? '';
-      buffer.writeln('- ${quantity} ${unit} ${item.name}'.trim());
-    }
+    groupedItems.forEach((location, items) {
+      buffer.writeln('\n--- ${location.toUpperCase()} ---');
+      for (var item in items) {
+        final quantity = item.quantity ?? '';
+        final unit = item.unit ?? '';
+        buffer.writeln('- ${quantity} ${unit} ${item.name}'.trim());
+      }
+    });
     
     return buffer.toString();
   }
-  
-  /// Clears the current inventory and imports a new list by calling the AI backend for parsing.
+
+  // --- UPDATED: Import logic is now location-aware ---
   Future<void> importInventoryFromText(String text) async {
     if (text.trim().isEmpty) return;
 
-    // 1. Send the raw text to the backend for parsing.
+    // 1. Get current locations to provide context to the AI
+    final locations = await getLocations();
+    final locationNames = locations.map((loc) => loc.name).toList();
+    final locationNameMap = {for (var loc in locations) loc.name.toLowerCase(): loc.id};
+
+    // 2. Send the raw text AND location context to the backend for parsing.
     final requestBody = {
-      'inventory_import_request': {'text': text}
+      'inventory_import_request': {
+        'text': text,
+        'locations': locationNames,
+      }
     };
-    // We now cast the 'dynamic' result to the List<dynamic> we expect for this call.
     final parsedItems = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash) as List<dynamic>;
 
-    // 2. Use a transaction to update the local database.
+    // 3. Use a transaction to update the local database.
     final db = await _db.database;
     await db.transaction((txn) async {
-      // Clear the existing inventory
       await txn.delete('inventory');
-
-      // Insert new items from the structured JSON response
       for (var itemMap in parsedItems) {
+        final locationName = (itemMap['location_name'] as String?)?.toLowerCase();
+        final locationId = locationNameMap[locationName];
+
         final item = InventoryItem(
           name: itemMap['name'] ?? 'Unknown Item',
           quantity: itemMap['quantity'] ?? '',
           unit: itemMap['unit'] ?? '',
+          locationId: locationId, // Assign the found location ID
         );
         await txn.insert('inventory', item.toMap());
       }

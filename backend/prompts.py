@@ -1,4 +1,4 @@
-
+import json
 # --- Refactored Prompts for DRY Principle ---
 
 # Define the common JSON structure as a constant.
@@ -166,21 +166,25 @@ def get_nutritional_estimation_prompt(recipe_text):
     ---
     """
 
-def get_inventory_parse_prompt(inventory_text):
-    """Creates the prompt for parsing a block of inventory text."""
+def get_inventory_parse_prompt(inventory_text, locations):
+    """Creates the prompt for parsing a block of inventory text, now with location awareness."""
     return f"""
-    You are an expert inventory parsing API. Your job is to analyze the raw text, which contains a list of food items, and extract each item into a structured format.
+    You are an expert inventory parsing API. Your job is to analyze the raw text, which contains a list of food items, potentially grouped under location headings.
+
+    First, here are the valid locations available: {locations}
+
+    Analyze the text and extract each item into a structured format. If an item appears under a heading (e.g., '--- FRIDGE ---' or 'In the Pantry:'), associate it with the corresponding location from the provided list. If no heading is present, the location_name should be null.
 
     Please return a single, clean JSON array of objects with the following structure:
     [
       {{
         "name": "The core name of the ingredient",
         "quantity": "The quantity, if available (e.g., '2', '1/2', 'a splash')",
-        "unit": "The unit of measurement, if available (e.g., 'cup', 'tbsp', 'gallon')"
+        "unit": "The unit of measurement, if available (e.g., 'cup', 'tbsp', 'gallon')",
+        "location_name": "The name of the location from the valid list, or null if not specified"
       }}
     ]
 
-    - If a line does not appear to be a distinct item, ignore it.
     - Do not include any text or formatting before or after the JSON array.
     - If the input text is empty or contains no items, return an empty array [].
 

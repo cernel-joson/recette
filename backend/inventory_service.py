@@ -7,7 +7,9 @@ def handle_inventory_import(request_json, model):
     
     if 'inventory_import_request' in request_json:
         inventory_text = request_json['inventory_import_request']['text']
-        prompt = get_inventory_parse_prompt(inventory_text)
+        # NEW: Get locations from the request to pass to the prompt
+        locations = request_json['inventory_import_request'].get('locations', [])
+        prompt = get_inventory_parse_prompt(inventory_text, locations)
         prompt_parts = [prompt]
     else:
         raise Exception("Invalid parsing request.", 400)

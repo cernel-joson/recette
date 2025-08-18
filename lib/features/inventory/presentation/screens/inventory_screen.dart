@@ -16,7 +16,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final InventoryService _inventoryService = InventoryService();
   // State now holds the list of items directly, not the Future
   List<InventoryItem>? _items;
+  // State now holds the grouped map of items
+  Map<String, List<InventoryItem>>? _groupedItems;
+  List<Location> _locations = [];
   bool _isLoading = true;
+
+  // --- NEW: State for selection mode ---
+  bool _isSelecting = false;
+  final Set<int> _selectedItemIds = {};
 
   @override
   void initState() {
@@ -24,21 +31,65 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _refreshInventory();
   }
 
-  // Renamed to better reflect its action
+  void _exportInventory() async {
+    final inventoryText = await _inventoryService.getInventoryAsText();
+    Share.share(inventoryText, subject: 'My Kitchen Inventory');
+  }
+
   Future<void> _refreshInventory() async {
     setState(() { _isLoading = true; });
-    final newItems = await _inventoryService.getInventory();
+    final newItems = await _inventoryService.getGroupedInventory();
+    final newLocations = await _inventoryService.getLocations();
     if (mounted) {
       setState(() {
-        _items = newItems;
+        _groupedItems = newItems;
+        _locations = newLocations;
         _isLoading = false;
       });
     }
   }
 
-  void _exportInventory() async {
-    final inventoryText = await _inventoryService.getInventoryAsText();
-    Share.share(inventoryText, subject: 'My Kitchen Inventory');
+  void _toggleSelection(int itemId) {
+    setState(() {
+      if (_selectedItemIds.contains(itemId)) {
+        _selectedItemIds.remove(itemId);
+        if (_selectedItemIds.isEmpty) {
+          _isSelecting = false;
+        }
+      } else {
+        _selectedItemIds.add(itemId);
+        _isSelecting = true;
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _isSelecting = false;
+      _selectedItemIds.clear();
+    });
+  }
+
+  void _showMoveDialog() async {
+    final Location? selectedLocation = await showDialog<Location>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Move to...'),
+        content: DropdownButtonFormField<Location>(
+          items: _locations.map((loc) => DropdownMenuItem(value: loc, child: Text(loc.name))).toList(),
+          onChanged: (Location? value) {
+            Navigator.of(context).pop(value);
+          },
+          decoration: const InputDecoration(labelText: 'Select Location'),
+        ),
+      ),
+    );
+
+    if (selectedLocation != null) {
+      await _inventoryService.moveItemsToLocation(_selectedItemIds.toList(), selectedLocation.id!);
+      _clearSelection();
+      _refreshInventory();
+    }
   }
 
   void _showImportDialog() async {
@@ -80,44 +131,53 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final nameController = TextEditingController(text: item?.name ?? '');
     final quantityController = TextEditingController(text: item?.quantity ?? '');
     final unitController = TextEditingController(text: item?.unit ?? '');
+    int? selectedLocationId = item?.locationId;
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(item == null ? 'Add Item' : 'Edit Item'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Item Name')),
-            TextField(controller: quantityController, decoration: const InputDecoration(labelText: 'Quantity')),
-            TextField(controller: unitController, decoration: const InputDecoration(labelText: 'Unit')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final newItem = InventoryItem(
-                id: item?.id,
-                name: nameController.text,
-                quantity: quantityController.text,
-                unit: unitController.text,
-              );
-              if (item == null) {
-                await _inventoryService.addItem(newItem);
-              } else {
-                await _inventoryService.updateItem(newItem);
-              }
-              Navigator.of(context).pop(true);
-            },
-            child: const Text('Save'),
+      builder: (context) {
+        return AlertDialog(
+          title: Text(item == null ? 'Add Item' : 'Edit Item'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Item Name')),
+              TextField(controller: quantityController, decoration: const InputDecoration(labelText: 'Quantity')),
+              TextField(controller: unitController, decoration: const InputDecoration(labelText: 'Unit')),
+              DropdownButtonFormField<int>(
+                value: selectedLocationId,
+                items: _locations.map((loc) => DropdownMenuItem(value: loc.id, child: Text(loc.name))).toList(),
+                onChanged: (int? value) => selectedLocationId = value,
+                decoration: const InputDecoration(labelText: 'Location'),
+              ),
+            ],
           ),
-        ],
-      ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final newItem = InventoryItem(
+                  id: item?.id,
+                  name: nameController.text,
+                  quantity: quantityController.text,
+                  unit: unitController.text,
+                  locationId: selectedLocationId,
+                );
+                if (item == null) {
+                  await _inventoryService.addItem(newItem);
+                } else {
+                  await _inventoryService.updateItem(newItem);
+                }
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
 
     if (result == true) {
-      // After saving, just refresh the list.
       _refreshInventory();
     }
   }
@@ -198,47 +258,69 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Inventory'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () => _showItemDialog(),
-            tooltip: 'Add Item',
-          ),
-          IconButton(
-            icon: const Icon(Icons.upload_file),
-            onPressed: _exportInventory,
-            tooltip: 'Export to Text',
-          ),
-          IconButton(
-            icon: const Icon(Icons.download_for_offline_outlined),
-            onPressed: _showImportDialog,
-            tooltip: 'Import from Text',
-          ),
-        ],
-      ),
+      appBar: _isSelecting
+          ? AppBar(
+              leading: IconButton(icon: const Icon(Icons.close), onPressed: _clearSelection),
+              title: Text('${_selectedItemIds.length} selected'),
+              actions: [
+                IconButton(icon: const Icon(Icons.drive_file_move), onPressed: _showMoveDialog, tooltip: 'Move Items'),
+              ],
+            )
+          : AppBar(
+              title: const Text('My Inventory'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: () => _showItemDialog(),
+                  tooltip: 'Add Item',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.upload_file),
+                  onPressed: _exportInventory,
+                  tooltip: 'Export to Text',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download_for_offline_outlined),
+                  onPressed: _showImportDialog,
+                  tooltip: 'Import from Text',
+                ),
+              ],
+            ),
+      // --- UPDATED BODY TO DISPLAY GROUPED LIST ---
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _items == null || _items!.isEmpty
+          : _groupedItems == null || _groupedItems!.isEmpty
               ? const Center(child: Text('Your inventory is empty.'))
-              : ListView.builder(
-                  itemCount: _items!.length,
-                  itemBuilder: (context, index) {
-                    final item = _items![index];
-                    return ListTile(
-                      title: Text(item.name),
-                      subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () async {
-                          await _inventoryService.deleteItem(item.id!);
-                          _refreshInventory();
-                        },
-                      ),
-                      onTap: () => _showItemDialog(item: item),
+              : ListView(
+                  children: _groupedItems!.entries.map((entry) {
+                    final location = entry.key;
+                    final items = entry.value;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
+                          child: Text(
+                            location,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        ...items.map((item) => ListTile(
+                              title: Text(item.name),
+                              subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () async {
+                                  await _inventoryService.deleteItem(item.id!);
+                                  _refreshInventory();
+                                },
+                              ),
+                              onTap: () => _showItemDialog(item: item),
+                            )),
+                        const Divider(),
+                      ],
                     );
-                  },
+                  }).toList(),
                 ),
       // --- NEW FAB ---
       floatingActionButton: FloatingActionButton.extended(
