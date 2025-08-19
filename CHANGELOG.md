@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0+2] - 2025-08-18
+### Added
+- Location/category grouping in inventory list
+- Crashlytics reporting for error tracking
+
 ## [0.2.0+2] - 2025-08-11
 ### Changed
 - Consolidated backend with Firebase and Google Cloud Function in a new project called Recette
