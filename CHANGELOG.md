@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.2.0+2] - 2025-08-18
+## [0.2.2+4] - 2025-08-18
+### Changed
+- Updated Firebase options to pull from compile-time flags instead of .env
+
+## [0.2.1+3] - 2025-08-18
 ### Added
 - Location/category grouping in inventory list
 - Crashlytics reporting for error tracking
