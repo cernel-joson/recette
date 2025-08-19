@@ -1,7 +1,6 @@
 // test/unit/fingerprint_helper_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:recette/features/recipes/data/models/recipe_model.dart';
 import 'package:recette/core/utils/fingerprint_helper.dart';
 import 'package:recette/features/recipes/recipes.dart';
 
