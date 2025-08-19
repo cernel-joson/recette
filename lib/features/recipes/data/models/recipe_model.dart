@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'ingredient_model.dart';
 import 'timing_info_model.dart';
-import '../../../../core/utils/fingerprint_helper.dart';
+import 'package:recette/core/utils/fingerprint_helper.dart';
 
 
 /// Represents a full recipe with all its details.

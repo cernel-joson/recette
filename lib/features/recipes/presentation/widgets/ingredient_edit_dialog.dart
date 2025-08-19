@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../data/models/ingredient_model.dart';
-import 'package:flutter/foundation.dart';
+import 'package:recette/features/recipes/data/models/ingredient_model.dart';
 
 // --- New Helper Function ---
 // This function robustly parses a string to a double. It handles whitespace
