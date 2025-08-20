@@ -58,6 +58,8 @@ class _JobListItem extends StatelessWidget {
         return Icons.check_circle_outline_rounded;
       case JobStatus.failed:
         return Icons.error_outline_rounded;
+      case JobStatus.archived:
+        return Icons.history_rounded; // Add an icon for the archived state
     }
   }
 
@@ -72,6 +74,8 @@ class _JobListItem extends StatelessWidget {
         return Colors.green;
       case JobStatus.failed:
         return Colors.red;
+      case JobStatus.archived:
+        return Colors.grey;
     }
   }
 

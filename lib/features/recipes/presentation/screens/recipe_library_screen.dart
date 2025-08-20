@@ -1,14 +1,20 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_view_screen.dart'; // Import the new view screen
+import 'package:recette/features/recipes/presentation/screens/recipe_edit_screen.dart';
+import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
 import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart';
 import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/presentation/widgets/widgets.dart';
+import 'package:recette/features/recipes/presentation/widgets/pending_job_banner.dart';
 
 // --- ADD THIS IMPORT ---
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
+import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/job_controller.dart';
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({
@@ -127,14 +133,42 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
       }
     }
   }
+  
+  void _reviewPendingJob(Job job) {
+    // 1. Decode the saved response payload from the job.
+    final payload = json.decode(job.responsePayload!);
+    final recipeMap = payload['recipe'] as Map<String, dynamic>;
+    final sourceUrl = payload['sourceUrl'] as String;
+
+    // 2. Create a Recipe object from the stored data.
+    recipeMap['sourceUrl'] = sourceUrl; // Set the source URL
+    final recipe = Recipe.fromMap(recipeMap);
+
+    // 3. Navigate to the edit screen, passing the job ID.
+    //    This allows the edit screen to archive the job upon saving.
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RecipeEditScreen(
+          recipe: recipe,
+          sourceJobId: job.id, // Pass the job ID
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     // Get the controller once to use in callbacks.
     final controller = Provider.of<RecipeLibraryController>(context, listen: false);
 
-    return Consumer<RecipeLibraryController>(
-      builder: (context, controller, child) {
+    return Consumer2<RecipeLibraryController, JobController>(
+      builder: (context, libraryController, jobController, child) {
+        // --- NEW: Find pending recipe jobs ---
+        final pendingJobs = jobController.jobs
+            .where((job) =>
+                job.jobType == 'recipe_parsing' && job.status == JobStatus.complete)
+            .toList();
+            
         return Scaffold(
           appBar: AppBar(
           // --- CONDITIONAL LEADING WIDGET ---
@@ -238,47 +272,58 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
           ),
           body: Builder(
             builder: (context) {
-              if (controller.isLoading) {
+              if (libraryController.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              // --- UPDATED: The list now correctly reflects the controller's state ---
-              if (controller.recipes.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No recipes found.\nTry a different search or add a new recipe.'),
-                );
-              }
-              
-              return ListView.builder(
-                itemCount: controller.recipes.length,
-                itemBuilder: (context, index) {
-                  final recipe = controller.recipes[index];
-                  return RecipeCard(
-                    recipe: recipe,
-                    onTap: () async {
-                      // The navigation logic remains the same
-                      if (widget.isSelecting) {
-                        Navigator.of(context).pop(recipe.id);
-                        return;
-                      }
-                      final dynamic result = await Navigator.push<dynamic>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
-                        ),
-                      );
-                      if (result is String) {
-                        controller.setNavigationOrigin(recipe.id!);
-                        _searchController.text = result;
-                        controller.search(result);
-                      } else if (result == true) {
-                        controller.clearNavigationOrigin();
-                        controller.loadInitialRecipes();
-                      }
-                    },
-                  );
-                },
+              return Column(
+                children: [
+                  // --- NEW: Display a banner for each pending job ---
+                  ...pendingJobs.map((job) => PendingJobBanner(
+                        job: job,
+                        onView: () => _reviewPendingJob(job),
+                      )),
+                  
+                  if (libraryController.recipes.isEmpty && pendingJobs.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text('No recipes found.'),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: controller.recipes.length,
+                        itemBuilder: (context, index) {
+                          final recipe = controller.recipes[index];
+                          return RecipeCard(
+                            recipe: recipe,
+                            onTap: () async {
+                              // The navigation logic remains the same
+                              if (widget.isSelecting) {
+                                Navigator.of(context).pop(recipe.id);
+                                return;
+                              }
+                              final dynamic result = await Navigator.push<dynamic>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
+                                ),
+                              );
+                              if (result is String) {
+                                controller.setNavigationOrigin(recipe.id!);
+                                _searchController.text = result;
+                                controller.search(result);
+                              } else if (result == true) {
+                                controller.clearNavigationOrigin();
+                                controller.loadInitialRecipes();
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
               );
             },
           ),

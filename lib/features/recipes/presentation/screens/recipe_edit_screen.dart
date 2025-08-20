@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
+import 'package:recette/core/jobs/job_repository.dart';
+import 'package:recette/core/jobs/job_controller.dart';
 
 /// A screen for creating a new recipe or editing an existing one.
 class RecipeEditScreen extends StatelessWidget {
@@ -11,16 +13,22 @@ class RecipeEditScreen extends StatelessWidget {
     this.recipe,
     this.parentRecipeId,
     this.showPasteDialogOnLoad = false,
+    this.sourceJobId, // <-- NEW: Accept the job ID
   });
 
   final Recipe? recipe;
   final int? parentRecipeId;
   final bool showPasteDialogOnLoad;
+  final int? sourceJobId; // <-- NEW
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => RecipeEditController(recipe, parentRecipeId: parentRecipeId),
+      create: (_) => RecipeEditController(
+        recipe,
+        parentRecipeId: parentRecipeId,
+        sourceJobId: sourceJobId, // <-- Pass to controller
+      ),
       child: _RecipeEditView(showPasteDialogOnLoad: showPasteDialogOnLoad),
     );
   }
@@ -211,6 +219,29 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
                     label: const Text('Save'),
                     onPressed: () async {
                       try {
+                        // The saveForm method now handles archiving the job.
+                        final success = await controller.saveForm();
+                        if (success && mounted) {
+                          // Refresh the job list so the banner disappears
+                          Provider.of<JobController>(context, listen: false).loadJobs();
+                          Navigator.of(context).pop(true);
+                        }
+                      } on RecipeExistsException catch (e) {
+                        // If our specific exception is caught, show the dialog.
+                        if (mounted) {
+                          _showDuplicateRecipeDialog(context, e.message);
+                        }
+                      } catch (e) {
+                        // Catch any other unexpected errors.
+                        if (mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('An unexpected error occurred: $e')),
+                          );
+                        }
+                      }
+                    },
+                    /*onPressed: () async {
+                      try {
                         // Attempt to save the form.
                         await controller.saveForm();
                         // If successful, pop the screen.
@@ -230,7 +261,7 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
                           );
                         }
                       }
-                    },
+                    },*/
                   ),
                 ],
               ),

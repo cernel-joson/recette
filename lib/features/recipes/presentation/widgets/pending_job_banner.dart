@@ -19,7 +19,7 @@ class PendingJobBanner extends StatelessWidget {
       child: ListTile(
         leading: const Icon(Icons.check_circle_outline, color: Colors.green),
         title: const Text('A new recipe is ready!', style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('"${job.promptText ?? 'Your recipe'}" has been parsed.'),
+        subtitle: Text('"${job.title ?? 'Your recipe'}" has been parsed.'),
         trailing: FilledButton(
           onPressed: onView,
           child: const Text('Review'),

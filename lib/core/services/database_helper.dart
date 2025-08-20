@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
 
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 11;
+  static const int _dbVersion = 12;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -67,6 +67,7 @@ class DatabaseHelper {
     if (oldVersion < 9) await _addColumnIfNotExists(db, 'recipes', 'nutritionalInfo', 'TEXT');
     if (oldVersion < 10) await _createGeneratedRecipesTable(db);
     if (oldVersion < 11) await _createJobHistoryTable(db);
+    if (oldVersion < 12) await _addColumnIfNotExists(db, 'job_history', 'title', 'TEXT');
 
     debugPrint("--- _upgradeDB complete. ---");
   }
@@ -311,6 +312,7 @@ class DatabaseHelper {
       CREATE TABLE job_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         job_type TEXT NOT NULL,
+        title TEXT,
         status TEXT NOT NULL,
         priority TEXT NOT NULL DEFAULT 'normal',
         request_fingerprint TEXT UNIQUE,

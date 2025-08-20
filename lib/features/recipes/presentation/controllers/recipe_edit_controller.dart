@@ -3,6 +3,8 @@ import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
+import 'package:recette/core/jobs/job_repository.dart';
+import 'package:recette/core/jobs/job_model.dart';
 
 // Define a specific exception for this business rule.
 class RecipeExistsException implements Exception {
@@ -13,7 +15,9 @@ class RecipeExistsException implements Exception {
 class RecipeEditController with ChangeNotifier {
   final Recipe? _initialRecipe;
   final int? parentRecipeId;
+  final int? sourceJobId; // <-- NEW
   final _db = DatabaseHelper.instance;
+  final _jobRepo = JobRepository(); // <-- NEW
 
   // State
   late TextEditingController titleController;
@@ -33,8 +37,7 @@ class RecipeEditController with ChangeNotifier {
 
   late List<String> tags;
 
-  RecipeEditController(this._initialRecipe, {this.parentRecipeId}) {
-    // Initialize all state from the initial recipe or with default values
+  RecipeEditController(this._initialRecipe, {this.parentRecipeId, this.sourceJobId}) { // <-- NEW
     _populateState(_initialRecipe);
     _addListeners();
   }
@@ -190,18 +193,23 @@ class RecipeEditController with ChangeNotifier {
 
     final recipeToSave = newRecipe.copyWith(fingerprint: fingerprint);
 
+    
     try {
       if (recipeToSave.id != null) {
-        // --- HANDLE UPDATE ---
         await _db.update(recipeToSave, recipeToSave.tags);
       } else {
-        // --- HANDLE INSERT ---
-        final newId = await _db.insert(recipeToSave, recipeToSave.tags);
+        await _db.insert(recipeToSave, recipeToSave.tags);
       }
-      isDirty = false; // Mark as clean after a successful save
+      
+      // --- NEW: Archive the source job ---
+      if (sourceJobId != null) {
+        await _jobRepo.updateJobStatus(sourceJobId!, JobStatus.archived);
+      }
+
+      isDirty = false;
       notifyListeners();
-      return true; // Indicate success
-    } catch (e) {
+      return true;
+    }  catch (e) {
       // In a real app, you might want to handle this error more gracefully
       debugPrint("Error saving recipe: $e");
       return false; // Indicate failure

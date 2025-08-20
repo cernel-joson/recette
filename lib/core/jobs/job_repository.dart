@@ -1,5 +1,6 @@
 import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/core/jobs/job_result.dart';
 
 class JobRepository {
   final DatabaseHelper _dbHelper;
@@ -44,15 +45,16 @@ class JobRepository {
       whereArgs: [jobId],
     );
   }
-
+  
   /// Marks a job as complete, saving the final response and completion time.
-  Future<void> completeJob(int jobId, String responsePayload) async {
+  Future<void> completeJob(int jobId, JobResult result) async {
     final db = await _dbHelper.database;
     await db.update(
       'job_history',
       {
         'status': JobStatus.complete.name,
-        'response_payload': responsePayload,
+        'response_payload': result.responsePayload,
+        'title': result.title, // <-- NEW: Save the title
         'completed_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',

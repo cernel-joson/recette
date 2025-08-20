@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum JobStatus { queued, inProgress, complete, failed }
+enum JobStatus { queued, inProgress, complete, failed, archived }
 enum JobPriority { low, normal, high }
 
 /// A data class representing a single asynchronous background job.
@@ -8,6 +8,7 @@ enum JobPriority { low, normal, high }
 class Job {
   final int? id;
   final String jobType;
+  final String? title;
   final JobStatus status;
   final JobPriority priority;
   final String? requestFingerprint;
@@ -20,6 +21,7 @@ class Job {
   const Job({
     this.id,
     required this.jobType,
+    this.title,
     this.status = JobStatus.queued,
     this.priority = JobPriority.normal,
     this.requestFingerprint,
@@ -35,6 +37,7 @@ class Job {
     return {
       'id': id,
       'job_type': jobType,
+      'title': title,
       'status': status.name,
       'priority': priority.name,
       'request_fingerprint': requestFingerprint,
@@ -51,6 +54,7 @@ class Job {
     return Job(
       id: map['id'],
       jobType: map['job_type'],
+      title: map['title'],
       status: JobStatus.values.byName(map['status']),
       priority: JobPriority.values.byName(map['priority']),
       requestFingerprint: map['request_fingerprint'],

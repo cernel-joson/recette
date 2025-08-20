@@ -4,6 +4,7 @@ import 'package:recette/core/jobs/job_controller.dart';
 import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/jobs/job_repository.dart';
 import 'package:recette/core/jobs/job_worker.dart';
+import 'package:recette/core/jobs/job_result.dart';
 
 class JobManager {
   final JobRepository _jobRepository;
@@ -64,10 +65,10 @@ class JobManager {
       _jobController.loadJobs();
 
       // 3. Delegate execution to the worker.
-      final responsePayload = await worker.execute(job);
+      final JobResult result = await worker.execute(job);
 
-      // 4. Mark the job as complete.
-      await _jobRepository.completeJob(job.id!, responsePayload);
+      // 4. Mark the job as complete, now passing the full result.
+      await _jobRepository.completeJob(job.id!, result);
     } catch (e) {
       debugPrint('Job failed: $e');
       await _jobRepository.updateJobStatus(job.id!, JobStatus.failed);

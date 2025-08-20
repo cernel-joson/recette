@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/job_result.dart';
 import 'package:recette/core/jobs/job_worker.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
 import 'package:recette/features/recipes/data/services/recipe_parsing_service.dart';
@@ -7,7 +8,7 @@ import 'package:recette/features/recipes/data/services/recipe_parsing_service.da
 /// A worker that knows how to execute a recipe parsing job.
 class RecipeParsingWorker implements JobWorker {
   @override
-  Future<String> execute(Job job) async {
+  Future<JobResult> execute(Job job) async {
     final requestData = json.decode(job.requestPayload);
 
     Recipe parsedRecipe;
@@ -26,14 +27,15 @@ class RecipeParsingWorker implements JobWorker {
       throw Exception('Invalid recipe_parsing job payload. Missing url, text, or image key.');
     }
 
-    // --- NEW LOGIC ---
-    // Save the recipe title to the job for the UI banner.
-    // The main job payload now contains both the recipe and its source.
-    final responsePayload = {
+    final responsePayloadMap = {
       'recipe': parsedRecipe.toMap(),
       'sourceUrl': source,
     };
 
-    return json.encode(responsePayload);
+    // Return a JobResult object with the payload and the title.
+    return JobResult(
+      responsePayload: json.encode(responsePayloadMap),
+      title: parsedRecipe.title,
+    );
   }
 }
