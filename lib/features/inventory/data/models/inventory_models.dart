@@ -26,11 +26,11 @@ class Location {
 }
 
 /// A simple model for user-defined item categories (e.g., 'Dairy', 'Vegetables').
-class Category {
+class InventoryCategory {
   final int? id;
   final String name;
 
-  Category({this.id, required this.name});
+  InventoryCategory({this.id, required this.name});
 
    Map<String, dynamic> toMap() {
     return {
@@ -39,8 +39,8 @@ class Category {
     };
   }
 
-  factory Category.fromMap(Map<String, dynamic> map) {
-    return Category(
+  factory InventoryCategory.fromMap(Map<String, dynamic> map) {
+    return InventoryCategory(
       id: map['id'],
       name: map['name'],
     );

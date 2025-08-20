@@ -1,4 +1,5 @@
 // lib/features/shopping_list/shopping_list.dart
+import 'package:flutter/foundation.dart';
 import 'package:recette/core/services/database_helper.dart';
 
 // --- MODEL ---
@@ -28,7 +29,14 @@ class ShoppingListItem {
 
 // --- SERVICE ---
 class ShoppingListService {
-  final _db = DatabaseHelper.instance;
+  final DatabaseHelper _db;
+
+  // Public constructor uses the real instance
+  ShoppingListService() : _db = DatabaseHelper.instance;
+
+  // Internal constructor for testing
+  @visibleForTesting
+  ShoppingListService.internal(this._db);
 
   Future<List<ShoppingListItem>> getItems() async {
     final db = await _db.database;

@@ -1,12 +1,99 @@
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 
+// 1. ADD THIS CLASS DEFINITION AT THE TOP OF THE FILE
+/// A simple data class to hold the components of a parsed SQL query.
+class SearchQuery {
+  final String whereClause;
+  final List<Object?> whereArgs;
+
+  SearchQuery(this.whereClause, this.whereArgs);
+}
+
 class SearchService {
   final DatabaseHelper _db = DatabaseHelper.instance;
 
   Future<List<Recipe>> searchRecipes(String rawQuery) async {
     final (sqlWhereClause, sqlArgs) = _parseQuery(rawQuery);
     return await _db.searchRecipes(sqlWhereClause, sqlArgs);
+  }
+
+  // 2. MAKE THE METHOD PUBLIC AND UPDATE ITS RETURN TYPE
+  SearchQuery parseSearchQuery(String rawQuery) {
+    final query = rawQuery.trim();
+    if (query.isEmpty) {
+      return SearchQuery('', []);
+    }
+
+    final parts = query.split(' ');
+    final textTerms = <String>[];
+    final tagTerms = <String>[];
+    final excludedTagTerms = <String>[];
+    final ingredientTerms = <String>[];
+    final excludedIngredientTerms = <String>[];
+
+    for (var part in parts) {
+      if (part.startsWith('tag:')) {
+        tagTerms.add(part.substring(4));
+      } else if (part.startsWith('-tag:')) {
+        excludedTagTerms.add(part.substring(5));
+      } else if (part.startsWith('ingredient:')) {
+        ingredientTerms.add(part.substring(11));
+      } else if (part.startsWith('-ingredient:')) {
+        excludedIngredientTerms.add(part.substring(12));
+      } else {
+        textTerms.add(part);
+      }
+    }
+
+    final whereClauses = <String>[];
+    final whereArgs = <Object?>[];
+
+    // --- THIS IS THE FIX ---
+    // Process each term type in a fixed order to ensure a consistent query string.
+    
+    // 1. Text Search
+    if (textTerms.isNotEmpty) {
+      final textQuery = textTerms.join(' ');
+      whereClauses.add('(title LIKE ? OR description LIKE ?)');
+      whereArgs.addAll(['%$textQuery%', '%$textQuery%']);
+    }
+
+    // 2. Included Tags
+    if (tagTerms.isNotEmpty) {
+      for (var tag in tagTerms) {
+        whereClauses.add(
+            'id IN (SELECT recipeId FROM recipe_tags WHERE tagId IN (SELECT id FROM tags WHERE name = ?))');
+        whereArgs.add(tag);
+      }
+    }
+    
+    // 3. Included Ingredients
+    if (ingredientTerms.isNotEmpty) {
+      for (var ingredient in ingredientTerms) {
+        whereClauses.add('ingredients LIKE ?');
+        whereArgs.add('%"name":"%$ingredient%"%');
+      }
+    }
+
+    // 4. Excluded Ingredients
+    if (excludedIngredientTerms.isNotEmpty) {
+      for (var ingredient in excludedIngredientTerms) {
+        whereClauses.add('ingredients NOT LIKE ?');
+        whereArgs.add('%"name":"%$ingredient%"%');
+      }
+    }
+
+    // 5. Excluded Tags
+    if (excludedTagTerms.isNotEmpty) {
+      for (var tag in excludedTagTerms) {
+        whereClauses.add(
+            'id NOT IN (SELECT recipeId FROM recipe_tags WHERE tagId IN (SELECT id FROM tags WHERE name = ?))');
+        whereArgs.add(tag);
+      }
+    }
+
+    return SearchQuery(whereClauses.join(' AND '), whereArgs);
   }
 
   /// The heart of the parser.

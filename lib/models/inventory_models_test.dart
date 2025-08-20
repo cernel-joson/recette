@@ -73,7 +73,7 @@ void main() {
   });
 
   group('Category Model Tests', () {
-    final testCategory = Category(id: 1, name: 'Dairy');
+    final testCategory = InventoryCategory(id: 1, name: 'Dairy');
 
     test('toMap serializes correctly', () {
       final categoryMap = testCategory.toMap();
@@ -83,7 +83,7 @@ void main() {
 
     test('fromMap deserializes correctly', () {
       final categoryMap = {'id': 1, 'name': 'Dairy'};
-      final category = Category.fromMap(categoryMap);
+      final category = InventoryCategory.fromMap(categoryMap);
       expect(category.id, 1);
       expect(category.name, 'Dairy');
     });

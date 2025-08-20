@@ -1,11 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:recette/core/services/api_helper.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/features/inventory/data/models/inventory_models.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart'; // Import profile service
 
-
 class InventoryService {
-  final _db = DatabaseHelper.instance;
+  final DatabaseHelper _db;
+
+  // Public constructor uses the real instance
+  InventoryService() : _db = DatabaseHelper.instance;
+
+  // Internal constructor for testing
+  @visibleForTesting
+  InventoryService.internal(this._db);
 
   // --- NEW: Method to move a batch of items to a new location ---
   Future<void> moveItemsToLocation(List<int> itemIds, int locationId) async {
@@ -157,18 +164,18 @@ class InventoryService {
   }
 
   // --- Category Management ---
-  Future<List<Category>> getCategories() async {
+  Future<List<InventoryCategory>> getCategories() async {
     final db = await _db.database;
     final List<Map<String, dynamic>> maps = await db.query('categories', orderBy: 'name ASC');
-    return List.generate(maps.length, (i) => Category.fromMap(maps[i]));
+    return List.generate(maps.length, (i) => InventoryCategory.fromMap(maps[i]));
   }
 
-  Future<void> addCategory(Category category) async {
+  Future<void> addCategory(InventoryCategory category) async {
     final db = await _db.database;
     await db.insert('categories', category.toMap());
   }
 
-  Future<void> updateCategory(Category category) async {
+  Future<void> updateCategory(InventoryCategory category) async {
     final db = await _db.database;
     await db.update('categories', category.toMap(), where: 'id = ?', whereArgs: [category.id]);
   }
