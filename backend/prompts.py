@@ -280,3 +280,62 @@ def get_enhancement_prompt(tasks):
     prompt_parts.append("IMPORTANT: If a requested task cannot be completed or is not applicable, return the corresponding key with a default value (e.g., an empty list `[]` or an empty object `{}`), but always include the key to maintain the structure.")
 
     return "\n".join(prompt_parts)
+
+def get_unified_recipe_analysis_prompt(tasks):
+    """
+    Dynamically builds a single, powerful prompt to handle parsing and
+    any combination of enhancement tasks in one call.
+    """
+    # 1. Define the complete, ideal JSON structure
+    json_template = {
+      "title": "...",
+      "description": "...",
+      "prep_time": "...",
+      "cook_time": "...",
+      "total_time": "...",
+      "servings": "...",
+      "ingredients": [{ "quantity_display": "...", "quantity_numeric": None, "unit": "...", "name": "...", "notes": "..." }],
+      "instructions": ["..."],
+      "other_timings": [{"label": "...", "duration": "..."}],
+      "tags": ["..."],
+      "health_analysis": {
+          "health_rating": "...",
+          "summary": "...",
+          "suggestions": ["..."]
+      },
+        "nutritional_info": { # <-- ADD THIS
+            "calories": "...",
+            "protein_grams": "...",
+            "carbohydrates_grams": "...",
+            "sugar_grams": "...",
+            "fat_grams": "...",
+            "saturated_fat_grams": "...",
+            "sodium_milligrams": "...",
+            "fiber_grams": "...",
+            "cholesterol_milligrams": "..."
+        }
+    }
+
+    # 2. Build the list of instructions for the AI
+    prompt_instructions = [
+        "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided text, URL, or image.",
+        "In addition to parsing, you MUST perform the following analysis tasks:",
+    ]
+
+    task_descriptions = {
+        "generateTags": "- **Generate Tags**: Analyze the recipe to generate relevant tags for cuisine, meal type, etc. Populate the `tags` field.",
+        "healthCheck": "- **Perform Health Check**: Analyze the recipe against the user's dietary profile. Populate the `health_analysis` object.",
+        "estimateNutrition": "- **Estimate Nutrition**: Provide a detailed nutritional breakdown per serving. Populate the `nutritional_info` object."
+    }
+
+    # Add instructions only for the tasks that were requested
+    for task in tasks:
+        if task in task_descriptions:
+            prompt_instructions.append(task_descriptions[task])
+
+    prompt_instructions.append("\nYour response MUST be a single, clean JSON object matching this exact structure. If a field or task is not applicable, return a default value (e.g., empty list, null), but always include the key.")
+    prompt_instructions.append("```json")
+    prompt_instructions.append(json.dumps(json_template, indent=2))
+    prompt_instructions.append("```")
+
+    return "\n".join(prompt_instructions)

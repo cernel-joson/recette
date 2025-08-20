@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
   
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 9;
+  static const int _dbVersion = 10;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -84,6 +84,9 @@ class DatabaseHelper {
       // --- NEW: Add tables for new features ---
     await _createShoppingListTables(db);
     await _createMealPlanTables(db);
+    
+    // --- NEW: Add table for hopper ---
+    await _createGeneratedRecipesTable(db);
   }
   
   // IMPORTANT: This method handles database schema updates for existing users.
@@ -132,11 +135,17 @@ class DatabaseHelper {
         await _createShoppingListTables(db);
         await _createMealPlanTables(db);
     }
-    
+
     // --- NEW: Migration for nutritionalInfo column ---
     if (oldVersion < 9) {
         debugPrint("--- Upgrading from v8 to v9: Adding nutritionalInfo column ---");
         await _addColumnIfNotExists(db, 'recipes', 'nutritionalInfo', 'TEXT');
+    }
+    
+    // --- NEW: Migration for generated recipes hopper ---
+    if (oldVersion < 10) {
+        debugPrint("--- Upgrading from v9 to v10: Adding Generated Recipes Table ---");
+        await _createGeneratedRecipesTable(db);
     }
 
     debugPrint("--- _upgradeDB complete. ---");
@@ -208,6 +217,19 @@ class DatabaseHelper {
       )
     ''');
   }
+
+  
+    // --- NEW: Helper for Hopper ---
+    Future<void> _createGeneratedRecipesTable(Database db) async {
+      await db.execute('''
+        CREATE TABLE generated_recipes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          payload TEXT NOT NULL, -- Stores the full Recipe JSON
+          status TEXT NOT NULL DEFAULT 'pending' -- pending, saved, discarded
+        )
+      ''');
+    }
 
   /// Adds a list of tags to a specific recipe atomically.
   Future<void> addTagsToRecipe(int recipeId, List<String> tags) async {

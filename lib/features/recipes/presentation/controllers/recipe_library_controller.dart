@@ -3,8 +3,6 @@ import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/features/recipes/data/services/ai_enhancement_service.dart';
-
 
 // --- NEW: Instantiate the search service ---
 final SearchService _searchService = SearchService();
@@ -24,8 +22,6 @@ class RecipeLibraryController with ChangeNotifier {
 
   List<Recipe> get recipes => _isSearchActive ? _searchResults : _recipes;
   bool get isLoading => _isLoading;
-  
-  final AiEnhancementService _enhancementService = AiEnhancementService();
 
   RecipeLibraryController() {
     loadInitialRecipes();
@@ -83,7 +79,7 @@ class RecipeLibraryController with ChangeNotifier {
   }
 
   /// Analyzes an image from a given path.
-  /// Contains only business logic, no UI code.
+  /// Contains only business logic, no UI code.  
   Future<Recipe> analyzeImageFromPath(String imagePath) async {
     // 1. Check usage limit (Business Logic)
     final canScan = await UsageLimiter.canPerformScan();
@@ -94,31 +90,28 @@ class RecipeLibraryController with ChangeNotifier {
     }
 
     // 2. Call the parsing service (Business Logic)
-    final recipe = await RecipeParsingService.analyzeImage(imagePath);
+    final recipe = await RecipeParsingService.analyzeImage(imagePath, tasks: {
+      AiEnhancementTask.generateTags,
+      AiEnhancementTask.healthCheck,
+      AiEnhancementTask.estimateNutrition,
+    });
 
     // 3. Increment the counter on success (Business Logic)
     await UsageLimiter.incrementScanCount();
-    
-    // --- NEW: 4. Perform initial enhancements ---
-    final enhancedRecipe = await _enhancementService.enhanceSingleRecipe(
-      recipe: recipe,
-      tasks: {
-        AiEnhancementTask.generateTags,
-        AiEnhancementTask.healthCheck,
-        AiEnhancementTask.estimateNutrition,
-      },
-    );
 
     // 4. Return the result
     return recipe;
   }
 
   /// Analyzes a recipe from a given URL.
-  /// Contains only business logic, no UI code.
+  /// Contains only business logic, no UI code.  
   Future<Recipe> analyzeUrl(String url) async {
-    // For now, this is a simple pass-through, but if you needed
-    // to add more logic (like checking usage limits), it would go here.
-    final recipe = await RecipeParsingService.analyzeUrl(url);
+    // Call the parsing service with ALL desired tasks at once.
+    final recipe = await RecipeParsingService.analyzeUrl(url, tasks: {
+      AiEnhancementTask.generateTags,
+      AiEnhancementTask.healthCheck,
+      AiEnhancementTask.estimateNutrition,
+    });
     return recipe;
   }
 }
