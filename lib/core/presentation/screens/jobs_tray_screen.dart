@@ -82,18 +82,22 @@ class _JobListItem extends StatelessWidget {
   // A simple title generator based on job type
   String _getJobTitle(Job job) {
     // In a real app, you'd have a more sophisticated mapping here.
+    String title;
+
     switch (job.jobType) {
       case 'recipe_parsing':
-        return 'Parse New Recipe';
+        title = 'Parse New Recipe';
       case 'meal_suggestion':
-        return 'Generate Meal Ideas';
+        title = 'Generate Meal Ideas';
       default:
-        return job.jobType.replaceAll('_', ' ').toUpperCase();
+        title = job.jobType.replaceAll('_', ' ').toUpperCase();
     }
+
+    return '${title}: ${(job.title ?? 'Job #${job.id}')}';
   }
 
   void _onTap(BuildContext context) {
-    if (job.status != JobStatus.complete || job.responsePayload == null) {
+    if (![JobStatus.complete, JobStatus.archived].contains(job.status) || job.responsePayload == null) {
       return; // Only completed jobs with a response can be replayed
     }
     

@@ -1,18 +1,16 @@
 # This is the implementation for the Google Cloud function
-# It runs on the back-end to accept requests for AI analysis
+# It runs on the back-end to accept requests for AI analysis# main.py
 
 import functions_framework
 from flask import jsonify
-import requests
 import vertexai
 from vertexai.generative_models import GenerativeModel
 import json
-import recipe_parser
-import enhancement_service
-import inventory_service
-import nutrition_service
-import health_check_service
-import profile_service
+
+from . import recipe_analysis_service
+from . import recipe_tools_service
+from . import inventory_service
+from . import profile_service
 
 # --- Initialization ---
 PROJECT_ID = "recette-fdf64"
@@ -57,21 +55,16 @@ def recipe_analyzer_api(request):
 
         response_data = {}
 
-        # --- THE ROUTER ---
-        # This is now a clean, simple block that delegates work.
-        if 'url' in request_json or 'text' in request_json or 'image' in request_json:
-            response_data = recipe_parser.handle_recipe_parsing(request_json, model)
-            # --- NEW: MEAL SUGGESTION REQUEST HANDLING ---
+        # --- THE REFACTORED ROUTER ---
+        if 'recipe_analysis_request' in request_json:
+            # All recipe-related tasks now go to this single handler.
+            response_data = recipe_analysis_service.handle_recipe_analysis(request_json, model)
+        elif 'find_similar_request' in request_json:
+            response_data = recipe_tools_service.handle_find_similar(request_json, model)
         elif 'meal_suggestion_request' in request_json:
             response_data = inventory_service.handle_meal_suggestion(request_json, models.get("pro"))
-        elif 'enhancement_request' in request_json:
-            response_data = enhancement_service.handle_enhancement(request_json, model)
         elif 'inventory_import_request' in request_json:
             response_data = inventory_service.handle_inventory_import(request_json, model)
-        elif 'nutritional_estimation_request' in request_json:
-            response_data = nutrition_service.handle_nutritional_estimation(request_json, model)
-        elif 'health_check' in request_json:
-            response_data = health_check_service.handle_health_check(request_json, model)
         elif 'review_text' in request_json:
             response_data = profile_service.handle_profile_review(request_json, model)
         else:

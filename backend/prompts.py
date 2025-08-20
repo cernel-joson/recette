@@ -31,7 +31,23 @@ Please return a single, clean JSON object with the following structure:
   ],
   "tags": [
       "A list of relevant tags like cuisine (e.g., 'Italian', 'Mexican'), meal type (e.g., 'Dinner', 'Dessert'), or key ingredients (e.g., 'Chicken', 'Pasta')."
-  ]
+  ],
+  "health_analysis": {
+      "health_rating": "...",
+      "summary": "...",
+      "suggestions": ["..."]
+  },
+  "nutritional_info": {
+      "calories": "...",
+      "protein_grams": "...",
+      "carbohydrates_grams": "...",
+      "sugar_grams": "...",
+      "fat_grams": "...",
+      "saturated_fat_grams": "...",
+      "sodium_milligrams": "...",
+      "fiber_grams": "...",
+      "cholesterol_milligrams": "..."
+  }
 }
 
 IMPORTANT: Extract "Prep Time", "Cook Time", and "Total Time" into their specific fields. If you find any OTHER labeled timings, put them in the "other_timings" list.
@@ -42,28 +58,49 @@ If a field is not available, return an empty string "" or an empty list [].
 Do not include any text or formatting before or after the JSON object.
 """
 
-def get_text_prompt(scraped_text):
-    """Creates the prompt for analyzing raw text."""
-    return f"""
-    You are an expert recipe parsing API. Your job is to analyze the raw text content, find the recipe, and extract its key components.
-    The text may contain blog posts, comments, and other noise. You must ignore it and only focus on the recipe itself.
-
-    {JSON_STRUCTURE_PROMPT}
-
-    Here is the raw text to analyze:
-    ---
-    {scraped_text}
-    ---
+def get_recipe_analysis_prompt(tasks, has_image=False):
+    """
+    Dynamically builds a single, powerful prompt to handle parsing and
+    any combination of enhancement tasks in one call.
     """
 
-def get_image_prompt():
-    """Creates the prompt for analyzing an image."""
-    return f"""
-    You are a recipe parsing expert. Look at this image of a cookbook page or recipe card.
-    Ignore any photos, page numbers, or decorative elements.
-    Find the recipe text, extract its key components, and return it as a clean JSON object.
+    # Start with the core instruction
+    initial_instruction = "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided "
+    initial_instruction += "image." if has_image else "text or URL content."
+    
+    # Use the detailed JSON structure as the base
+    prompt_parts = [
+        initial_instruction,
+        JSON_STRUCTURE_PROMPT,
+        "After parsing the core recipe, you MUST perform the following additional analysis tasks based on the provided context:"
+    ]
 
-    {JSON_STRUCTURE_PROMPT}
+    task_descriptions = {
+        "generateTags": "- **Generate Tags**: Analyze the recipe's title and ingredients to generate a JSON array of 5-7 relevant tags (e.g., cuisine, meal type, key ingredient). Populate the `tags` field in the template with this array.",
+        "healthCheck": "- **Perform Health Check**: Analyze the recipe against the user's dietary profile. Populate the `health_analysis` object in the template with a 'health_rating' ('GREEN', 'YELLOW', or 'RED'), a one-sentence 'summary', and a list of 'suggestions'.",
+        "estimateNutrition": "- **Estimate Nutrition**: Provide a detailed nutritional breakdown per serving. Populate the `nutritional_info` object."
+    }
+
+    # Add instructions only for the tasks that were requested.
+    for task in tasks:
+        if task in task_descriptions:
+            prompt_parts.append(task_descriptions[task])
+
+    # Assemble the final prompt with the full JSON template.
+    prompt_parts.append("\nYour response MUST be a single, clean JSON object matching this exact structure. If a field or task is not applicable, return a default value (e.g., empty list `[]`, empty object `{}`), but always include the key.")
+    prompt_parts.append("```json")
+    prompt_parts.append(json.dumps(json_template, indent=2))
+    prompt_parts.append("```")
+
+    return "\n".join(prompt_parts)
+
+# NEW: A dedicated, separate prompt for the findSimilar tool.
+def get_find_similar_prompt():
+    """Creates the specific prompt for the findSimilar task."""
+    return """
+        You are an expert recipe analyst. Compare the 'PRIMARY RECIPE' to the 'CANDIDATE RECIPES'.
+        Based on title and ingredients, identify which candidates are semantically very similar.
+        Return a single JSON object with ONE key: 'similar_recipe_ids', containing a list of the integer IDs of ONLY the similar recipes.
     """
 
 def get_profile_review_prompt(profile_text):
@@ -219,123 +256,3 @@ def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
 
     - Do not include any text or formatting before or after the JSON array.
     """
-
-# --- NEW: A more robust prompt function for the enhancement service ---
-def get_enhancement_prompt(tasks):
-    """Dynamically builds a more robust prompt for AI enhancement tasks."""
-
-    # --- 1. Define the complete JSON structure we expect ---
-    json_template = {
-        "results": [
-            {
-                "tags": "...",
-                "health_analysis": {
-                    "health_rating": "...",
-                    "summary": "...",
-                    "suggestions": ["..."]
-                },
-                "nutritional_info": { # <-- ADD THIS
-                    "calories": "...",
-                    "protein_grams": "...",
-                    "carbohydrates_grams": "...",
-                    "sugar_grams": "...",
-                    "fat_grams": "...",
-                    "saturated_fat_grams": "...",
-                    "sodium_milligrams": "...",
-                    "fiber_grams": "...",
-                    "cholesterol_milligrams": "..."
-                }
-            }
-        ]
-    }
-
-    # --- 2. Build the instruction list dynamically ---
-    prompt_parts = [
-        "You are an expert recipe and nutritional analysis API. Your job is to perform a set of tasks on the provided recipe data and return a single, clean JSON object. Your response MUST strictly follow the structure defined in the 'JSON_RESPONSE_TEMPLATE'.",
-    ]
-
-    task_descriptions = []
-    if "generateTags" in tasks:
-        task_descriptions.append("- **generateTags**: Analyze the recipe's title and ingredients to generate a JSON array of 5-7 relevant tags (e.g., cuisine, meal type, key ingredient). Populate the 'tags' field in the template with this array.")
-    
-    if "healthCheck" in tasks:
-        task_descriptions.append("- **healthCheck**: Analyze the recipe against the user's dietary profile. Populate the 'health_analysis' object in the template with a 'health_rating' ('GREEN', 'YELLOW', or 'RED'), a one-sentence 'summary', and a list of 'suggestions'.")
-    
-    if "findSimilar" in tasks:
-        # Handling findSimilar separately as it has a different output structure
-        return """
-          You are an expert recipe analyst. Compare the 'PRIMARY RECIPE' to the 'CANDIDATE RECIPES'.
-          Based on title and ingredients, identify which candidates are semantically very similar (a variation of the same core dish).
-          Return a single JSON object with ONE key: 'similar_recipe_ids', containing a list of the integer IDs of ONLY the similar recipes.
-        """
-
-    # --- 3. Assemble the final prompt ---
-    prompt_parts.append("\n**TASKS TO PERFORM:**")
-    prompt_parts.extend(task_descriptions)
-    
-    prompt_parts.append("\n**JSON_RESPONSE_TEMPLATE:**")
-    prompt_parts.append("```json")
-    prompt_parts.append(json.dumps(json_template, indent=2))
-    prompt_parts.append("```")
-    prompt_parts.append("IMPORTANT: If a requested task cannot be completed or is not applicable, return the corresponding key with a default value (e.g., an empty list `[]` or an empty object `{}`), but always include the key to maintain the structure.")
-
-    return "\n".join(prompt_parts)
-
-def get_unified_recipe_analysis_prompt(tasks):
-    """
-    Dynamically builds a single, powerful prompt to handle parsing and
-    any combination of enhancement tasks in one call.
-    """
-    # 1. Define the complete, ideal JSON structure
-    json_template = {
-      "title": "...",
-      "description": "...",
-      "prep_time": "...",
-      "cook_time": "...",
-      "total_time": "...",
-      "servings": "...",
-      "ingredients": [{ "quantity_display": "...", "quantity_numeric": None, "unit": "...", "name": "...", "notes": "..." }],
-      "instructions": ["..."],
-      "other_timings": [{"label": "...", "duration": "..."}],
-      "tags": ["..."],
-      "health_analysis": {
-          "health_rating": "...",
-          "summary": "...",
-          "suggestions": ["..."]
-      },
-        "nutritional_info": { # <-- ADD THIS
-            "calories": "...",
-            "protein_grams": "...",
-            "carbohydrates_grams": "...",
-            "sugar_grams": "...",
-            "fat_grams": "...",
-            "saturated_fat_grams": "...",
-            "sodium_milligrams": "...",
-            "fiber_grams": "...",
-            "cholesterol_milligrams": "..."
-        }
-    }
-
-    # 2. Build the list of instructions for the AI
-    prompt_instructions = [
-        "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided text, URL, or image.",
-        "In addition to parsing, you MUST perform the following analysis tasks:",
-    ]
-
-    task_descriptions = {
-        "generateTags": "- **Generate Tags**: Analyze the recipe to generate relevant tags for cuisine, meal type, etc. Populate the `tags` field.",
-        "healthCheck": "- **Perform Health Check**: Analyze the recipe against the user's dietary profile. Populate the `health_analysis` object.",
-        "estimateNutrition": "- **Estimate Nutrition**: Provide a detailed nutritional breakdown per serving. Populate the `nutritional_info` object."
-    }
-
-    # Add instructions only for the tasks that were requested
-    for task in tasks:
-        if task in task_descriptions:
-            prompt_instructions.append(task_descriptions[task])
-
-    prompt_instructions.append("\nYour response MUST be a single, clean JSON object matching this exact structure. If a field or task is not applicable, return a default value (e.g., empty list, null), but always include the key.")
-    prompt_instructions.append("```json")
-    prompt_instructions.append(json.dumps(json_template, indent=2))
-    prompt_instructions.append("```")
-
-    return "\n".join(prompt_instructions)
