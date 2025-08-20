@@ -64,34 +64,25 @@ class MockDatabaseHelper extends _i1.Mock implements _i4.DatabaseHelper {
           as _i3.Future<_i2.Database>);
 
   @override
-  _i3.Future<void> addTagsToRecipe(int? recipeId, List<String>? tags) =>
+  _i3.Future<dynamic> onCreate(_i2.Database? db, int? version) =>
       (super.noSuchMethod(
-            Invocation.method(#addTagsToRecipe, [recipeId, tags]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            Invocation.method(#onCreate, [db, version]),
+            returnValue: _i3.Future<dynamic>.value(),
           )
-          as _i3.Future<void>);
+          as _i3.Future<dynamic>);
 
   @override
-  _i3.Future<List<String>> getTagsForRecipe(int? recipeId) =>
+  _i3.Future<int> insert(_i5.Recipe? recipe, List<String>? tags) =>
       (super.noSuchMethod(
-            Invocation.method(#getTagsForRecipe, [recipeId]),
-            returnValue: _i3.Future<List<String>>.value(<String>[]),
-          )
-          as _i3.Future<List<String>>);
-
-  @override
-  _i3.Future<int> insert(_i5.Recipe? recipe) =>
-      (super.noSuchMethod(
-            Invocation.method(#insert, [recipe]),
+            Invocation.method(#insert, [recipe, tags]),
             returnValue: _i3.Future<int>.value(0),
           )
           as _i3.Future<int>);
 
   @override
-  _i3.Future<int> update(_i5.Recipe? recipe) =>
+  _i3.Future<int> update(_i5.Recipe? recipe, List<String>? tags) =>
       (super.noSuchMethod(
-            Invocation.method(#update, [recipe]),
+            Invocation.method(#update, [recipe, tags]),
             returnValue: _i3.Future<int>.value(0),
           )
           as _i3.Future<int>);
@@ -121,14 +112,6 @@ class MockDatabaseHelper extends _i1.Mock implements _i4.DatabaseHelper {
           as _i3.Future<_i5.Recipe?>);
 
   @override
-  _i3.Future<bool> doesRecipeExist(String? fingerprint) =>
-      (super.noSuchMethod(
-            Invocation.method(#doesRecipeExist, [fingerprint]),
-            returnValue: _i3.Future<bool>.value(false),
-          )
-          as _i3.Future<bool>);
-
-  @override
   _i3.Future<List<_i5.Recipe>> getVariationsForRecipe(int? parentId) =>
       (super.noSuchMethod(
             Invocation.method(#getVariationsForRecipe, [parentId]),
@@ -148,26 +131,20 @@ class MockDatabaseHelper extends _i1.Mock implements _i4.DatabaseHelper {
           as _i3.Future<List<_i5.Recipe>>);
 
   @override
+  _i3.Future<bool> doesRecipeExist(String? fingerprint) =>
+      (super.noSuchMethod(
+            Invocation.method(#doesRecipeExist, [fingerprint]),
+            returnValue: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
   _i3.Future<List<String>> getAllUniqueTags() =>
       (super.noSuchMethod(
             Invocation.method(#getAllUniqueTags, []),
             returnValue: _i3.Future<List<String>>.value(<String>[]),
           )
           as _i3.Future<List<String>>);
-
-  @override
-  _i3.Future<List<_i5.Recipe>> findCandidateMatches(
-    int? newRecipeId,
-    List<String>? keyIngredients,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#findCandidateMatches, [
-              newRecipeId,
-              keyIngredients,
-            ]),
-            returnValue: _i3.Future<List<_i5.Recipe>>.value(<_i5.Recipe>[]),
-          )
-          as _i3.Future<List<_i5.Recipe>>);
 }
 
 /// A class which mocks [Database].

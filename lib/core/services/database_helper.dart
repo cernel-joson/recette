@@ -34,7 +34,8 @@ class DatabaseHelper {
 
   // This method is now public for testing purposes.
   Future onCreate(Database db, int version) async {
-    await _createRecipeTables(db);
+    await _createRecipeTable(db);
+    await _createRecipeTagTables(db);
     await _createInventoryTables(db);
     await _createShoppingListTables(db);
     await _createMealPlanTables(db);
@@ -56,8 +57,7 @@ class DatabaseHelper {
     if (oldVersion < 4) await _addColumnIfNotExists(db, 'recipes', 'fingerprint', 'TEXT');
     if (oldVersion < 5) await _addColumnIfNotExists(db, 'recipes', 'parentRecipeId', 'INTEGER');
     if (oldVersion < 6) {
-        // In a real migration, you would create these tables if they don't exist
-        await _createRecipeTables(db); // For simplicity, we can just call the helper
+        await _createRecipeTagTables(db);
     }
     if (oldVersion < 7) await _createInventoryTables(db);
     if (oldVersion < 8) {
@@ -188,7 +188,7 @@ class DatabaseHelper {
   }
 
   // --- REFACTORED: Helper for Recipe-related tables ---
-  Future<void> _createRecipeTables(Database db) async {
+  Future<void> _createRecipeTable(Database db) async {
     await db.execute('''
       CREATE TABLE recipes ( 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -211,6 +211,9 @@ class DatabaseHelper {
         nutritionalInfo TEXT
       )
     ''');
+  }
+  
+  Future<void> _createRecipeTagTables(Database db) async {
     await db.execute('''
       CREATE TABLE tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
