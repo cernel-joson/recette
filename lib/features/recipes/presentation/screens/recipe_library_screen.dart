@@ -7,6 +7,8 @@ import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/presentation/widgets/widgets.dart';
 
+// --- ADD THIS IMPORT ---
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({
@@ -63,6 +65,69 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     }
   }
 
+  // --- NEW: Helper method for import action ---
+  Future<void> _importLibrary(BuildContext context) async {
+    final controller = Provider.of<RecipeLibraryController>(context, listen: false);
+    try {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Import Recipe Library?'),
+          content: const Text('This will add recipes from a JSON backup file. Existing recipes will be skipped.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Import')),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      final result = await ImportService.importLibrary();
+      
+      controller.loadInitialRecipes();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
+        );
+      }
+
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // --- NEW: Helper method for export action ---
+  Future<void> _exportLibrary(BuildContext context) async {
+    try {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Export Recipe Library?'),
+          content: const Text('This will generate a JSON backup file of all your recipes.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Export')),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        await ExportService.exportLibrary();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get the controller once to use in callbacks.
@@ -99,78 +164,36 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
               )
             : null, // Use the default (e.g., drawer icon or no button)
             title: const Text('My Recipe Library'),
+            // --- THIS IS THE REFACTORED ACTIONS SECTION ---
             actions: [
-              // --- NEW: Import Button ---
-              IconButton(
-                icon: const Icon(Icons.download),
-                tooltip: 'Import Library',
-                onPressed: () async {
-                  try {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Import Recipe Library?'),
-                        content: const Text('This will add recipes from a JSON backup file. Existing recipes will be skipped.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Import')),
-                        ],
-                      ),
-                    );
-
-                    if (confirm != true) return;
-
-                    final result = await ImportService.importLibrary();
-                    
-                    // Refresh the library and show the results
-                    controller.loadInitialRecipes();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
-                      );
-                    }
-
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Import failed: ${e.toString()}'), backgroundColor: Colors.red),
-                      );
-                    }
+              const JobsTrayIcon(), // Add the new global icon
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'import') {
+                    _importLibrary(context);
+                  } else if (value == 'export') {
+                    _exportLibrary(context);
                   }
                 },
-              ),
-              IconButton(
-                icon: const Icon(Icons.upload_file),
-                tooltip: 'Export Library',
-                onPressed: () async {
-                  try {
-                    // Show a confirmation before exporting
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Export Recipe Library?'),
-                        content: const Text('This will generate a JSON backup file of all your recipes that you can save to your device or a cloud service.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Export')),
-                        ],
-                      ),
-                    );
-
-                    if (confirm == true) {
-                      await ExportService.exportLibrary();
-                    }
-                  } catch (e) {
-                    // Show an error if something goes wrong (e.g., library is empty)
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Export failed: ${e.toString()}'), backgroundColor: Colors.red),
-                      );
-                    }
-                  }
-                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'import',
+                    child: ListTile(
+                      leading: Icon(Icons.download),
+                      title: Text('Import Library'),
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'export',
+                    child: ListTile(
+                      leading: Icon(Icons.upload_file),
+                      title: Text('Export Library'),
+                    ),
+                  ),
+                ],
               ),
             ],
+            // --- END OF REFACTORED ACTIONS SECTION ---
             // --- NEW: Add a persistent search bar at the bottom of the AppBar ---
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(kToolbarHeight),

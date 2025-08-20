@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
@@ -80,7 +82,7 @@ class RecipeLibraryController with ChangeNotifier {
 
   /// Analyzes an image from a given path.
   /// Contains only business logic, no UI code.  
-  Future<Recipe> analyzeImageFromPath(String imagePath) async {
+  /* Future<Recipe> analyzeImageFromPath(String imagePath) async {
     // 1. Check usage limit (Business Logic)
     final canScan = await UsageLimiter.canPerformScan();
 
@@ -101,11 +103,29 @@ class RecipeLibraryController with ChangeNotifier {
 
     // 4. Return the result
     return recipe;
+  } */
+
+ /// Creates a 'recipe_parsing' job from an image path and submits it.
+  Future<void> analyzeImageFromPath(String imagePath, JobManager jobManager) async {
+    final canScan = await UsageLimiter.canPerformScan();
+    if (!canScan) {
+      throw Exception('Daily scan limit reached.');
+    }
+
+    // The request payload is now a simple JSON string.
+    final requestPayload = json.encode({'image': imagePath, 'source': 'Scanned Content'});
+
+    await jobManager.submitJob(
+      jobType: 'recipe_parsing',
+      requestPayload: requestPayload,
+    );
+    
+    await UsageLimiter.incrementScanCount();
   }
 
   /// Analyzes a recipe from a given URL.
   /// Contains only business logic, no UI code.  
-  Future<Recipe> analyzeUrl(String url) async {
+  /* Future<Recipe> analyzeUrl(String url) async {
     // Call the parsing service with ALL desired tasks at once.
     final recipe = await RecipeParsingService.analyzeUrl(url, tasks: {
       AiEnhancementTask.generateTags,
@@ -113,5 +133,15 @@ class RecipeLibraryController with ChangeNotifier {
       AiEnhancementTask.estimateNutrition,
     });
     return recipe;
+  } */
+ 
+  /// Creates a 'recipe_parsing' job from a URL and submits it.
+  Future<void> analyzeUrl(String url, JobManager jobManager) async {
+    final requestPayload = json.encode({'url': url, 'source': url});
+    
+    await jobManager.submitJob(
+      jobType: 'recipe_parsing',
+      requestPayload: requestPayload,
+    );
   }
 }
