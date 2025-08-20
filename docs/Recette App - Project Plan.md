@@ -1,6 +1,6 @@
 # **Intelligent Nutrition App: Project Plan & System Specification**
 
-*Last Updated: July 31, 2025*
+*Last Updated: August 19, 2025*
 
 ### **1.0 Core Mission & Vision**
 
@@ -13,7 +13,7 @@ The project's goal is to create a sophisticated mobile application, **Recette**,
 * **AI Engine:** A multi-model approach for optimal performance and intelligence:
     * **gemini-2.5-pro**: For complex analysis, reasoning, and generation tasks requiring deep understanding.
     * **gemini-2.5-flash**: For faster, less complex operations like quick categorizations or simple parsing to improve responsiveness.
-* **Local Storage:** sqflite for the on-device database and shared\_preferences for simple key-value storage.
+* **Local Storage:** sqflite for the on-device database and shared_preferences for simple key-value storage.
 * **Version Control:** Git & GitHub
 
 ### **3.0 Current Project Status**
@@ -32,16 +32,16 @@ The project is a highly functional, single-user prototype. The core architecture
 
 #### **4.1 Data & Caching Model**
 
-* **Multi-User Foundation:** The architecture will be built around a users table to store individual profiles. A generic, multi-user health\_cache table will store health ratings for specific item-user pairs, creating a many-to-many relationship.
+* **Multi-User Foundation:** The architecture will be built around a users table to store individual profiles. A generic, multi-user health_cache table will store health ratings for specific item-user pairs, creating a many-to-many relationship.
 * **Robust Fingerprinting:**
     * **Recipe Content Fingerprint:** The system will generate a fingerprint of a recipe's content (e.g., title, ingredients, instructions).
-    * **Cache Invalidation:** The health cache for a recipe will be considered stale if *either* the user's profile\_fingerprint changes or the recipe's item\_fingerprint changes, ensuring ratings are always accurate.
+    * **Cache Invalidation:** The health cache for a recipe will be considered stale if *either* the user's profile_fingerprint changes or the recipe's item_fingerprint changes, ensuring ratings are always accurate.
 * **Hybrid Caching Strategy:**
     * **Centralized (Cloud) Cache:** The Python Cloud Function will check a central cache (like Firestore or Redis) before making a call to the Gemini API.
     * **Local (On-Device) Cache:** The Flutter app will cache recently viewed recipes and health ratings on the device for speed and offline access.
 * **Flexible Data Models:**
     * The ingredient quantity field will be a flexible String to accurately capture non-standard measurements like "a splash."
-    * An optional quantity\_numeric field will be added to the ingredient model, which the AI will attempt to populate for future features like recipe scaling.
+    * An optional quantity_numeric field will be added to the ingredient model, which the AI will attempt to populate for future features like recipe scaling.
 
 #### **4.2 User Experience (UX) Design**
 
@@ -61,13 +61,13 @@ This roadmap outlines the planned implementation sequence, focusing on building 
 
 1.  **✅ (Complete) Enhance Data Model Flexibility:**
     * Modify the Ingredient model and database schema to ensure the quantity field is a flexible String to accurately capture non-standard measurements.
-    * Add the optional quantity\_numeric field to the model and update the AI import prompt to populate it when possible.
+    * Add the optional quantity_numeric field to the model and update the AI import prompt to populate it when possible.
 2.  **✅ (Complete) Implement Robust Fingerprinting & Duplicate Detection:**
-    * Develop a reliable function to generate a content-based item\_fingerprint for each recipe.
+    * Develop a reliable function to generate a content-based item_fingerprint for each recipe.
     * Use this fingerprint to prevent identical recipes from being saved to the library, prompting the user if a duplicate is detected.
-    * Update the single-user "Health Check" caching logic to use this item\_fingerprint for cache invalidation.
+    * Update the single-user "Health Check" caching logic to use this item_fingerprint for cache invalidation.
 3.  **✅ (Complete) Implement Recipe Lineage:**
-    * Add a nullable parent\_recipe\_id column to the recipes table in the database.
+    * Add a nullable parent_recipe_id column to the recipes table in the database.
     * Update the UI to allow a user to create a variation of an existing recipe, correctly setting the parent-child relationship.
 
 ---
@@ -77,7 +77,7 @@ This roadmap outlines the planned implementation sequence, focusing on building 
 *This phase focused on making a large library of recipes manageable and searchable.*
 
 1.  **✅ (Complete) Implement AI-Powered Tagging:**
-    * Create a recipe\_tags table to store a many-to-many relationship between recipes and tags.
+    * Create a recipe_tags table to store a many-to-many relationship between recipes and tags.
     * Enhance the AI import prompt to suggest relevant tags (cuisine, meal type, etc.) for each new recipe.
 2.  **✅ (Complete) Develop the Search Engine:**
     * **Canonical Search Parser:** Build the internal parser that can translate a power-user query string (e.g., `tag:dinner -ingredient:cilantro`) into a complex SQL query.
