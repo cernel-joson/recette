@@ -1,3 +1,4 @@
+import 'dart:convert'; // Add this import
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -33,8 +34,10 @@ class DialogUtils {
                 leading: const Icon(Icons.paste),
                 title: const Text('Paste Recipe Text'),
                 onTap: () {
-                  Navigator.pop(context);
-                  _navigateToEditScreen(context, null, showPasteDialog: true);
+                  Navigator.pop(bottomSheetContext);
+                  // --- THIS IS THE FIX ---
+                  // Call the new async dialog from here.
+                  _showPasteTextDialog(context);
                 },
               ),
               ListTile(
@@ -76,6 +79,61 @@ class DialogUtils {
           ),
         );
       },
+    );
+  }
+
+  // --- NEW ASYNCHRONOUS DIALOG FOR PASTING TEXT ---
+  static void _showPasteTextDialog(BuildContext context) {
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+    final textController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Parse Recipe from Text'),
+        content: TextField(
+          controller: textController,
+          maxLines: 10,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Paste your recipe text here...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (textController.text.isEmpty) return;
+
+              // Pop the dialog immediately
+              Navigator.of(dialogContext).pop();
+
+              try {
+                // Submit the job and show a confirmation snackbar
+                final requestPayload = json.encode({'text': textController.text, 'source': 'Pasted Text'});
+                await jobManager.submitJob(
+                  jobType: 'recipe_parsing',
+                  requestPayload: requestPayload,
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Recipe parsing started... Track progress in the Jobs Tray.'),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Parse'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -251,7 +309,6 @@ class DialogUtils {
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
           recipe: recipe,
-          showPasteDialogOnLoad: showPasteDialog,
         ),
       ),
     );

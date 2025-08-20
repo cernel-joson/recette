@@ -130,22 +130,6 @@ class RecipeEditController with ChangeNotifier {
     _markDirty();
     notifyListeners();
   }
-
-  // --- AI and Saving Logic ---
-  Future<void> analyzePastedText(String text) async {
-    if (text.isEmpty) return;
-    isAnalyzing = true;
-    notifyListeners();
-
-    try {
-      final recipe = await RecipeParsingService.analyzeText(text);
-      _populateState(recipe); // Repopulate all fields with AI data
-      _markDirty();
-    } finally {
-      isAnalyzing = false;
-      notifyListeners();
-    }
-  }
   
   void updateTags(List<String> newTags) {
     tags = newTags;

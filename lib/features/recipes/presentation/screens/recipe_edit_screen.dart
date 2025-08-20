@@ -12,14 +12,12 @@ class RecipeEditScreen extends StatelessWidget {
     super.key,
     this.recipe,
     this.parentRecipeId,
-    this.showPasteDialogOnLoad = false,
-    this.sourceJobId, // <-- NEW: Accept the job ID
+    this.sourceJobId,
   });
 
   final Recipe? recipe;
   final int? parentRecipeId;
-  final bool showPasteDialogOnLoad;
-  final int? sourceJobId; // <-- NEW
+  final int? sourceJobId;
 
   @override
   Widget build(BuildContext context) {
@@ -29,65 +27,20 @@ class RecipeEditScreen extends StatelessWidget {
         parentRecipeId: parentRecipeId,
         sourceJobId: sourceJobId, // <-- Pass to controller
       ),
-      child: _RecipeEditView(showPasteDialogOnLoad: showPasteDialogOnLoad),
+      child: const _RecipeEditView(),
     );
   }
 }
 
 /// The UI portion of the Recipe Edit Screen
 class _RecipeEditView extends StatefulWidget {
-  const _RecipeEditView({required this.showPasteDialogOnLoad});
-  final bool showPasteDialogOnLoad;
+  const _RecipeEditView();
 
   @override
   State<_RecipeEditView> createState() => _RecipeEditViewState();
 }
 
 class _RecipeEditViewState extends State<_RecipeEditView> {
-  @override
-  void initState() {
-    super.initState();
-    if (widget.showPasteDialogOnLoad) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Use the context to get the controller for the paste dialog
-        final controller = Provider.of<RecipeEditController>(context, listen: false);
-        _showPasteTextDialog(context, controller);
-      });
-    }
-  }
-
-  // --- Dialogs and UI Logic (Remain in the Widget) ---
-  void _showPasteTextDialog(BuildContext context, RecipeEditController controller) {
-    final textController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Populate from Text'),
-        content: TextField(
-          controller: textController,
-          maxLines: 10,
-          decoration: const InputDecoration(
-            hintText: 'Paste your recipe text here...',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              controller.analyzePastedText(textController.text);
-            },
-            child: const Text('Analyze'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _addIngredient(BuildContext context, RecipeEditController controller) async {
     final newIngredient = await showDialog<Ingredient>(
       context: context,
@@ -208,11 +161,11 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  TextButton.icon(
+                  /* TextButton.icon(
                     icon: controller.isAnalyzing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.paste_sharp),
                     label: const Text('Repopulate'),
                     onPressed: controller.isAnalyzing ? null : () => _showPasteTextDialog(context, controller),
-                  ),
+                  ), */
                   FilledButton.icon(
                     icon: const Icon(Icons.save),
                     // --- UPDATED: Save button logic ---
