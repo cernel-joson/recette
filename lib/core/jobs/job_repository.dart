@@ -1,0 +1,87 @@
+import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/services/database_helper.dart';
+
+class JobRepository {
+  final DatabaseHelper _dbHelper;
+
+  // We allow injecting the DatabaseHelper for easier testing.
+  JobRepository({DatabaseHelper? dbHelper})
+      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+
+  /// Creates a new job in the database and returns it with its new ID.
+  Future<Job> createJob({
+    required String jobType,
+    required String requestPayload,
+    JobPriority priority = JobPriority.normal,
+    String? requestFingerprint,
+    String? promptText,
+  }) async {
+    final now = DateTime.now();
+    final job = Job(
+      jobType: jobType,
+      requestPayload: requestPayload,
+      createdAt: now,
+      priority: priority,
+      requestFingerprint: requestFingerprint,
+      promptText: promptText,
+      status: JobStatus.queued,
+    );
+
+    final db = await _dbHelper.database;
+    final id = await db.insert('job_history', job.toMap());
+
+    // Return a new Job object that includes the database-assigned ID.
+    return Job.fromMap({...?job.toMap(), 'id': id});
+  }
+
+  /// Updates the status of an existing job.
+  Future<void> updateJobStatus(int jobId, JobStatus status) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'job_history',
+      {'status': status.name},
+      where: 'id = ?',
+      whereArgs: [jobId],
+    );
+  }
+
+  /// Marks a job as complete, saving the final response and completion time.
+  Future<void> completeJob(int jobId, String responsePayload) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'job_history',
+      {
+        'status': JobStatus.complete.name,
+        'response_payload': responsePayload,
+        'completed_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [jobId],
+    );
+  }
+
+  /// Retrieves all jobs from the database, ordered by creation date.
+  Future<List<Job>> getAllJobs() async {
+    final db = await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'job_history',
+      orderBy: 'created_at DESC',
+    );
+    return List.generate(maps.length, (i) => Job.fromMap(maps[i]));
+  }
+
+  /// Retrieves a single job by its ID.
+  Future<Job?> getJobById(int jobId) async {
+    final db = await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'job_history',
+      where: 'id = ?',
+      whereArgs: [jobId],
+    );
+
+    if (maps.isNotEmpty) {
+      return Job.fromMap(maps.first);
+    }
+    return null;
+  }
+}
