@@ -8,6 +8,7 @@ import 'dart:async' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:recette/core/jobs/job_model.dart' as _i2;
 import 'package:recette/core/jobs/job_repository.dart' as _i3;
+import 'package:recette/core/jobs/job_result.dart' as _i5;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -77,9 +78,9 @@ class MockJobRepository extends _i1.Mock implements _i3.JobRepository {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<void> completeJob(int? jobId, String? responsePayload) =>
+  _i4.Future<void> completeJob(int? jobId, _i5.JobResult? result) =>
       (super.noSuchMethod(
-            Invocation.method(#completeJob, [jobId, responsePayload]),
+            Invocation.method(#completeJob, [jobId, result]),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )

@@ -22,14 +22,14 @@ To balance speed, cost, and intelligence, the system processes requests through 
 
 All data requests flow through a three-tiered system to maximize performance and minimize cost.
 
-1.  **📍 Local Cache (`sqflite`):** Provides instantaneous, offline access to recently used data. It's the first place the app looks for information.
+1.  **📍 Local Cache (`sqflite`):** Provides instantaneous, offline access to recently used data. It's the first place the app looks for information, particularly the results of completed jobs.
 2.  **☁️ Cloud Cache (Firestore):** A shared, persistent cache to benefit all users and devices. It solves the "fresh install" problem and reduces redundant API calls across the user base.
 3.  **🧠 Gemini API Call:** The ultimate source of truth, only accessed when a "cache miss" occurs at both the local and cloud levels.
 
-## **4.0 Asynchronous Job Management (`ApiRequestManager`)**
+## **4.0 Asynchronous Job Management**
 
-A central `ApiRequestManager` service will manage all outbound communication to ensure a non-blocking UI.
+The app's architecture is built around an asynchronous job system to ensure the UI is **never blocked** by long-running AI tasks. This system is the foundation upon which all other features are built, prioritizing UI responsiveness, data persistence, and user transparency.
 
-* **Queuing & Batching:** It will queue all background tasks and intelligently batch similar requests (e.g., multiple health checks) into a single API call to improve efficiency.
-* **Prioritization:** It will support prioritizing tasks, running user-facing requests (like parsing a recipe) before low-priority background jobs (like finding similar recipes).
-* **"Jobs Tray" UI:** A user-facing "jobs tray" will provide a transparent view of all queued, in-progress, and completed background tasks, making the results of AI computations persistent and replayable.
+* **The `JobManager` Service**: A central service layer handles all background tasks. It manages a queue of `Job` objects, is agnostic about their content, and delegates work to specialized `JobWorker` classes.
+* **The Persistent Job Store**: A `job_history` table in the local `sqflite` database makes the entire system durable. It serves as both a history log and a powerful cache, ensuring that the results of AI computations are **never thrown away**.
+* **The Universal Feedback UI**: A user-facing "jobs tray" provides a transparent view of all queued, in-progress, and completed background tasks, making the results of AI computations persistent and replayable.

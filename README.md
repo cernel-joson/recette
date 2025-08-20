@@ -1,44 +1,45 @@
 # Recette - An Intelligent Kitchen Assistant
 
-*Last Updated: August 11, 2025*
+*Last Updated: August 20, 2025*
 
 ## 🚀 Core Mission
 
-Recette is a sophisticated mobile application designed to function as a comprehensive **"Kitchen Assistant."** Its core mission is to help users navigate complex and often conflicting dietary needs within a household by intelligently managing the entire lifecycle of food—from inventory and recipes to meal planning and shopping lists.
+Recette is a mobile application designed to function as a comprehensive **"Kitchen Assistant."** Its primary goal is to help users navigate the complex and often conflicting dietary needs within a household by intelligently managing the entire lifecycle of food—from inventory and recipes to meal planning.
 
-The app is being built with the goal of reducing the daily cognitive load and stress associated with answering the question, "what's for dinner?"
+The app's core purpose is to **reduce the daily cognitive load and stress** associated with answering the question, "what's for dinner?" by acting as a proactive, intelligent, and empathetic partner in the kitchen.
+
+---
 
 ## 🛠️ Core Technologies
 
 * **Frontend (Mobile App):** Flutter & Dart
 * **Backend (Serverless API):** Python on Google Cloud Functions
-* **AI Engine:** A multi-model approach using Gemini Pro and Flash for complex reasoning and fast, efficient analysis.
+* **AI Engine:** A multi-model approach using Gemini Pro and Flash.
 * **Local Storage:** `sqflite` for the on-device database.
 
-## ✨ Current Features (v0.1.0)
+---
 
-The project is currently a highly functional, single-user prototype with a robust set of features.
+## ✨ Current Project Status
 
-#### Recipe Management
-* **Multi-Modal Recipe Import:** Add recipes from a URL, pasted text, or via OCR from the phone's camera/gallery.
-* **AI-Powered Tagging & Search:** Recipes are automatically tagged by the AI, and users can use a powerful search engine to find recipes with complex queries (e.g., `tag:dinner -ingredient:cilantro`).
-* **Recipe Lineage:** Create and track variations of a core recipe (e.g., a gluten-free version of a family favorite).
-* **Export & Share:** Share recipes as cleanly formatted PDF or plain text documents.
+The project is a highly functional, single-user prototype. The core architecture is stable, and the codebase has been refactored into a clean, multi-file structure. A comprehensive suite of unit tests has been established for core models and services.
 
-#### Intelligence & Analysis
-* **Personalized Health Checks:** Analyze any recipe against a natural-language dietary profile to get a simple "traffic light" health rating (🟢, 🟡, 🔴) and actionable suggestions.
-* **On-Demand Nutritional Analysis:** Get a detailed nutritional breakdown (calories, fat, protein, sodium, etc.) for any block of recipe text, even without saving it to the app.
-* **Context-Aware Meal Suggestions:** Get intelligent meal ideas based on your current inventory, dietary profile, and immediate situation (e.g., "I'm tired and need something quick").
+### Implemented Features & Phases:
 
-#### Kitchen Management
-* **Inventory System:** A foundational inventory system to manually track food items, complete with an AI-powered import/export feature to sync with an external chat.
-* **Shopping List (Skeleton):** A basic, functional shopping list for adding and checking off items.
-* **Meal Planner (Skeleton):** A basic weekly meal planner that allows users to assign recipes from their library to specific days and meals.
+* **Phase 1: Core Single-User Experience (✅ Complete):** Includes a robust data model, duplicate detection, and recipe lineage (variations).
+* **Phase 2: The Organizational Layer (✅ Complete):** Features AI-powered tagging and a powerful search engine with a guided filter UI.
+* **Phase 3: Advanced Intelligence & UI Refinement (🔄 In Progress):** A multi-model AI backend is in place.
+* **Phase 4: Foundational Architecture Overhaul (🔄 In Progress):** The core asynchronous `JobManager` system has been implemented, making the app more responsive and ensuring AI-generated data is never lost.
+* **MVPs Implemented:** Foundational versions of the **Inventory System**, **On-Demand Nutritional Analysis**, and **Context-Aware Meal Suggestions** are functional.
 
-## 🗺️ Future Roadmap
+---
 
-The long-term vision for Recette is to continue evolving into a proactive, multi-user assistant. Key future phases include:
+## 🏛️ Project Documentation
 
-* **Architectural Overhaul:** Implementing a robust, asynchronous `ApiRequestManager` with intelligent caching and a "jobs tray" to make the app faster and more responsive.
-* **The "AI Brain":** Developing a modular, persistent memory system that allows the AI to learn user preferences over time and provide more personalized, proactive assistance.
-* **Multi-User & Cloud Sync:** Transitioning the app to a collaborative, cloud-synchronized platform where a family can share a common inventory, recipe library, and meal plan.
+This project is guided by a set of living design documents that outline its architecture and feature specifications.
+
+* **[System Architecture](./docs/01_SYSTEM_ARCHITECTURE.md):** A high-level overview of the app's technical architecture, including the AI and data caching strategies.
+* **[Development Roadmap](./docs/02_ROADMAP.md):** The planned, high-level implementation sequence for the Recette app.
+* **[Feature Spec: Inventory System](./docs/03_FEATURE_INVENTORY_SYSTEM.md):** Detailed specification for the food inventory management system.
+* **[Feature Spec: Multi-User & Cloud Sync](./docs/04_FEATURE_MULTI_USER.md):** The architecture for transitioning to a collaborative, cloud-synchronized platform.
+* **[Feature Spec: UI Refinement](./docs/05_FEATURE_UI_REFINEMENT.md):** Key UI/UX improvements, including the "Split This Recipe" AI assistant.
+* **[Feature Spec: The AI "Brain"](./docs/06_FEATURE_AI_BRAIN.md):** The long-term vision for a portable, context-aware, and persistent AI system.

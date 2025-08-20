@@ -3,12 +3,12 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i3;
+import 'dart:async' as _i4;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i5;
-import 'package:recette/core/jobs/job_model.dart' as _i4;
-import 'package:recette/core/jobs/job_worker.dart' as _i2;
+import 'package:recette/core/jobs/job_model.dart' as _i5;
+import 'package:recette/core/jobs/job_result.dart' as _i2;
+import 'package:recette/core/jobs/job_worker.dart' as _i3;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -24,21 +24,26 @@ import 'package:recette/core/jobs/job_worker.dart' as _i2;
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
 
+class _FakeJobResult_0 extends _i1.SmartFake implements _i2.JobResult {
+  _FakeJobResult_0(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [JobWorker].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockJobWorker extends _i1.Mock implements _i2.JobWorker {
+class MockJobWorker extends _i1.Mock implements _i3.JobWorker {
   MockJobWorker() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i3.Future<String> execute(_i4.Job? job) =>
+  _i4.Future<_i2.JobResult> execute(_i5.Job? job) =>
       (super.noSuchMethod(
             Invocation.method(#execute, [job]),
-            returnValue: _i3.Future<String>.value(
-              _i5.dummyValue<String>(this, Invocation.method(#execute, [job])),
+            returnValue: _i4.Future<_i2.JobResult>.value(
+              _FakeJobResult_0(this, Invocation.method(#execute, [job])),
             ),
           )
-          as _i3.Future<String>);
+          as _i4.Future<_i2.JobResult>);
 }
