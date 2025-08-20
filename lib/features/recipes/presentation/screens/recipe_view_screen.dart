@@ -1,21 +1,17 @@
+// lib/features/recipes/presentation/screens/recipe_view_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart'; // Import the new share package
-import 'package:recette/core/services/database_helper.dart';
-import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
-import 'package:recette/features/recipes/presentation/screens/recipe_edit_screen.dart';
-import 'package:recette/core/utils/utils.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
-import 'package:recette/core/presentation/widgets/widgets.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:recette/core/core.dart';
+import 'package:recette/features/recipes/recipes.dart';
+import 'package:recette/core/presentation/widgets/health_rating_icon.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete, createVariation }
 
-/// A screen dedicated to viewing a single recipe and performing actions on it.
 class RecipeViewScreen extends StatefulWidget {
-  // CORRECTED: The screen now accepts a recipeId.
   final int recipeId;
-
   const RecipeViewScreen({super.key, required this.recipeId});
 
   @override
@@ -23,20 +19,10 @@ class RecipeViewScreen extends StatefulWidget {
 }
 
 class _RecipeViewScreenState extends State<RecipeViewScreen> {
-  // The recipe is now nullable and loaded from the database.
   Recipe? _currentRecipe;
   Recipe? _parentRecipe;
   List<Recipe> _variations = [];
-  bool _didChange = false; // Flag to track if an edit/delete occurred.
-  
-  // 1. Instantiate the service
-  final HealthCheckService _healthService = HealthCheckService();
-
-  // 2. State variables for loading and results
-  bool _isLoadingHealthCheck = true;
-  HealthAnalysisResult? _healthAnalysis;
-
-  // --- NEW: Instantiate the new enhancement service ---
+  bool _didChange = false;
   final AiEnhancementService _enhancementService = AiEnhancementService();
 
   @override
@@ -45,20 +31,16 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     _loadRecipeData();
   }
 
-  /// --- NEW: Consolidated data loading method ---
   Future<void> _loadRecipeData() async {
     final recipe = await DatabaseHelper.instance.getRecipeById(widget.recipeId);
     if (recipe == null) return;
 
-    // Fetch parent if it exists
     Recipe? parent;
     if (recipe.parentRecipeId != null) {
       parent = await DatabaseHelper.instance.getRecipeById(recipe.parentRecipeId!);
     }
-
-    // Fetch variations
     final variations = await DatabaseHelper.instance.getVariationsForRecipe(recipe.id!);
-    
+
     if (mounted) {
       setState(() {
         _currentRecipe = recipe;
@@ -68,39 +50,29 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     }
   }
 
-  // --- NEW: Method to show the dialog and handle the service call ---
   Future<void> _showAiAnalysisDialog() async {
     if (_currentRecipe == null) return;
-
-    // 1. Show the dialog and await the user's selection of tasks
     final selectedTasks = await showDialog<Set<AiEnhancementTask>>(
       context: context,
       builder: (_) => const AiEnhancementDialog(),
     );
-
-    // If the user cancelled, the result will be null
     if (selectedTasks == null || selectedTasks.isEmpty || !mounted) return;
 
-    // 2. Show a loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
-
     try {
-      // 3. Call the service with the selected tasks
       final updatedRecipe = await _enhancementService.enhanceSingleRecipe(
         recipe: _currentRecipe!,
         tasks: selectedTasks,
       );
-
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Analysis complete!'), backgroundColor: Colors.green),
         );
-        // Refresh the entire screen with the new, updated recipe data
         setState(() {
           _currentRecipe = updatedRecipe;
           _didChange = true;
@@ -108,7 +80,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
         );
@@ -116,27 +88,20 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     }
   }
 
-  /// --- UPDATED: Method to create a variation ---
   Future<void> _createVariation() async {
-    // By calling copyWith and setting isVariation to true, we create a new,
-    // unsaved Recipe object with a null ID and the parentRecipeId set correctly.
-    final recipeForVariation = _currentRecipe!.copyWith(parentRecipeId: _currentRecipe!.id, isVariation: true);
-
+    final recipeForVariation = _currentRecipe!.copyWith(isVariation: true);
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
           recipe: recipeForVariation,
-          // --- THIS IS THE FIX ---
-          // We explicitly pass the ID of the current recipe as the
-          // parent ID for the new variation.
           parentRecipeId: _currentRecipe!.id,
         ),
       ),
     );
     if (result == true) {
       _didChange = true;
-      _loadRecipeData(); // Reload all data to show the new variation
+      _loadRecipeData();
     }
   }
 
@@ -149,7 +114,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     );
     if (result == true) {
       _didChange = true;
-      _loadRecipeData(); // Reload the recipe from the database to get fresh data.
+      _loadRecipeData();
     }
   }
 
@@ -158,13 +123,9 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Recipe?'),
-        content:
-            Text('Are you sure you want to delete "${_currentRecipe!.title}"?'),
+        content: Text('Are you sure you want to delete "${_currentRecipe!.title}"?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Delete'),
@@ -175,9 +136,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     );
     if (confirm == true) {
       await DatabaseHelper.instance.delete(_currentRecipe!.id!);
-      if (mounted) {
-        Navigator.of(context).pop(true);
-      }
+      if (mounted) Navigator.of(context).pop(true);
     }
   }
 
@@ -212,107 +171,13 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     );
   }
 
-  /// NEW: Performs the health check analysis and displays the result.
-  Future<void> _performHealthCheck() async {
-    // Show a loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      final result = await _healthService.getHealthAnalysisForRecipe(_currentRecipe!);
-      
-      // --- THIS IS THE FIX ---
-      // After the service updates the database, we must reload the local recipe
-      // object to get the fresh data, including the new fingerprints and ratings.
-      await _loadRecipeData();
-      
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        if (result.rating == 'UNRATED') { // A clear signal from the service
-          _showProfileEmptyWarning();
-        } else {
-          _showHealthCheckResult(result);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
-        );
-      }
+  String _getRatingText(String? rating) {
+    switch (rating) {
+      case 'SAFE': return 'Safe to Eat Freely';
+      case 'CAUTION': return 'Use with Caution & Scrutiny';
+      case 'AVOID': return 'Avoid or Use Sparingly';
+      default: return 'Tap to see suggestions.';
     }
-  }
-
-  /// NEW: Shows a dialog warning the user to set up their profile first.
-  void _showProfileEmptyWarning() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('No Profile Found'),
-        content: const Text('Please set up your dietary profile first to get a health analysis.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// NEW: Shows the result from the AI in a formatted dialog.
-  void _showHealthCheckResult(HealthAnalysisResult result) {
-    Color ratingColor = Colors.grey;
-    String ratingCircle = "⚪";
-    
-    if (result.rating == 'GREEN') ratingColor = Colors.green;
-    if (result.rating == 'YELLOW') ratingColor = Colors.orange;
-    if (result.rating == 'RED') ratingColor = Colors.red;
-
-    if (result.rating == 'GREEN') ratingCircle = "🟢";
-    if (result.rating == 'YELLOW') ratingCircle = "🟡";
-    if (result.rating == 'RED') ratingCircle = "🔴";
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Text('Health Check Result: '),
-            Text(
-              ratingCircle,
-              style: TextStyle(color: ratingColor, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(result.summary, style: const TextStyle(fontStyle: FontStyle.italic)),
-              const Divider(height: 24),
-              const Text('Suggestions:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ...result.suggestions.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Text('• $s'),
-              )),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -324,23 +189,20 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Row( // NEW
+          title: Row(
             children: [
               Expanded(child: Text(_currentRecipe?.title ?? 'Loading...')),
               if (_currentRecipe != null)
                 HealthRatingIcon(healthRating: _currentRecipe!.healthRating),
             ],
           ),
-          leading: BackButton(
-            onPressed: () => Navigator.of(context).pop(_didChange),
-          ),
+          leading: BackButton(onPressed: () => Navigator.of(context).pop(_didChange)),
         ),
         body: _currentRecipe == null
             ? const Center(child: CircularProgressIndicator())
-            // --- NEW: Use a ListView to show lineage info + recipe card ---
             : ListView(
+                padding: const EdgeInsets.all(16.0),
                 children: [
-                  // --- Parent Recipe Link ---
                   if (_parentRecipe != null)
                     ListTile(
                       leading: const Icon(Icons.arrow_upward),
@@ -350,22 +212,91 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                       ),
                     ),
                   
-                  // --- The Main Recipe Card ---
-                  RecipeCard(recipe: _currentRecipe!),
+                  // --- UI ELEMENTS FROM RECIPECARD ARE NOW DIRECTLY HERE ---
+                  Text(_currentRecipe!.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  if (_currentRecipe!.sourceUrl.isNotEmpty && _currentRecipe!.sourceUrl.startsWith('http'))
+                    InkWell(
+                      onTap: () => launchUrl(Uri.parse(_currentRecipe!.sourceUrl)),
+                      child: Text('Source: ${_currentRecipe!.sourceUrl}', style: TextStyle(color: Colors.blue[800], decoration: TextDecoration.underline)),
+                    ),
+                  const SizedBox(height: 8),
+                  if (_currentRecipe!.description.isNotEmpty)
+                    Text(_currentRecipe!.description, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontStyle: FontStyle.italic, color: Colors.grey[700])),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 24.0, runSpacing: 8.0,
+                    children: [
+                      if (_currentRecipe!.prepTime.isNotEmpty) InfoChip(icon: Icons.timer_outlined, label: "Prep: ${_currentRecipe!.prepTime}"),
+                      if (_currentRecipe!.cookTime.isNotEmpty) InfoChip(icon: Icons.whatshot_outlined, label: "Cook: ${_currentRecipe!.cookTime}"),
+                      if (_currentRecipe!.totalTime.isNotEmpty) InfoChip(icon: Icons.access_time, label: "Total: ${_currentRecipe!.totalTime}"),
+                      if (_currentRecipe!.servings.isNotEmpty) InfoChip(icon: Icons.people_outline, label: "Serves: ${_currentRecipe!.servings}"),
+                      ..._currentRecipe!.otherTimings.map((timing) => InfoChip(icon: Icons.hourglass_empty, label: "${timing.label}: ${timing.duration}")),
+                    ],
+                  ),
+                  if (_currentRecipe!.healthRating != null && _currentRecipe!.healthRating != 'UNRATED')
+                    Card(
+                      color: Colors.blueGrey[50],
+                      elevation: 0,
+                      child: ExpansionTile(
+                        leading: HealthRatingIcon(healthRating: _currentRecipe!.healthRating),
+                        title: Text('Health Analysis', style: Theme.of(context).textTheme.titleMedium),
+                        subtitle: Text(_getRatingText(_currentRecipe!.healthRating)),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: _currentRecipe!.healthSuggestions?.map((s) => Padding(padding: const EdgeInsets.only(bottom: 8.0), child: Text('• $s'))).toList() ?? [],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_currentRecipe!.tags.isNotEmpty) ...[
+                    const Divider(height: 32.0),
+                    Text("Tags", style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8.0, runSpacing: 4.0,
+                      children: _currentRecipe!.tags.map((tag) {
+                        return ActionChip(
+                          label: Text(tag),
+                          onPressed: () { Navigator.of(context).pop('tag:$tag'); },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                  const Divider(height: 32.0),
+                  Text("Ingredients", style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  for (var ingredient in _currentRecipe!.ingredients)
+                    Padding(padding: const EdgeInsets.symmetric(vertical: 4.0), child: Text("• ${ingredient.toString()}", style: Theme.of(context).textTheme.bodyLarge)),
+                  const Divider(height: 32.0),
+                  Text("Instructions", style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _currentRecipe!.instructions.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        leading: CircleAvatar(child: Text('${index + 1}')),
+                        title: Text(_currentRecipe!.instructions[index], style: Theme.of(context).textTheme.bodyLarge),
+                      );
+                    },
+                  ),
+                  // --- END OF CONSOLIDATED UI ---
 
-                  // --- Variations List ---
                   if (_variations.isNotEmpty) ...[
                     const Divider(),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text('Your Variations', style: Theme.of(context).textTheme.titleLarge),
-                    ),
+                    Padding(padding: const EdgeInsets.all(16.0), child: Text('Your Variations', style: Theme.of(context).textTheme.titleLarge)),
                     ..._variations.map((variation) => ListTile(
                       title: Text(variation.title),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => RecipeViewScreen(recipeId: variation.id!))
-                      ).then((_) => _loadRecipeData()), // Refresh when returning
+                      ).then((_) => _loadRecipeData()),
                     )),
                   ]
                 ],
@@ -376,18 +307,8 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    // --- THIS IS THE CHANGE ---
-                    // The "Check" button is now the "Analyze" button
-                    TextButton.icon(
-                      icon: const Icon(Icons.auto_awesome), // A more fitting icon
-                      label: const Text('Analyze'),
-                      onPressed: _showAiAnalysisDialog, // Calls our new method
-                    ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Edit'),
-                      onPressed: _editRecipe,
-                    ),
+                    TextButton.icon(icon: const Icon(Icons.auto_awesome), label: const Text('Analyze'), onPressed: _showAiAnalysisDialog),
+                    TextButton.icon(icon: const Icon(Icons.edit_outlined), label: const Text('Edit'), onPressed: _editRecipe),
                     PopupMenuButton<_MenuAction>(
                       icon: const Icon(Icons.more_vert),
                       onSelected: (action) {
@@ -396,37 +317,10 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                         if (action == _MenuAction.createVariation) _createVariation();
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: _MenuAction.createVariation,
-                          child: ListTile(
-                            leading: Icon(Icons.add_circle_outline),
-                            title: Text('Create Variation'),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          onTap: () => PdfGenerator.generateAndPrintRecipe(_currentRecipe!),
-                          child: const ListTile(
-                            leading: Icon(Icons.print_outlined),
-                            title: Text('Print'),
-                          ),
-                        ),
-                        // ... (share and delete menu items are the same) ...
-                        const PopupMenuItem(
-                          value: _MenuAction.share,
-                          child: ListTile(
-                            leading: Icon(Icons.share_outlined),
-                            title: Text('Share'),
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: _MenuAction.delete,
-                          child: ListTile(
-                            leading: Icon(Icons.delete_outline,
-                                color: Colors.red),
-                            title: Text('Delete',
-                                style: TextStyle(color: Colors.red)),
-                          ),
-                        ),
+                        const PopupMenuItem(value: _MenuAction.createVariation, child: ListTile(leading: Icon(Icons.add_circle_outline), title: Text('Create Variation'))),
+                        PopupMenuItem(onTap: () => PdfGenerator.generateAndPrintRecipe(_currentRecipe!), child: const ListTile(leading: Icon(Icons.print_outlined), title: Text('Print'))),
+                        const PopupMenuItem(value: _MenuAction.share, child: ListTile(leading: Icon(Icons.share_outlined), title: Text('Share'))),
+                        const PopupMenuItem(value: _MenuAction.delete, child: ListTile(leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Delete', style: TextStyle(color: Colors.red)))),
                       ],
                     ),
                   ],

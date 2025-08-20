@@ -9,6 +9,20 @@ class RecipeCard extends StatelessWidget {
 
   const RecipeCard({super.key, required this.recipe});
 
+  // NEW: Helper function to get descriptive text for the rating
+  String _getRatingText(String? rating) {
+    switch (rating) {
+      case 'SAFE':
+        return 'Safe to Eat Freely';
+      case 'CAUTION':
+        return 'Use with Caution & Scrutiny';
+      case 'AVOID':
+        return 'Avoid or Use Sparingly';
+      default:
+        return 'Tap to see suggestions.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -71,35 +85,36 @@ class RecipeCard extends StatelessWidget {
               ),
             ],
           ),
-          // --- NEW: Health Analysis Section ---
-          if (recipe.healthRating != null && recipe.healthRating != 'UNRATED')
-            Card(
-              color: Colors.blueGrey[50],
-              elevation: 0,
-              child: ExpansionTile(
-                leading: HealthRatingIcon(healthRating: recipe.healthRating),
-                title: Text(
-                  'Health Analysis',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                subtitle: Text(recipe.healthSummary ?? 'Tap to see suggestions.'),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: recipe.healthSuggestions
-                              ?.map((s) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
-                                    child: Text('• $s'),
-                                  ))
-                              .toList() ??
-                          [],
-                    ),
-                  ),
-                ],
+        // --- UPDATED: Health Analysis Section ---
+        if (recipe.healthRating != null && recipe.healthRating != 'UNRATED')
+          Card(
+            color: Colors.blueGrey[50],
+            elevation: 0,
+            child: ExpansionTile(
+              leading: HealthRatingIcon(healthRating: recipe.healthRating),
+              title: Text(
+                'Health Analysis',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
+              // Use the new helper to show the descriptive text
+              subtitle: Text(_getRatingText(recipe.healthRating)),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: recipe.healthSuggestions
+                            ?.map((s) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Text('• $s'),
+                                ))
+                            .toList() ??
+                        [],
+                  ),
+                ),
+              ],
             ),
+          ),
           if (recipe.tags.isNotEmpty) ...[
             const Divider(height: 32.0),
             Text("Tags", style: Theme.of(context).textTheme.titleLarge),

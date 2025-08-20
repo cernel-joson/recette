@@ -105,10 +105,10 @@ def get_health_check_prompt(profile_text, recipe_data):
     ---
 
     Your Task:
-    1. Assign a `health_rating` of `GREEN`, `YELLOW`, or `RED`.
-       - `GREEN` means it aligns perfectly with the user's goals.
-       - `YELLOW` means it's acceptable in moderation but has some minor issues.
-       - `RED` means it significantly violates one or more core health rules.
+    1. Assign a `health_rating` of `SAFE`, `CAUTION`, or `AVOID`.
+       - `SAFE` means the recipe aligns perfectly with the user's health rules.
+       - `CAUTION` means the recipe is acceptable in moderation but has some minor issues or requires small changes.
+       - `AVOID` means the recipe significantly violates one or more core health rules and should be avoided.
     2. Write a brief, one or two-sentence `summary` of your findings.
     3. Provide a bulleted list of specific, actionable `suggestions` for improvement.
 
