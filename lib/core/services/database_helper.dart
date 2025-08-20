@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
   
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 8;
+  static const int _dbVersion = 9;
 
   Future<Database> get database async {
     debugPrint("--- Database getter called ---");
@@ -58,7 +58,8 @@ class DatabaseHelper {
         healthRating TEXT,
         healthSummary TEXT,
         healthSuggestions TEXT,
-        dietaryProfileFingerprint TEXT
+        dietaryProfileFingerprint TEXT,
+        nutritionalInfo TEXT
       )
     ''');
     await db.execute('''
@@ -130,6 +131,12 @@ class DatabaseHelper {
         debugPrint("--- Upgrading from v7 to v8: Adding Shopping List & Meal Plan Tables ---");
         await _createShoppingListTables(db);
         await _createMealPlanTables(db);
+    }
+    
+    // --- NEW: Migration for nutritionalInfo column ---
+    if (oldVersion < 9) {
+        debugPrint("--- Upgrading from v8 to v9: Adding nutritionalInfo column ---");
+        await _addColumnIfNotExists(db, 'recipes', 'nutritionalInfo', 'TEXT');
     }
 
     debugPrint("--- _upgradeDB complete. ---");

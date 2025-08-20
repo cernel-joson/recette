@@ -24,6 +24,7 @@ class Recipe implements Fingerprintable {
   String? healthSummary; // AI-generated summary
   List<String>? healthSuggestions; // AI-generated suggestions
   String? dietaryProfileFingerprint; // Hash of the profile used for the rating
+  final Map<String, dynamic>? nutritionalInfo;
   List<String> tags;
 
   Recipe({
@@ -44,6 +45,7 @@ class Recipe implements Fingerprintable {
     this.healthSummary,
     this.healthSuggestions = const [],
     this.dietaryProfileFingerprint,
+    this.nutritionalInfo,
     this.tags = const [], // NEW: Initialize in constructor
   });
 
@@ -82,6 +84,7 @@ class Recipe implements Fingerprintable {
     String? healthSummary,
     List<String>? healthSuggestions,
     String? dietaryProfileFingerprint,
+    Map<String, dynamic>? nutritionalInfo,
     List<String>? tags,
     bool isVariation = false, // Flag to indicate a variation is being created
   }) {
@@ -109,6 +112,7 @@ class Recipe implements Fingerprintable {
       healthSummary: isVariation ? null : (healthSummary ?? this.healthSummary),
       healthSuggestions: isVariation ? [] : (healthSuggestions ?? this.healthSuggestions),
       dietaryProfileFingerprint: isVariation ? null : (dietaryProfileFingerprint ?? this.dietaryProfileFingerprint),
+      nutritionalInfo: isVariation ? null : (nutritionalInfo ?? this.nutritionalInfo),
       // Prioritize the new tags list, but fall back to the existing
       // tags list if no new one is provided.
       tags: tags ?? this.tags,
@@ -136,6 +140,7 @@ class Recipe implements Fingerprintable {
       'healthSummary': healthSummary,
       'healthSuggestions': json.encode(healthSuggestions),
       'dietaryProfileFingerprint': dietaryProfileFingerprint,
+      'nutritionalInfo': nutritionalInfo != null ? json.encode(nutritionalInfo) : null,
     };
   }
 
@@ -177,6 +182,7 @@ class Recipe implements Fingerprintable {
       healthSummary: json['healthSummary'] ?? '',
       healthSuggestions: healthSuggestions,
       dietaryProfileFingerprint: json['dietaryProfileFingerprint'] ?? '',
+      nutritionalInfo: json['nutritionalInfo'] ?? '',
       tags: tags, // Use the correctly parsed list
     );
   }
@@ -211,6 +217,7 @@ class Recipe implements Fingerprintable {
           ? List<String>.from(json.decode(map['healthSuggestions'].toString()))
           : [],
       dietaryProfileFingerprint: map['dietaryProfileFingerprint'],
+      nutritionalInfo: map['nutritionalInfo'] != null ? json.decode(map['nutritionalInfo']) : null,
     );
   }
 }

@@ -233,6 +233,17 @@ def get_enhancement_prompt(tasks):
                     "health_rating": "...",
                     "summary": "...",
                     "suggestions": ["..."]
+                },
+                "nutritional_info": { # <-- ADD THIS
+                    "calories": "...",
+                    "protein_grams": "...",
+                    "carbohydrates_grams": "...",
+                    "sugar_grams": "...",
+                    "fat_grams": "...",
+                    "saturated_fat_grams": "...",
+                    "sodium_milligrams": "...",
+                    "fiber_grams": "...",
+                    "cholesterol_milligrams": "..."
                 }
             }
         ]

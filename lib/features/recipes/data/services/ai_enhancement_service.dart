@@ -63,8 +63,12 @@ class AiEnhancementService {
             newTags = [tagsData];
           }
 
+          // --- NEW: Parse Nutritional Info ---
+          final nutritionData = resultData['nutritional_info'] as Map<String, dynamic>?;
+
           recipeToUpdate = recipeToUpdate.copyWith(
             tags: newTags,
+            nutritionalInfo: nutritionData, // <-- Add to copyWith
           );
       }
     }

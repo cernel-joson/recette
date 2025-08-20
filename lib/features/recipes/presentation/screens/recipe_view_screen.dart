@@ -253,6 +253,29 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                         ],
                       ),
                     ),
+                  // --- NEW: Nutritional Info Section ---
+                  if (_currentRecipe!.nutritionalInfo != null && _currentRecipe!.nutritionalInfo!.isNotEmpty)
+                    Card(
+                      color: Colors.teal[50],
+                      elevation: 0,
+                      child: ExpansionTile(
+                        leading: const Icon(Icons.analytics_outlined, color: Colors.teal),
+                        title: Text('Nutritional Info (per serving)', style: Theme.of(context).textTheme.titleMedium),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: _currentRecipe!.nutritionalInfo!.entries.map((entry) {
+                                final key = entry.key.replaceAll('_', ' ').split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
+                                final value = entry.value;
+                                return Text('• $key: $value');
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (_currentRecipe!.tags.isNotEmpty) ...[
                     const Divider(height: 32.0),
                     Text("Tags", style: Theme.of(context).textTheme.titleLarge),

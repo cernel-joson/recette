@@ -3,6 +3,8 @@ import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/services/ai_enhancement_service.dart';
+
 
 // --- NEW: Instantiate the search service ---
 final SearchService _searchService = SearchService();
@@ -22,6 +24,8 @@ class RecipeLibraryController with ChangeNotifier {
 
   List<Recipe> get recipes => _isSearchActive ? _searchResults : _recipes;
   bool get isLoading => _isLoading;
+  
+  final AiEnhancementService _enhancementService = AiEnhancementService();
 
   RecipeLibraryController() {
     loadInitialRecipes();
@@ -94,6 +98,16 @@ class RecipeLibraryController with ChangeNotifier {
 
     // 3. Increment the counter on success (Business Logic)
     await UsageLimiter.incrementScanCount();
+    
+    // --- NEW: 4. Perform initial enhancements ---
+    final enhancedRecipe = await _enhancementService.enhanceSingleRecipe(
+      recipe: recipe,
+      tasks: {
+        AiEnhancementTask.generateTags,
+        AiEnhancementTask.healthCheck,
+        AiEnhancementTask.estimateNutrition,
+      },
+    );
 
     // 4. Return the result
     return recipe;
