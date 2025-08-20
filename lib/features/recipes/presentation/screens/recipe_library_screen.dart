@@ -231,60 +231,29 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                 itemCount: controller.recipes.length,
                 itemBuilder: (context, index) {
                   final recipe = controller.recipes[index];
-                  return Dismissible(
-                    key: Key(recipe.id.toString()),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (direction) {
-                      controller.deleteRecipe(recipe.id!);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('"${recipe.title}" deleted')),
+                  return RecipeCard(
+                    recipe: recipe,
+                    onTap: () async {
+                      // The navigation logic remains the same
+                      if (widget.isSelecting) {
+                        Navigator.of(context).pop(recipe.id);
+                        return;
+                      }
+                      final dynamic result = await Navigator.push<dynamic>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
+                        ),
                       );
+                      if (result is String) {
+                        controller.setNavigationOrigin(recipe.id!);
+                        _searchController.text = result;
+                        controller.search(result);
+                      } else if (result == true) {
+                        controller.clearNavigationOrigin();
+                        controller.loadInitialRecipes();
+                      }
                     },
-                    child: ListTile(
-                      leading: HealthRatingIcon(healthRating: recipe.healthRating), // NEW
-                      title: Text(recipe.title),
-                      subtitle: Text(
-                        recipe.description,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () async {
-                        if (widget.isSelecting) {
-                          Navigator.of(context).pop(recipe.id);
-                          return;
-                        }
-                        // We now expect a dynamic result, which could be a bool or a String.
-                        final dynamic result = await Navigator.push<dynamic>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
-                          ),
-                        );
-                        // If the view screen returns true, it means a change (edit or delete) occurred.
-                        // --- THIS IS THE CHANGE ---
-                        if (result is String) {
-                          // --- THIS IS THE KEY ---
-                          // When a tag search is triggered, we record where we came from.
-                          controller.setNavigationOrigin(recipe.id!); // Assuming a new method in the controller
-
-                          // If the result is a string, it's our search query from the tag.
-                          // Update the search bar text and perform the search.
-                          _searchController.text = result;
-                          controller.search(result);
-                        } else if (result == true) {
-                          // Otherwise, handle the original logic for when a recipe was
-                          // edited or deleted.
-                          controller.clearNavigationOrigin(); // Clear state on a simple refresh
-                          controller.loadInitialRecipes();
-                        }
-                      },
-                    ),
                   );
                 },
               );
