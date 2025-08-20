@@ -104,7 +104,7 @@ class AiEnhancementService {
     }
 
     // 5. Save the final, fully updated recipe to the database ONCE.
-    await DatabaseHelper.instance.update(recipeToUpdate);
+    await DatabaseHelper.instance.update(recipeToUpdate, recipeToUpdate.tags);
     return recipeToUpdate;
   }
 

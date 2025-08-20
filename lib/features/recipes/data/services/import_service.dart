@@ -61,7 +61,7 @@ class ImportService {
       } else {
         // If it doesn't exist, insert it into the database.
         // We create a copy with the definite fingerprint to be safe.
-        await DatabaseHelper.instance.insert(recipe.copyWith(fingerprint: fingerprint));
+        await DatabaseHelper.instance.insert(recipe.copyWith(fingerprint: fingerprint), recipe.tags);
         recipesAdded++;
       }
     }

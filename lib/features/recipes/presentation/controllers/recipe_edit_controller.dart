@@ -170,6 +170,12 @@ class RecipeEditController with ChangeNotifier {
       // You must include the tags from the controller's state
       // when building the new recipe object to be saved.
       tags: tags,
+      // --- ADD THESE LINES TO PRESERVE AI DATA ---
+      healthRating: _initialRecipe?.healthRating,
+      healthSummary: _initialRecipe?.healthSummary,
+      healthSuggestions: _initialRecipe?.healthSuggestions,
+      dietaryProfileFingerprint: _initialRecipe?.dietaryProfileFingerprint,
+      nutritionalInfo: _initialRecipe?.nutritionalInfo,
     );
 
     final fingerprint = FingerprintHelper.generate(newRecipe);
@@ -187,15 +193,10 @@ class RecipeEditController with ChangeNotifier {
     try {
       if (recipeToSave.id != null) {
         // --- HANDLE UPDATE ---
-        await _db.update(recipeToSave);
-        // For an update, we also need to update the tags.
-        await _db.addTagsToRecipe(recipeToSave.id!, recipeToSave.tags);
+        await _db.update(recipeToSave, recipeToSave.tags);
       } else {
         // --- HANDLE INSERT ---
-        // 1. Insert the recipe and get its new ID.
-        final newId = await _db.insert(recipeToSave);
-        // 2. Use the new ID to save the associated tags.
-        await _db.addTagsToRecipe(newId, recipeToSave.tags);
+        final newId = await _db.insert(recipeToSave, recipeToSave.tags);
       }
       isDirty = false; // Mark as clean after a successful save
       notifyListeners();
