@@ -7,12 +7,12 @@ import 'package:recette/core/presentation/widgets/health_rating_icon.dart';
 /// A widget that displays a summary of a recipe for use in lists.
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const RecipeCard({
     super.key,
     required this.recipe,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
