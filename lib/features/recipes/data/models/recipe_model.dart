@@ -4,7 +4,6 @@ import 'ingredient_model.dart';
 import 'timing_info_model.dart';
 import 'package:recette/core/utils/fingerprint_helper.dart';
 
-
 /// Represents a full recipe with all its details.
 class Recipe implements Fingerprintable {
   final int? id;
@@ -163,6 +162,10 @@ class Recipe implements Fingerprintable {
     List<String> healthSuggestions =
         healthSuggestionsList.map((i) => i.toString()).toList();
         
+    // var nutritionalInfoList = json['nutritionalInfo'] as List? ?? [];
+    var nutritionalInfoList = json['nutritionalInfo'] as Map<String, dynamic>? ?? {};
+    Map<String, dynamic> nutritionalInfo = nutritionalInfoList;
+        
     // It was incorrectly parsing json['instructions'] instead of json['tags'].
     var tagsList = json['tags'] as List? ?? [];
     List<String> tags = tagsList.map((tag) => tag.toString()).toList();
@@ -182,7 +185,7 @@ class Recipe implements Fingerprintable {
       healthSummary: json['healthSummary'] ?? '',
       healthSuggestions: healthSuggestions,
       dietaryProfileFingerprint: json['dietaryProfileFingerprint'] ?? '',
-      nutritionalInfo: json['nutritionalInfo'] ?? '',
+      nutritionalInfo: nutritionalInfo,
       tags: tags, // Use the correctly parsed list
     );
   }
