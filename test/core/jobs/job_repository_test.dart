@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/jobs/job_repository.dart';
+import 'package:recette/core/jobs/job_result.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../mocks/mock_database_helper.mocks.dart';
@@ -64,9 +65,12 @@ void main() {
       // Arrange
       when(mockDatabase.update(any, any, where: anyNamed('where'), whereArgs: anyNamed('whereArgs')))
           .thenAnswer((_) async => 1);
+      
+      // Create a JobResult object to pass to the method.
+      final jobResult = JobResult(responsePayload: '{"result":"done"}', title: 'Test Title');
 
       // Act
-      await jobRepository.completeJob(1, '{"result":"done"}');
+      await jobRepository.completeJob(1, jobResult);
 
       // Assert
       // We use `argThat` to check that the map contains the correct keys, since the timestamp will be different each time.

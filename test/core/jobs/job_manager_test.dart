@@ -3,6 +3,7 @@ import 'package:mockito/mockito.dart';
 import 'package:recette/core/jobs/job_controller.dart';
 import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/job_result.dart';
 
 import '../../mocks/mock_job_repository.mocks.dart';
 import '../../mocks/mock_job_worker.mocks.dart';
@@ -51,8 +52,10 @@ void main() {
         requestPayload: anyNamed('requestPayload'),
         priority: anyNamed('priority'),
       )).thenAnswer((_) async => testJob);
-      
-      when(mockJobWorker.execute(any)).thenAnswer((_) async => '{"status":"ok"}');
+
+      // The mock worker's execute method now returns a JobResult.
+      final jobResult = JobResult(responsePayload: '{"result":"success"}');
+      when(mockJobWorker.execute(any)).thenAnswer((_) async => jobResult);
 
       // Act
       await jobManager.submitJob(jobType: 'test_job', requestPayload: '{}');
@@ -70,7 +73,8 @@ void main() {
         priority: anyNamed('priority'),
       )).thenAnswer((_) async => testJob);
       
-      when(mockJobWorker.execute(any)).thenAnswer((_) async => '{"result":"success"}');
+      final jobResult = JobResult(responsePayload: '{"result":"success"}');
+      when(mockJobWorker.execute(any)).thenAnswer((_) async => jobResult);
 
       // Act
       await jobManager.submitJob(jobType: 'test_job', requestPayload: '{}');
@@ -85,7 +89,7 @@ void main() {
       // Assert
       verifyInOrder([
         mockJobRepository.updateJobStatus(1, JobStatus.inProgress),
-        mockJobRepository.completeJob(1, '{"result":"success"}'),
+        mockJobRepository.completeJob(1, jobResult),
       ]);
       // The controller is notified 3 times: on submit, on start, and on complete.
       verify(mockJobController.loadJobs()).called(3);
