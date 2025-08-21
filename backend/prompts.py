@@ -78,18 +78,29 @@ def _get_nutrition_instructions():
 
 def get_recipe_analysis_prompt(tasks, has_image=False):
     """
-    Dynamically builds a single, powerful prompt to handle parsing and
-    any combination of enhancement tasks in one call by composing instructions.
+    Dynamically builds a single, powerful prompt that can handle parsing AND/OR
+    any combination of enhancement tasks in one call.
     """
-    initial_instruction = "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided text or URL content."
-    if has_image:
-        initial_instruction = "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided image."
-    
-    prompt_parts = [
-        initial_instruction,
-        JSON_STRUCTURE_PROMPT,
-        "After parsing the core recipe, you MUST perform the following additional analysis tasks. These tasks are mandatory:"
-    ]
+    prompt_parts = []
+    initial_instruction = "You are an expert recipe analysis API."
+
+    # --- THIS IS THE FIX ---
+    # Conditionally add the parsing instructions only if requested.
+    if 'parse' in tasks:
+        parse_instruction = "Your primary job is to parse the recipe from the provided "
+        parse_instruction += "image." if has_image else "text or URL content."
+        prompt_parts.extend([
+            initial_instruction,
+            parse_instruction,
+            JSON_STRUCTURE_PROMPT,
+            "\nAfter parsing the core recipe, you MUST perform the following additional analysis tasks:"
+        ])
+    else:
+        # If not parsing, the main instruction is just to analyze the provided JSON object.
+        prompt_parts.extend([
+            initial_instruction,
+            "Your job is to analyze the provided recipe JSON object and perform the following analysis tasks:"
+        ])
 
     # Map task keys to the functions that provide their instructions.
     task_functions = {

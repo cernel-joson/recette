@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:recette/features/recipes/recipes.dart';
+import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/main.dart'; // Import main.dart to get access to the navigatorKey
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
@@ -57,56 +58,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  /// A unified handler for all incoming shared data.
+  // --- REFACTORED: This method now uses the job system ---
   void _handleSharedIntent(SharedMediaFile file) {
-    // Check the type of the shared file.
-    if (file.type == SharedMediaType.text || file.type == SharedMediaType.url) {
-      // If it's text or a URL, analyze it as a URL.
-      _analyzeAndNavigate(RecipeParsingService.analyzeUrl(file.path));
-    } else if (file.type == SharedMediaType.image) {
-      // If it's an image, analyze it as an image path.
-      _analyzeAndNavigate(RecipeParsingService.analyzeImage(file.path));
-    }
-  }
-
-  /// A generic function to show a loading indicator, call the API,
-  /// and navigate to the edit screen.
-  void _analyzeAndNavigate(Future<Recipe> analysisFuture) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
-    // Show a loading indicator via a SnackBar.
+    final importService = Provider.of<RecipeImportService>(context, listen: false);
+
+    // Show a confirmation snackbar immediately
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Receiving and analyzing shared content...'),
-        duration: Duration(seconds: 30),
+        content: Text('Shared content received! Parsing in the background...'),
+        backgroundColor: Colors.blue,
       ),
     );
 
-    analysisFuture.then((recipe) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RecipeEditScreen(recipe: recipe),
-        ),
+    // Use the import service to submit the job asynchronously
+    try {
+      if (file.type == SharedMediaType.text || file.type == SharedMediaType.url) {
+        importService.importFromUrl(file.path);
+      } else if (file.type == SharedMediaType.image) {
+        importService.importFromImage(file.path);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
       );
-    }).catchError((e) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Analysis Error'),
-          content: Text('An error occurred: ${e.toString()}'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-    });
+    }
   }
 
   @override

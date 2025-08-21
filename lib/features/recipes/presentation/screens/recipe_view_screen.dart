@@ -6,10 +6,17 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/core/presentation/widgets/health_rating_icon.dart';
+import 'package:recette/features/recipes/data/services/recipe_analysis_service.dart';
+import 'package:recette/features/recipes/presentation/widgets/recipe_analysis_dialog.dart';
+
+import 'package:provider/provider.dart';
+import 'package:recette/core/jobs/logic/job_manager.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete, createVariation }
 
+
+// --- THIS IS THE MISSING WIDGET CLASS ---
 class RecipeViewScreen extends StatefulWidget {
   final int recipeId;
   const RecipeViewScreen({super.key, required this.recipeId});
@@ -17,13 +24,13 @@ class RecipeViewScreen extends StatefulWidget {
   @override
   State<RecipeViewScreen> createState() => _RecipeViewScreenState();
 }
+// --- END OF MISSING WIDGET CLASS ---
 
 class _RecipeViewScreenState extends State<RecipeViewScreen> {
   Recipe? _currentRecipe;
   Recipe? _parentRecipe;
   List<Recipe> _variations = [];
   bool _didChange = false;
-  final AiEnhancementService _enhancementService = AiEnhancementService();
 
   @override
   void initState() {
@@ -50,37 +57,35 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     }
   }
 
-  Future<void> _showAiAnalysisDialog() async {
+  // --- REFACTORED ANALYSIS METHOD ---
+  Future<void> _runAnalysis() async {
     if (_currentRecipe == null) return;
-    final selectedTasks = await showDialog<Set<AiEnhancementTask>>(
+
+    final selectedTasks = await showDialog<Set<RecipeAnalysisTask>>(
       context: context,
-      builder: (_) => const AiEnhancementDialog(),
+      builder: (_) => const RecipeAnalysisDialog(),
     );
     if (selectedTasks == null || selectedTasks.isEmpty || !mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+    final analysisService = RecipeAnalysisService(jobManager);
+    
     try {
-      final updatedRecipe = await _enhancementService.enhanceSingleRecipe(
+      await analysisService.runAnalysisTasks(
         recipe: _currentRecipe!,
         tasks: selectedTasks,
       );
+
       if (mounted) {
-        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Analysis complete!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Analysis started... Track progress in the Jobs Tray.'),
+            backgroundColor: Colors.blue,
+          ),
         );
-        setState(() {
-          _currentRecipe = updatedRecipe;
-          _didChange = true;
-        });
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
         );
@@ -330,7 +335,11 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    TextButton.icon(icon: const Icon(Icons.auto_awesome), label: const Text('Analyze'), onPressed: _showAiAnalysisDialog),
+                    TextButton.icon(
+                      icon: const Icon(Icons.auto_awesome),
+                      label: const Text('Analyze'),
+                      onPressed: _runAnalysis // Call the new refactored method
+                    ),
                     TextButton.icon(icon: const Icon(Icons.edit_outlined), label: const Text('Edit'), onPressed: _editRecipe),
                     PopupMenuButton<_MenuAction>(
                       icon: const Icon(Icons.more_vert),

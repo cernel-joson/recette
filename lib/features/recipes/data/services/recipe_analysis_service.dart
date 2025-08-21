@@ -1,36 +1,60 @@
+import 'dart:convert';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
-
+import 'package:recette/core/jobs/logic/job_manager.dart';
 
 // Enum to define the different kinds of analysis a user can request.
-enum AiEnhancementTask {
+enum RecipeAnalysisTask {
   generateTags,
   healthCheck,
   estimateNutrition,
   findSimilar // The new task for our fuzzy matching
 }
 
-class AiEnhancementService {
+class RecipeAnalysisService {
+  final JobManager _jobManager;
 
-  Future<Recipe> enhanceSingleRecipe({
+  RecipeAnalysisService(this._jobManager);
+  
+  Future<void> runAnalysisTasks({
     required Recipe recipe,
-    required Set<AiEnhancementTask> tasks,
+    required Set<RecipeAnalysisTask> tasks, // Use the new name
+  }) async {
+    if (tasks.isEmpty) return;
+
+    final profile = await ProfileService.loadProfile();
+
+    final requestPayload = json.encode({
+      'tasks': tasks.map((t) => t.toString().split('.').last).toList(),
+      'recipe_data': recipe.toMap(),
+      'dietary_profile': profile.fullProfileText,
+    });
+
+    await _jobManager.submitJob(
+      jobType: 'recipe_analysis',
+      requestPayload: requestPayload,
+    );
+  }
+
+  /*Future<Recipe> enhanceSingleRecipe({
+    required Recipe recipe,
+    required Set<RecipeAnalysisTask> tasks,
   }) async {
     final currentProfile = await ProfileService.loadProfile();
     Recipe recipeToUpdate = recipe;
     
     // 1. Check the HealthCheck cache first.
     HealthAnalysisResult? cachedHealthResult;
-    if (tasks.contains(AiEnhancementTask.healthCheck)) {
+    if (tasks.contains(RecipeAnalysisTask.healthCheck)) {
       cachedHealthResult = await HealthCheckService.getCachedAnalysis(recipe, currentProfile);
     }
 
     // 2. Determine which tasks ACTUALLY need to be sent to the API.
-    final tasksForApi = Set<AiEnhancementTask>.from(tasks);
+    final tasksForApi = Set<RecipeAnalysisTask>.from(tasks);
     if (cachedHealthResult != null) {
-      tasksForApi.remove(AiEnhancementTask.healthCheck);
+      tasksForApi.remove(RecipeAnalysisTask.healthCheck);
     }
 
     // --- THIS IS THE FIX ---
@@ -73,10 +97,10 @@ class AiEnhancementService {
     }
 
     // 4. Apply the health results and save.
-    if (tasks.contains(AiEnhancementTask.healthCheck)) {
+    if (tasks.contains(RecipeAnalysisTask.healthCheck)) {
       HealthAnalysisResult healthAnalysis;
 
-      if (tasksForApi.contains(AiEnhancementTask.healthCheck)) {
+      if (tasksForApi.contains(RecipeAnalysisTask.healthCheck)) {
         final healthData = response?['health_analysis'] as Map<String, dynamic>?;
         if (healthData == null) {
           throw Exception('API response did not include health analysis as requested.');
@@ -99,10 +123,10 @@ class AiEnhancementService {
     // 5. Save the final, fully updated recipe to the database ONCE.
     await DatabaseHelper.instance.update(recipeToUpdate, recipeToUpdate.tags);
     return recipeToUpdate;
-  }
+  } */
 
   /// The method for our fuzzy similarity matching feature.
-  Future<List<int>> findSimilarRecipes({
+  /* Future<List<int>> findSimilarRecipes({
     required Recipe newRecipe,
     required List<Recipe> candidates,
   }) async {
@@ -118,7 +142,7 @@ class AiEnhancementService {
     final aiResult = responseBody['result'];
     
     return List<int>.from(aiResult['similar_recipe_ids'] ?? []);
-  }
+  } */
 
   /// --- NEW METHOD FOR QUICK NUTRITIONAL ANALYSIS ---
   Future<Map<String, dynamic>> getNutritionalAnalysisForText(String text) async {
