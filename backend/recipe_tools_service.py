@@ -15,11 +15,18 @@ def handle_find_similar(request_json, model):
         "\n--- CANDIDATE RECIPES ---\n", json.dumps(candidate_recipes)
     ]
 
+    # Store the full prompt text before making the call.
+    full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
+
     # In developer mode, we return the prompt itself. Otherwise, we call the model.
     # if request_json.get("developer_mode", False):
     #    return {"prompt_text": prompt_parts[0]}
     
     response = model.generate_content(prompt_parts)
     json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-    return json.loads(json_string)
-
+    ai_result = json.loads(json_string)
+    
+    return {
+        "prompt_text": full_prompt_text,
+        "result": ai_result
+    }

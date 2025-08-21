@@ -15,17 +15,27 @@ class RecipeAnalysisWorker implements JobWorker {
     // to the unified backend endpoint.
     final requestData = json.decode(job.requestPayload);
 
-    // The backend router key is now 'recipe_analysis_request'
+    // --- THIS IS THE FIX ---
+    // The ApiHelper sends the request body directly. We need to ensure the
+    // payload is wrapped with the key the backend router is expecting.
     final responseJson = await ApiHelper.analyzeRaw({
       'recipe_analysis_request': requestData
     }, model: AiModel.pro);
+    // --- END OF FIX ---
+    
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseJson['result'];
+    final promptText = responseJson['prompt_text'];
 
-    final recipe = Recipe.fromMap(responseJson);
+    final recipe = Recipe.fromMap(aiResult);
 
     // The result contains the full recipe JSON and its title for the job banner.
     return JobResult(
       responsePayload: json.encode(recipe.toMap()),
       title: recipe.title,
+      // The worker can now also pass the prompt text to be saved in the job.
+      // You would need to add a `promptText` field to `JobResult` and handle
+      // it in the `JobRepository.completeJob` method.
     );
   }
 }

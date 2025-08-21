@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/services/developer_service.dart';
+import 'package:recette/core/presentation/screens/job_inspector_screen.dart';
 
 class JobsTrayScreen extends StatelessWidget {
   const JobsTrayScreen({super.key});
@@ -97,12 +99,22 @@ class _JobListItem extends StatelessWidget {
   }
 
   void _onTap(BuildContext context) {
-    if (![JobStatus.complete, JobStatus.archived].contains(job.status) || job.responsePayload == null) {
-      return; // Only completed jobs with a response can be replayed
+    // --- THIS IS THE FIX ---
+    final devService = Provider.of<DeveloperService>(context, listen: false);
+
+    if (devService.isDeveloperMode) {
+      // If dev mode is on, navigate to the detailed inspector.
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => JobInspectorScreen(job: job)),
+      );
+    } else if (job.status == JobStatus.complete && job.responsePayload != null) {
+      // Otherwise, show the simple result dialog for completed jobs.
+      _showSimpleResultDialog(context);
     }
-    
-    // For now, we'll just show the raw JSON response in a dialog.
-    // In the future, this would trigger a more sophisticated "replay" action.
+  }
+
+  // Extracted the old dialog logic into its own method for clarity.
+  void _showSimpleResultDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

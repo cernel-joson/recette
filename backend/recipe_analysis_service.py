@@ -41,13 +41,20 @@ def handle_recipe_analysis(request_json, model):
     if "healthCheck" in tasks and dietary_profile:
         prompt_parts.extend(["\n--- DIETARY PROFILE FOR HEALTH CHECK ---\n", dietary_profile])
     
+    # --- THIS IS THE FIX ---
+    # Store the full prompt text before making the call.
+    full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
+
     # 4. Handle developer mode for debugging.
     if request_json.get("developer_mode", False):
-        # Join all text parts of the prompt for easy reading.
-        full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
         return {"prompt_text": full_prompt_text, "has_image": has_image}
 
     # 5. Execute the single AI call.
     response = model.generate_content(prompt_parts)
     json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-    return json.loads(json_string)
+    ai_result = json.loads(json_string)
+    
+    return {
+        "prompt_text": full_prompt_text,
+        "result": ai_result
+    }

@@ -71,12 +71,14 @@ class JobManager {
       await _jobRepository.completeJob(job.id!, result);
     } catch (e) {
       debugPrint('Job failed: $e');
-      await _jobRepository.updateJobStatus(job.id!, JobStatus.failed);
+      // --- THIS IS THE FIX ---
+      // Instead of just updating the status, call the new failJob method
+      // to save the specific error message to the database.
+      await _jobRepository.failJob(job.id!, e.toString());
+      // --- END OF FIX ---
     } finally {
-      // 5. Notify the UI and allow the next job to run.
       _jobController.loadJobs();
       _isProcessing = false;
-      // Check if there are more jobs to process.
       _processQueue();
     }
   }

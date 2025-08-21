@@ -10,6 +10,9 @@ import 'package:recette/features/dietary_profile/presentation/screens/dietary_pr
 import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart'; // Add this import
 import 'package:recette/features/shopping_list/presentation/screens/shopping_list_screen.dart';
 import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen.dart';
+import 'package:recette/core/presentation/screens/about_screen.dart';
+import 'package:recette/core/services/developer_service.dart';
+import 'package:provider/provider.dart';
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -108,6 +111,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch for changes in DeveloperService
+    final devService = context.watch<DeveloperService>();
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recette'),
@@ -175,6 +181,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const ShoppingListScreen()));
               },
             ),
+            DashboardCard(
+              icon: Icons.info_outline,
+              title: 'About Recette',
+              subtitle: 'App version and information',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AboutScreen()),
+                );
+              },
+            ),
+            // --- Conditionally render the Developer Options card ---
+            if (devService.isDeveloperMode) ...[
+              const SizedBox(height: 8),
+              DashboardCard(
+                icon: Icons.developer_mode,
+                title: 'Developer Options',
+                subtitle: 'Debugging tools and feature flags',
+                onTap: () {
+                  // TODO: Navigate to the Developer Options screen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Developer screen not yet implemented.')),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),

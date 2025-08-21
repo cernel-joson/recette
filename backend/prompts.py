@@ -86,13 +86,10 @@ def get_recipe_analysis_prompt(tasks, has_image=False):
         if task in task_descriptions:
             prompt_parts.append(task_descriptions[task])
 
-    # Assemble the final prompt with the full JSON template.
-    prompt_parts.append("\nYour response MUST be a single, clean JSON object matching this exact structure. If a field or task is not applicable, return a default value (e.g., empty list `[]`, empty object `{}`), but always include the key.")
-    prompt_parts.append("```json")
-    prompt_parts.append(json.dumps(json_template, indent=2))
-    prompt_parts.append("```")
+    prompt_parts.append("\nYour response MUST be a single, clean JSON object matching the structure defined above. If a field or task is not applicable, return a default value (e.g., empty list `[]`, empty object `{}`), but always include the key.")
 
     return "\n".join(prompt_parts)
+
 
 # NEW: A dedicated, separate prompt for the findSimilar tool.
 def get_find_similar_prompt():

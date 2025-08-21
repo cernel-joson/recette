@@ -9,12 +9,12 @@ import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
 import 'package:recette/core/utils/usage_limiter.dart';
-import 'package:recette/features/recipes/data/jobs/recipe_parsing_worker.dart';
 import 'package:recette/features/recipes/data/jobs/recipe_analysis_worker.dart';
 import 'package:recette/features/recipes/data/services/recipe_service.dart';
 import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
 import 'firebase_options.dart'; // Import the generated file
 import 'package:recette/core/presentation/screens/dashboard_screen.dart';
+import 'package:recette/core/services/developer_service.dart';
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
 // from anywhere in the app, which is essential for the share handler.
@@ -46,6 +46,8 @@ void main() async {
     jobController: jobController,
     workers: workers,
   );
+  // Create an instance of the new developer service
+  final developerService = DeveloperService();
 
   // Create instances of the new services
   final recipeService = RecipeService();
@@ -57,6 +59,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: jobController),
+        ChangeNotifierProvider.value(value: developerService), // Provide the new service
         // Provide all the core services to the widget tree
         Provider.value(value: jobManager),
         Provider.value(value: recipeService),

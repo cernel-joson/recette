@@ -61,6 +61,20 @@ class JobRepository {
       whereArgs: [jobId],
     );
   }
+  
+  /// Marks a job as failed, saving the error message.
+  Future<void> failJob(int jobId, String errorMessage) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'job_history',
+      {
+        'status': JobStatus.failed.name,
+        'error_message': errorMessage, // Save the specific error
+      },
+      where: 'id = ?',
+      whereArgs: [jobId],
+    );
+  }
 
   /// Retrieves all jobs from the database, ordered by creation date.
   Future<List<Job>> getAllJobs() async {
