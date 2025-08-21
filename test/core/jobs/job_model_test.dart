@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
 
 void main() {
   group('Job Model', () {

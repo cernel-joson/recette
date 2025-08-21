@@ -1,5 +1,5 @@
-import 'package:recette/core/jobs/job_model.dart';
-import 'package:recette/core/jobs/job_result.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/data/models/job_result.dart';
 
 /// The abstract "contract" for a class that knows how to execute a specific type of job.
 abstract class JobWorker {

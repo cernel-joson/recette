@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/features/recipes/data/jobs/recipe_parsing_worker.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
 import 'package:recette/features/recipes/data/services/recipe_parsing_service.dart';

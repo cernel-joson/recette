@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:recette/core/jobs/job_model.dart';
-import 'package:recette/core/jobs/job_repository.dart';
-import 'package:recette/core/jobs/job_result.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/data/repositories/job_repository.dart';
+import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../mocks/mock_database_helper.mocks.dart';

@@ -43,3 +43,4 @@ This project is guided by a set of living design documents that outline its arch
 * **[Feature Spec: Multi-User & Cloud Sync](./docs/04_FEATURE_MULTI_USER.md):** The architecture for transitioning to a collaborative, cloud-synchronized platform.
 * **[Feature Spec: UI Refinement](./docs/05_FEATURE_UI_REFINEMENT.md):** Key UI/UX improvements, including the "Split This Recipe" AI assistant.
 * **[Feature Spec: The AI "Brain"](./docs/06_FEATURE_AI_BRAIN.md):** The long-term vision for a portable, context-aware, and persistent AI system.
+* **[Dev Mode & QA](./docs/07_DEVELOPER_MODE_AND_QA.md):** The specification for a hidden developer toolkit for debugging and testing.

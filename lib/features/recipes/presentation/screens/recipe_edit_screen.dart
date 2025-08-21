@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
-import 'package:recette/core/jobs/job_repository.dart';
-import 'package:recette/core/jobs/job_controller.dart';
+import 'package:recette/core/jobs/data/repositories/job_repository.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 
 /// A screen for creating a new recipe or editing an existing one.
 class RecipeEditScreen extends StatelessWidget {

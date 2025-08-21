@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:recette/core/jobs/job_model.dart';
-import 'package:recette/core/jobs/job_repository.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 
 class JobController with ChangeNotifier {
   final JobRepository _jobRepository;

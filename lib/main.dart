@@ -1,14 +1,18 @@
-import 'dart:async';
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Import provider
 import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:recette/core/jobs/job_controller.dart';
-import 'package:recette/core/jobs/job_manager.dart';
-import 'package:recette/core/jobs/job_repository.dart';
-import 'package:recette/core/jobs/job_worker.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/core/jobs/data/repositories/job_repository.dart';
+import 'package:recette/core/jobs/logic/job_worker.dart';
+import 'package:recette/core/utils/usage_limiter.dart';
 import 'package:recette/features/recipes/data/jobs/recipe_parsing_worker.dart';
+import 'package:recette/features/recipes/data/jobs/recipe_analysis_worker.dart';
+import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
 import 'firebase_options.dart'; // Import the generated file
 import 'package:recette/core/presentation/screens/dashboard_screen.dart';
 
@@ -25,32 +29,38 @@ void main() async {
   );
 
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-
   PlatformDispatcher.instance.onError = (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     return true;
   };
   
-  // --- NEW: Set up all job system dependencies ---
+  // --- REFACTORED: Set up all dependencies for providing ---
   final jobRepository = JobRepository();
   final jobController = JobController(jobRepository: jobRepository);
+  final usageLimiter = await UsageLimiter.create();
   final Map<String, JobWorker> workers = {
-    'recipe_parsing': RecipeParsingWorker(),
-    // Add other workers here as they are created
+    'recipe_analysis': RecipeAnalysisWorker(),
   };
   final jobManager = JobManager(
     jobRepository: jobRepository,
     jobController: jobController,
     workers: workers,
   );
-  // --- END NEW SETUP ---
+
+  // Create instances of the new services
+  final recipeService = RecipeService();
+  final recipeImportService = RecipeImportService(jobManager, usageLimiter);
+  // --- END REFACTORED SETUP ---
 
   runApp(
     // Use MultiProvider to provide both the controller and the manager
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: jobController),
+        // Provide all the core services to the widget tree
         Provider.value(value: jobManager),
+        Provider.value(value: recipeService),
+        Provider.value(value: recipeImportService),
       ],
       child: const RecetteApp(),
     ),

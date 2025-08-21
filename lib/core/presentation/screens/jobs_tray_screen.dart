@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/core/jobs/job_controller.dart';
-import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
 
 class JobsTrayScreen extends StatelessWidget {
   const JobsTrayScreen({super.key});

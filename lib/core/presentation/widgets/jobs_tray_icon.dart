@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/core/jobs/job_controller.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 // --- ADD THIS IMPORT ---
 import 'package:recette/core/presentation/screens/jobs_tray_screen.dart';
 

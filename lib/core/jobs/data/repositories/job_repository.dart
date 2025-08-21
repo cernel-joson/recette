@@ -1,6 +1,6 @@
-import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/services/database_helper.dart';
-import 'package:recette/core/jobs/job_result.dart';
+import 'package:recette/core/jobs/data/models/job_result.dart';
 
 class JobRepository {
   final DatabaseHelper _dbHelper;

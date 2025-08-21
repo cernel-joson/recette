@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
-import 'package:recette/core/utils/utils.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 
 // --- NEW: Instantiate the search service ---
@@ -12,16 +9,13 @@ final SearchService _searchService = SearchService();
 class RecipeLibraryController with ChangeNotifier {
   List<Recipe> _recipes = []; // Default to empty list
   List<Recipe> _searchResults = []; // --- NEW: List for search results ---
-  
   bool _isLoading = true;
   bool _isSearchActive = false; // --- NEW: Flag to track search state ---
-  
   // --- NEW: Add property to track navigation state ---
   int? _navigatedFromRecipeId;
 
   // --- NEW: Public getter for the UI to read the state ---
   int? get navigatedFromRecipeId => _navigatedFromRecipeId;
-
   List<Recipe> get recipes => _isSearchActive ? _searchResults : _recipes;
   bool get isLoading => _isLoading;
 
@@ -78,70 +72,5 @@ class RecipeLibraryController with ChangeNotifier {
     await DatabaseHelper.instance.delete(id);
     // After deleting, reload the initial list.
     await loadInitialRecipes();
-  }
-
-  /// Analyzes an image from a given path.
-  /// Contains only business logic, no UI code.  
-  /* Future<Recipe> analyzeImageFromPath(String imagePath) async {
-    // 1. Check usage limit (Business Logic)
-    final canScan = await UsageLimiter.canPerformScan();
-
-    if (!canScan) {
-      // Throw a specific, catchable error for the UI to handle.
-      throw Exception('Daily scan limit reached.');
-    }
-
-    // 2. Call the parsing service (Business Logic)
-    final recipe = await RecipeParsingService.analyzeImage(imagePath, tasks: {
-      AiEnhancementTask.generateTags,
-      AiEnhancementTask.healthCheck,
-      AiEnhancementTask.estimateNutrition,
-    });
-
-    // 3. Increment the counter on success (Business Logic)
-    await UsageLimiter.incrementScanCount();
-
-    // 4. Return the result
-    return recipe;
-  } */
-
- /// Creates a 'recipe_parsing' job from an image path and submits it.
-  Future<void> analyzeImageFromPath(String imagePath, JobManager jobManager) async {
-    final canScan = await UsageLimiter.canPerformScan();
-    if (!canScan) {
-      throw Exception('Daily scan limit reached.');
-    }
-
-    // The request payload is now a simple JSON string.
-    final requestPayload = json.encode({'image': imagePath, 'source': 'Scanned Content'});
-
-    await jobManager.submitJob(
-      jobType: 'recipe_parsing',
-      requestPayload: requestPayload,
-    );
-    
-    await UsageLimiter.incrementScanCount();
-  }
-
-  /// Analyzes a recipe from a given URL.
-  /// Contains only business logic, no UI code.  
-  /* Future<Recipe> analyzeUrl(String url) async {
-    // Call the parsing service with ALL desired tasks at once.
-    final recipe = await RecipeParsingService.analyzeUrl(url, tasks: {
-      AiEnhancementTask.generateTags,
-      AiEnhancementTask.healthCheck,
-      AiEnhancementTask.estimateNutrition,
-    });
-    return recipe;
-  } */
- 
-  /// Creates a 'recipe_parsing' job from a URL and submits it.
-  Future<void> analyzeUrl(String url, JobManager jobManager) async {
-    final requestPayload = json.encode({'url': url, 'source': url});
-    
-    await jobManager.submitJob(
-      jobType: 'recipe_parsing',
-      requestPayload: requestPayload,
-    );
   }
 }

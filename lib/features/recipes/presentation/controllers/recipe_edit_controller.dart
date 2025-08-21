@@ -3,8 +3,8 @@ import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
-import 'package:recette/core/jobs/job_repository.dart';
-import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/data/repositories/job_repository.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
 
 // Define a specific exception for this business rule.
 class RecipeExistsException implements Exception {

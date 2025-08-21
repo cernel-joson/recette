@@ -33,3 +33,13 @@ The app's architecture is built around an asynchronous job system to ensure the 
 * **The `JobManager` Service**: A central service layer handles all background tasks. It manages a queue of `Job` objects, is agnostic about their content, and delegates work to specialized `JobWorker` classes.
 * **The Persistent Job Store**: A `job_history` table in the local `sqflite` database makes the entire system durable. It serves as both a history log and a powerful cache, ensuring that the results of AI computations are **never thrown away**.
 * **The Universal Feedback UI**: A user-facing "jobs tray" provides a transparent view of all queued, in-progress, and completed background tasks, making the results of AI computations persistent and replayable.
+
+## **5.0 API Versioning**
+
+To ensure backward compatibility between the frontend app and the backend service, the project will use a URL-based API versioning strategy.
+
+* **Strategy**: Each breaking change to the backend API will result in the deployment of a new, versioned Cloud Function (e.g., `recipe_analyzer_api-v1`, `recipe_analyzer_api-v2`).
+* **Frontend**: The Flutter app will be hardcoded to a specific version of the API. This ensures that older versions of the app continue to function by calling older, stable versions of the backend.
+* **Deprecation**: Older API versions can be monitored for traffic and safely decommissioned once all users have upgraded to a newer version of the app.
+
+This approach prevents breaking changes in the backend from crashing older app versions in the wild, providing a stable and reliable user experience.

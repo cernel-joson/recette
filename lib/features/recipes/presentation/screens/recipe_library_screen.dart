@@ -13,8 +13,8 @@ import 'package:recette/features/recipes/presentation/widgets/pending_job_banner
 
 // --- ADD THIS IMPORT ---
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
-import 'package:recette/core/jobs/job_model.dart';
-import 'package:recette/core/jobs/job_controller.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({
