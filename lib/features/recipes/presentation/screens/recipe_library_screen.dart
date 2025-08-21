@@ -134,24 +134,29 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     }
   }
   
-  void _reviewPendingJob(Job job) {
-    // --- THIS IS THE FIX ---
+  void _reviewPendingJob(Job job) async {
     // The responsePayload from the worker IS the recipe map.
     // We decode it directly instead of looking for a nested 'recipe' key.
     final recipeMap = json.decode(job.responsePayload!) as Map<String, dynamic>;
 
-    // 2. Create a Recipe object from the stored data.
+    // Create a Recipe object from the stored data.
     final recipe = Recipe.fromMap(recipeMap);
-
-    // 3. Navigate to the edit screen, passing the job ID.
-    Navigator.of(context).push(
+    
+    // Await the result from the RecipeEditScreen.
+    final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
           recipe: recipe,
-          sourceJobId: job.id, // Pass the job ID to be archived on save
+          sourceJobId: job.id,
         ),
       ),
     );
+
+    // If the result is true (meaning a save happened), refresh the library.
+    if (result == true && mounted) {
+      // Get the controller and tell it to reload the recipes.
+      Provider.of<RecipeLibraryController>(context, listen: false).loadInitialRecipes();
+    }
   }
 
   @override
