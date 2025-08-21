@@ -19,10 +19,10 @@ def handle_recipe_analysis(request_json, model):
     prompt_parts = []
     has_image = 'image' in recipe_data
 
-    # 1. Build the prompt with instructions for all requested tasks.
+    # Build the prompt with instructions for all requested tasks.
     prompt_text = get_recipe_analysis_prompt(tasks, has_image=has_image)
 
-    # 2. Add the recipe content (from URL, text, or image).
+    # Add the recipe content (from URL, text, or image).
     if 'url' in recipe_data:
         scraped_text = scrape_text_from_url(recipe_data['url'])
         prompt_parts.extend([prompt_text, "\n--- RECIPE URL CONTENT ---\n", scraped_text])
@@ -37,24 +37,33 @@ def handle_recipe_analysis(request_json, model):
     else:
         raise Exception("Invalid analysis request: missing url, text, or image.", 400)
 
-    # 3. Add the dietary profile if a health check is requested.
+    # Add the dietary profile if a health check is requested.
     if "healthCheck" in tasks and dietary_profile:
         prompt_parts.extend(["\n--- DIETARY PROFILE FOR HEALTH CHECK ---\n", dietary_profile])
     
-    # --- THIS IS THE FIX ---
-    # Store the full prompt text before making the call.
     full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
 
-    # 4. Handle developer mode for debugging.
     if request_json.get("developer_mode", False):
         return {"prompt_text": full_prompt_text, "has_image": has_image}
 
-    # 5. Execute the single AI call.
+    # --- THIS IS THE FIX: Capture and return the raw response ---
     response = model.generate_content(prompt_parts)
-    json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-    ai_result = json.loads(json_string)
-    
+    raw_response_text = response.text
+    ai_result = None
+    error_message = None
+
+    try:
+        # Attempt to parse the JSON
+        json_string = raw_response_text.strip().replace("```json", "").replace("```", "").strip()
+        ai_result = json.loads(json_string)
+    except json.JSONDecodeError as e:
+        # If parsing fails, capture the error message
+        error_message = f"Failed to parse AI response as JSON: {e}"
+
+    # Return a standardized object with all debug information
     return {
         "prompt_text": full_prompt_text,
-        "result": ai_result
+        "raw_response_text": raw_response_text,
+        "result": ai_result,
+        "error": error_message
     }

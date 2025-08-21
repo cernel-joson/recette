@@ -43,6 +43,22 @@ class JobInspectorScreen extends StatelessWidget {
             jsonString: job.requestPayload,
           ),
           const SizedBox(height: 16),
+          // --- Add this new card for the prompt text ---
+          _buildJsonCard(
+            context: context,
+            title: 'Prompt Sent to AI',
+            jsonString: job.promptText,
+            isJson: false, // This tells the widget to display it as plain text
+          ),
+          const SizedBox(height: 16),
+          // --- NEW CARD FOR RAW RESPONSE ---
+          _buildJsonCard(
+            context: context,
+            title: 'Raw AI Response',
+            jsonString: job.rawAiResponse,
+            isJson: false, // Display as plain text
+          ),
+          const SizedBox(height: 16),
           _buildJsonCard(
             context: context,
             title: 'Response Payload',
@@ -105,18 +121,26 @@ class JobInspectorScreen extends StatelessWidget {
     );
   }
 
+  // --- THIS IS THE FIX ---
+  // The method signature now includes the optional 'isJson' parameter.
   Widget _buildJsonCard({
     required BuildContext context,
     required String title,
     String? jsonString,
+    bool isJson = true, // Default to true for backward compatibility
   }) {
-    String formattedJson = 'No data.';
+    String formattedText = 'No data.';
     if (jsonString != null && jsonString.isNotEmpty) {
-      try {
-        final decoded = json.decode(jsonString);
-        formattedJson = const JsonEncoder.withIndent('  ').convert(decoded);
-      } catch (e) {
-        formattedJson = 'Error parsing JSON:\n$jsonString';
+      if (isJson) {
+        try {
+          final decoded = json.decode(jsonString);
+          formattedText = const JsonEncoder.withIndent('  ').convert(decoded);
+        } catch (e) {
+          formattedText = 'Error parsing JSON:\n$jsonString';
+        }
+      } else {
+        // If it's not JSON, just use the string as is.
+        formattedText = jsonString;
       }
     }
 
@@ -134,7 +158,7 @@ class JobInspectorScreen extends StatelessWidget {
                   icon: const Icon(Icons.copy),
                   tooltip: 'Copy to Clipboard',
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: formattedJson));
+                    Clipboard.setData(ClipboardData(text: formattedText));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Copied to clipboard!')),
                     );
@@ -144,7 +168,7 @@ class JobInspectorScreen extends StatelessWidget {
             ),
             const Divider(),
             SelectableText(
-              formattedJson,
+              formattedText,
               style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
             ),
           ],

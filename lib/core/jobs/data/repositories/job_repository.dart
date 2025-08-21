@@ -54,7 +54,9 @@ class JobRepository {
       {
         'status': JobStatus.complete.name,
         'response_payload': result.responsePayload,
-        'title': result.title, // <-- NEW: Save the title
+        'title': result.title,
+        'prompt_text': result.promptText,
+        'raw_ai_response': result.rawAiResponse, // <-- NEW
         'completed_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',

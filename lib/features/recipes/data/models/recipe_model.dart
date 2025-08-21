@@ -39,13 +39,13 @@ class Recipe implements Fingerprintable {
     required this.ingredients,
     required this.instructions,
     required this.sourceUrl,
-    this.otherTimings = const [], // Default to an empty list
+    this.otherTimings = const [],
     this.healthRating,
     this.healthSummary,
     this.healthSuggestions = const [],
     this.dietaryProfileFingerprint,
     this.nutritionalInfo,
-    this.tags = const [], // NEW: Initialize in constructor
+    this.tags = const [],
   });
 
   // --- Implementation of the Fingerprintable contract ---
@@ -145,30 +145,11 @@ class Recipe implements Fingerprintable {
 
   /// Factory constructor to create a Recipe from a JSON map (from AI).
   factory Recipe.fromJson(Map<String, dynamic> json, String url) {
-    var ingredientsList = json['ingredients'] as List? ?? [];
-    List<Ingredient> ingredients =
-        ingredientsList.map((i) => Ingredient.fromJson(i)).toList();
-
-    var instructionsList = json['instructions'] as List? ?? [];
-    List<String> instructions =
-        instructionsList.map((i) => i.toString()).toList();
-
-    // Decode the new other_timings list from the AI response.
-    var otherTimingsList = json['other_timings'] as List? ?? [];
-    List<TimingInfo> otherTimings =
-        otherTimingsList.map((t) => TimingInfo.fromMap(t)).toList();
-
-    var healthSuggestionsList = json['healthSuggestions'] as List? ?? [];
-    List<String> healthSuggestions =
-        healthSuggestionsList.map((i) => i.toString()).toList();
-        
-    // var nutritionalInfoList = json['nutritionalInfo'] as List? ?? [];
-    var nutritionalInfoList = json['nutritionalInfo'] as Map<String, dynamic>? ?? {};
-    Map<String, dynamic> nutritionalInfo = nutritionalInfoList;
-        
-    // It was incorrectly parsing json['instructions'] instead of json['tags'].
-    var tagsList = json['tags'] as List? ?? [];
-    List<String> tags = tagsList.map((tag) => tag.toString()).toList();
+    // --- THIS IS THE FIX ---
+    // Safely access the nested health_analysis object.
+    final healthAnalysis = json['health_analysis'] as Map<String, dynamic>? ?? {};
+    final suggestionsList = healthAnalysis['suggestions'] as List? ?? [];
+    final healthSuggestions = suggestionsList.map((s) => s.toString()).toList();
 
     return Recipe(
       title: json['title'] ?? 'No Title Provided',
@@ -177,38 +158,40 @@ class Recipe implements Fingerprintable {
       cookTime: json['cook_time'] ?? '',
       totalTime: json['total_time'] ?? '',
       servings: json['servings'] ?? '',
-      ingredients: ingredients,
-      instructions: instructions,
+      ingredients: (json['ingredients'] as List? ?? []).map((i) => Ingredient.fromJson(i)).toList(),
+      instructions: (json['instructions'] as List? ?? []).map((i) => i.toString()).toList(),
       sourceUrl: url,
-      otherTimings: otherTimings,
-      healthRating: json['healthRating'] ?? '',
-      healthSummary: json['healthSummary'] ?? '',
+      otherTimings: (json['other_timings'] as List? ?? []).map((t) => TimingInfo.fromMap(t)).toList(),
+      // Extract values from the nested health_analysis object.
+      healthRating: healthAnalysis['health_rating'] ?? '',
+      healthSummary: healthAnalysis['summary'] ?? '',
       healthSuggestions: healthSuggestions,
-      dietaryProfileFingerprint: json['dietaryProfileFingerprint'] ?? '',
-      nutritionalInfo: nutritionalInfo,
-      tags: tags, // Use the correctly parsed list
+      // Safely access the nutritional_info object.
+      nutritionalInfo: json['nutritional_info'] as Map<String, dynamic>? ?? {},
+      tags: (json['tags'] as List? ?? []).map((tag) => tag.toString()).toList(),
     );
   }
 
   /// Factory constructor to create a Recipe from a database Map.
+  /// This version is now more defensive to handle missing or null data.
   factory Recipe.fromMap(Map<String, dynamic> map) {
-    debugPrint(map.toString());
     return Recipe(
       id: map['id'],
       parentRecipeId: map['parentRecipeId'],
       fingerprint: map['fingerprint'],
-      title: map['title'],
-      description: map['description'],
-      prepTime: map['prepTime'],
-      cookTime: map['cookTime'],
-      totalTime: map['totalTime'],
-      servings: map['servings'],
-      ingredients: (json.decode(map['ingredients']) as List)
+      // Use the null-coalescing operator (??) to provide a default value.
+      title: map['title'] ?? 'No Title',
+      description: map['description'] ?? '',
+      prepTime: map['prepTime'] ?? '',
+      cookTime: map['cookTime'] ?? '',
+      totalTime: map['totalTime'] ?? '',
+      servings: map['servings'] ?? '',
+      // Safely decode JSON strings that might be null or empty.
+      ingredients: (json.decode(map['ingredients'] ?? '[]') as List)
           .map((i) => Ingredient.fromMap(i))
           .toList(),
-      instructions: List<String>.from(json.decode(map['instructions'])),
-      sourceUrl: map['sourceUrl'],
-      // Decode the otherTimings from the database, handling legacy data.
+      instructions: List<String>.from(json.decode(map['instructions'] ?? '[]')),
+      sourceUrl: map['sourceUrl'] ?? '',
       otherTimings: map['otherTimings'] != null
           ? (json.decode(map['otherTimings']) as List)
               .map((t) => TimingInfo.fromMap(t))
@@ -217,7 +200,7 @@ class Recipe implements Fingerprintable {
       healthRating: map['healthRating'],
       healthSummary: map['healthSummary'],
       healthSuggestions: map['healthSuggestions'] != null
-          ? List<String>.from(json.decode(map['healthSuggestions'].toString()))
+          ? List<String>.from(json.decode(map['healthSuggestions']))
           : [],
       dietaryProfileFingerprint: map['dietaryProfileFingerprint'],
       nutritionalInfo: map['nutritionalInfo'] != null ? json.decode(map['nutritionalInfo']) : null,

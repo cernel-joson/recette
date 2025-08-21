@@ -15,7 +15,13 @@ class RecipeParsingService {
       'url': url,
       'tasks': tasks.map((t) => t.toString().split('.').last).toList(),
     };
-    final Map<String, dynamic> data = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+      
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseBody['result'];
+    final promptText = responseBody['prompt_text'];
+
+    final Map<String, dynamic> data = aiResult;
     return Recipe.fromJson(data, url);
   }
 
@@ -25,7 +31,13 @@ class RecipeParsingService {
       'text': text,
       'tasks': tasks.map((t) => t.toString().split('.').last).toList(),
     };
-    final Map<String, dynamic> data = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+      
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseBody['result'];
+    final promptText = responseBody['prompt_text'];
+    
+    final Map<String, dynamic> data = aiResult;
     return Recipe.fromJson(data, 'Pasted Text');
   }
 
@@ -37,7 +49,13 @@ class RecipeParsingService {
       'image': base64Image,
       'tasks': tasks.map((t) => t.toString().split('.').last).toList(),
     };
-    final Map<String, dynamic> data = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+      
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseBody['result'];
+    final promptText = responseBody['prompt_text'];
+    
+    final Map<String, dynamic> data = aiResult;
     return Recipe.fromJson(data, 'Scanned Content');
   }
 }

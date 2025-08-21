@@ -11,31 +11,29 @@ import 'package:recette/features/recipes/recipes.dart';
 class RecipeAnalysisWorker implements JobWorker {
   @override
   Future<JobResult> execute(Job job) async {
-    // This worker's job is now to simply pass the request payload
-    // to the unified backend endpoint.
     final requestData = json.decode(job.requestPayload);
 
-    // --- THIS IS THE FIX ---
-    // The ApiHelper sends the request body directly. We need to ensure the
-    // payload is wrapped with the key the backend router is expecting.
     final responseJson = await ApiHelper.analyzeRaw({
       'recipe_analysis_request': requestData
     }, model: AiModel.pro);
-    // --- END OF FIX ---
-    
-    // --- NEW: Extract data from the new response structure ---
+
     final aiResult = responseJson['result'];
     final promptText = responseJson['prompt_text'];
+    final rawResponseText = responseJson['raw_response_text']; // <-- NEW
+    final errorMessage = responseJson['error']; // <-- NEW
 
-    final recipe = Recipe.fromMap(aiResult);
+    // If parsing failed on the backend, throw an exception here
+    if (aiResult == null) {
+      throw Exception(errorMessage ?? "Backend failed to parse AI response.");
+    }
 
-    // The result contains the full recipe JSON and its title for the job banner.
+    final recipe = Recipe.fromJson(aiResult, requestData['recipe_data']['url'] ?? 'Pasted Content');
+
     return JobResult(
       responsePayload: json.encode(recipe.toMap()),
       title: recipe.title,
-      // The worker can now also pass the prompt text to be saved in the job.
-      // You would need to add a `promptText` field to `JobResult` and handle
-      // it in the `JobRepository.completeJob` method.
+      promptText: promptText,
+      rawAiResponse: rawResponseText, // <-- NEW
     );
   }
 }

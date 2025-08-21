@@ -31,7 +31,12 @@ class ProfileService {
     final responseBody = await ApiHelper.analyzeRaw({
       'review_text': profile.fullProfileText,
     });
-    return ProfileReview.fromJson(responseBody);
+    
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseBody['result'];
+    final promptText = responseBody['prompt_text'];
+    
+    return ProfileReview.fromJson(aiResult);
   }
 
   /// Saves the user's dietary profile to local storage.

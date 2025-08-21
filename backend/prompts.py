@@ -58,35 +58,51 @@ If a field is not available, return an empty string "" or an empty list [].
 Do not include any text or formatting before or after the JSON object.
 """
 
+def _get_tag_instructions():
+    return """- **Generate Tags**: You MUST analyze the recipe's title and ingredients to generate a JSON array of 5-7 relevant tags for cuisine, meal type, etc. Populate the `tags` field."""
+
+def _get_health_check_instructions():
+    return """- **Perform Health Check**: You MUST analyze the recipe for its health implications. If a dietary profile is provided, analyze against it. **If the dietary profile is empty, you MUST perform the analysis based on general healthy eating guidelines (e.g., low in added sugar and sodium, balanced macronutrients).** Your task is to:
+        1. Assign a `health_rating` of `SAFE`, `CAUTION`, or `AVOID`.
+           - `SAFE` means the recipe aligns perfectly.
+           - `CAUTION` means it's acceptable in moderation but has minor issues.
+           - `AVOID` means it significantly violates one or more core health rules.
+        2. Write a brief, one or two-sentence `summary` of your findings.
+        3. Provide a bulleted list of specific, actionable `suggestions` for improvement.
+        4. Populate the entire `health_analysis` object in the JSON with these findings."""
+
+def _get_nutrition_instructions():
+    return """- **Estimate Nutrition**: You MUST provide a detailed nutritional breakdown per serving. You should analyze the ingredient list and quantities, and use your internal knowledge to calculate the nutritional values. Populate the `nutritional_info` object with all the specified fields."""
+
+# --- UNIFIED ANALYSIS PROMPT ---
+
 def get_recipe_analysis_prompt(tasks, has_image=False):
     """
     Dynamically builds a single, powerful prompt to handle parsing and
-    any combination of enhancement tasks in one call.
+    any combination of enhancement tasks in one call by composing instructions.
     """
-
-    # Start with the core instruction
-    initial_instruction = "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided "
-    initial_instruction += "image." if has_image else "text or URL content."
+    initial_instruction = "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided text or URL content."
+    if has_image:
+        initial_instruction = "You are an expert recipe analysis API. Your primary job is to parse the recipe from the provided image."
     
-    # Use the detailed JSON structure as the base
     prompt_parts = [
         initial_instruction,
         JSON_STRUCTURE_PROMPT,
-        "After parsing the core recipe, you MUST perform the following additional analysis tasks based on the provided context:"
+        "After parsing the core recipe, you MUST perform the following additional analysis tasks. These tasks are mandatory:"
     ]
 
-    task_descriptions = {
-        "generateTags": "- **Generate Tags**: Analyze the recipe's title and ingredients to generate a JSON array of 5-7 relevant tags (e.g., cuisine, meal type, key ingredient). Populate the `tags` field in the template with this array.",
-        "healthCheck": "- **Perform Health Check**: Analyze the recipe against the user's dietary profile. Populate the `health_analysis` object in the template with a 'health_rating' ('GREEN', 'YELLOW', or 'RED'), a one-sentence 'summary', and a list of 'suggestions'.",
-        "estimateNutrition": "- **Estimate Nutrition**: Provide a detailed nutritional breakdown per serving. Populate the `nutritional_info` object."
+    # Map task keys to the functions that provide their instructions.
+    task_functions = {
+        "generateTags": _get_tag_instructions,
+        "healthCheck": _get_health_check_instructions,
+        "estimateNutrition": _get_nutrition_instructions
     }
 
-    # Add instructions only for the tasks that were requested.
     for task in tasks:
-        if task in task_descriptions:
-            prompt_parts.append(task_descriptions[task])
+        if task in task_functions:
+            prompt_parts.append(task_functions[task]()) # Call function to get instructions
 
-    prompt_parts.append("\nYour response MUST be a single, clean JSON object matching the structure defined above. If a field or task is not applicable, return a default value (e.g., empty list `[]`, empty object `{}`), but always include the key.")
+    prompt_parts.append("\nYour response MUST be a single, clean JSON object matching the structure defined above. All requested tasks must be completed.")
 
     return "\n".join(prompt_parts)
 
@@ -123,30 +139,33 @@ def get_profile_review_prompt(profile_text):
     ---
     """
 
+# --- STANDALONE PROMPTS (Now Composable and DRY) ---
+# Note: These may no longer be needed if your refactored backend only uses the unified analysis service.
+# They are kept here for potential future use or for other services.
+
 def get_health_check_prompt(profile_text, recipe_data):
-    """NEW: Creates the prompt for analyzing a recipe against a dietary profile."""
+    """Creates the prompt for analyzing a recipe against a dietary profile."""
+    # This is now a thin wrapper that combines a simple instruction
+    # with the detailed, centralized health check logic.
+    health_instructions = _get_health_check_instructions().replace("- **Perform Health Check**: ", "")
+
     return f"""
     You are an expert nutritional analyst. Your task is to analyze a recipe against a user's specific dietary guidelines.
-
+    
     Here are the user's dietary guidelines:
     ---
     {profile_text}
     ---
-
+    
     Here is the recipe data you need to analyze:
     ---
     {recipe_data}
     ---
-
+    
     Your Task:
-    1. Assign a `health_rating` of `SAFE`, `CAUTION`, or `AVOID`.
-       - `SAFE` means the recipe aligns perfectly with the user's health rules.
-       - `CAUTION` means the recipe is acceptable in moderation but has some minor issues or requires small changes.
-       - `AVOID` means the recipe significantly violates one or more core health rules and should be avoided.
-    2. Write a brief, one or two-sentence `summary` of your findings.
-    3. Provide a bulleted list of specific, actionable `suggestions` for improvement.
+    {health_instructions}
 
-    Return your response as a single, clean JSON object with the following structure:
+    Return your response as a single, clean JSON object with only the `health_analysis` structure:
     {{
       "health_rating": "...",
       "summary": "...",

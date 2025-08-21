@@ -135,22 +135,20 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
   }
   
   void _reviewPendingJob(Job job) {
-    // 1. Decode the saved response payload from the job.
-    final payload = json.decode(job.responsePayload!);
-    final recipeMap = payload['recipe'] as Map<String, dynamic>;
-    final sourceUrl = payload['sourceUrl'] as String;
+    // --- THIS IS THE FIX ---
+    // The responsePayload from the worker IS the recipe map.
+    // We decode it directly instead of looking for a nested 'recipe' key.
+    final recipeMap = json.decode(job.responsePayload!) as Map<String, dynamic>;
 
     // 2. Create a Recipe object from the stored data.
-    recipeMap['sourceUrl'] = sourceUrl; // Set the source URL
     final recipe = Recipe.fromMap(recipeMap);
 
     // 3. Navigate to the edit screen, passing the job ID.
-    //    This allows the edit screen to archive the job upon saving.
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
           recipe: recipe,
-          sourceJobId: job.id, // Pass the job ID
+          sourceJobId: job.id, // Pass the job ID to be archived on save
         ),
       ),
     );
@@ -166,7 +164,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
         // --- NEW: Find pending recipe jobs ---
         final pendingJobs = jobController.jobs
             .where((job) =>
-                job.jobType == 'recipe_parsing' && job.status == JobStatus.complete)
+                job.jobType == 'recipe_analysis' && job.status == JobStatus.complete)
             .toList();
             
         return Scaffold(

@@ -120,7 +120,13 @@ class InventoryService {
         'locations': locationNames,
       }
     };
-    final parsedItems = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash) as List<dynamic>;
+    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash);
+    
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseBody['result'];
+    final promptText = responseBody['prompt_text'];
+    
+    final parsedItems = aiResult as List<dynamic>;
 
     // 3. Use a transaction to update the local database.
     final db = await _db.database;
@@ -206,7 +212,13 @@ class InventoryService {
     };
 
     // 3. Call the API
-    final response = await ApiHelper.analyzeRaw(requestBody);
+    final responseBody = await ApiHelper.analyzeRaw(requestBody);
+    
+    // --- NEW: Extract data from the new response structure ---
+    final aiResult = responseBody['result'];
+    final promptText = responseBody['prompt_text'];
+    
+    final response = aiResult;
 
     // 4. Return the structured result
     if (response is List) {

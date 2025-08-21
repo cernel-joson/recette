@@ -98,14 +98,18 @@ class HealthCheckService {
     // On a cache miss, this makes a standalone API call.
     debugPrint("CACHE MISS for Recipe ID ${recipe.id}. Fetching new rating from API.");
     final body = {
-      'enhancement_request': {
+      // --- THIS IS THE FIX ---
+      // Use the correct key for the backend router.
+      'recipe_analysis_request': {
         'tasks': ['healthCheck'],
-        'recipe_data': [recipe.toMap()],
+        'recipe_data': recipe.toMap(), // Send the single recipe map
         'dietary_profile': profile.fullProfileText,
       }
     };
     final responseBody = await ApiHelper.analyzeRaw(body, model: AiModel.flash);
-    final resultData = responseBody['results'][0]['health_analysis'];
+    
+    final aiResult = responseBody['result'];
+    final resultData = aiResult['health_analysis'];
     
     return HealthAnalysisResult.fromJson(resultData);
   }

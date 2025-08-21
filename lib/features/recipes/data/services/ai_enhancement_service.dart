@@ -39,22 +39,22 @@ class AiEnhancementService {
 
     if (tasksForApi.isNotEmpty) {
       final requestBody = {
-        'enhancement_request': {
+        // Use the correct key that the backend router expects.
+        'recipe_analysis_request': {
           'tasks': tasksForApi.map((t) => t.toString().split('.').last).toList(),
-          'recipe_data': [recipeToUpdate.toMap()],
+          'recipe_data': recipeToUpdate.toMap(), // Send the single recipe map
           'dietary_profile': currentProfile.fullProfileText,
         }
       };
 
-      // Assign the result to the response variable.
-      // Safely cast the response
-      response = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro) as Map<String, dynamic>?;
+      final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+      
+      // Extract data from the new standardized response structure
+      final aiResult = responseBody['result'];
+      response = aiResult as Map<String, dynamic>?;
 
-      // Add a null check before accessing the response data
-      if (response != null && response['results'] is List && (response['results'] as List).isNotEmpty) {
-          final resultData = response['results'][0];
-
-          final tagsData = resultData['tags'];
+      if (response != null) {
+          final tagsData = response['tags'];
           List<String> newTags = recipeToUpdate.tags; 
 
           if (tagsData is List) {
@@ -63,33 +63,26 @@ class AiEnhancementService {
             newTags = [tagsData];
           }
 
-          // --- NEW: Parse Nutritional Info ---
-          final nutritionData = resultData['nutritional_info'] as Map<String, dynamic>?;
+          final nutritionData = response['nutritional_info'] as Map<String, dynamic>?;
 
           recipeToUpdate = recipeToUpdate.copyWith(
             tags: newTags,
-            nutritionalInfo: nutritionData, // <-- Add to copyWith
+            nutritionalInfo: nutritionData,
           );
       }
     }
 
     // 4. Apply the health results and save.
     if (tasks.contains(AiEnhancementTask.healthCheck)) {
-      // If we had a cache hit, use that. Otherwise, parse the result from the API response.
       HealthAnalysisResult healthAnalysis;
 
-      // --- THIS IS THE FIX ---
-      // If the health check was handled by the API (i.e., it was a cache miss),
-      // then we parse the result from the API response.
       if (tasksForApi.contains(AiEnhancementTask.healthCheck)) {
-        final healthData = response!['results'][0]['health_analysis'] as Map<String, dynamic>?;
+        final healthData = response?['health_analysis'] as Map<String, dynamic>?;
         if (healthData == null) {
-          // Handle cases where the API might fail to return the health part
           throw Exception('API response did not include health analysis as requested.');
         }
         healthAnalysis = HealthAnalysisResult.fromJson(healthData);
       } else {
-        // Otherwise, we use the valid result we found in the cache.
         healthAnalysis = cachedHealthResult!;
       }
 
@@ -114,21 +107,20 @@ class AiEnhancementService {
     required List<Recipe> candidates,
   }) async {
     final requestBody = {
-      'enhancement_request': {
-        'tasks': ['findSimilar'],
-        'recipe_data': [newRecipe.toMap()], // The new recipe is the primary subject
+      // This service uses a different backend handler, so its key is correct.
+      'find_similar_request': {
+        'primary_recipe': newRecipe.toMap(),
         'candidate_recipes': candidates.map((r) => r.toMap()).toList(),
       }
     };
     
-    final response = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.pro);
+    final aiResult = responseBody['result'];
     
-    // The response would be something like {"similar_recipe_ids": [12, 78]}
-    return List<int>.from(response['similar_recipe_ids'] ?? []);
+    return List<int>.from(aiResult['similar_recipe_ids'] ?? []);
   }
 
   /// --- NEW METHOD FOR QUICK NUTRITIONAL ANALYSIS ---
-  /// Takes a block of text and returns a map of nutritional info.
   Future<Map<String, dynamic>> getNutritionalAnalysisForText(String text) async {
     if (text.trim().isEmpty) return {};
 
@@ -136,14 +128,13 @@ class AiEnhancementService {
       'nutritional_estimation_request': {'text': text}
     };
     
-    // Use the fast and cheap flash model for this simple task.
-    final response = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash);
+    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash);
+    final aiResult = responseBody['result'];
 
-    if (response is Map<String, dynamic>) {
-      return response;
+    if (aiResult is Map<String, dynamic>) {
+      return aiResult;
     }
     
-    // Return an empty map if the response is not in the expected format
     return {};
   }
 
