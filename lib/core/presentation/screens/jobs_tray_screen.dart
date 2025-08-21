@@ -105,7 +105,7 @@ class _JobListItem extends StatelessWidget {
     if (devService.isDeveloperMode) {
       // If dev mode is on, navigate to the detailed inspector.
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => JobInspectorScreen(job: job)),
+        MaterialPageRoute(builder: (_) => JobInspectorScreen(jobId: job.id!)),
       );
     } else if (job.status == JobStatus.complete && job.responsePayload != null) {
       // Otherwise, show the simple result dialog for completed jobs.

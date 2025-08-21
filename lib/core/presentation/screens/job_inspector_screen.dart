@@ -3,14 +3,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart'; // Import Provider
 import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 
 class JobInspectorScreen extends StatelessWidget {
-  final Job job;
-  const JobInspectorScreen({super.key, required this.job});
+  final int jobId; // Pass the job ID instead of the whole object
+  const JobInspectorScreen({super.key, required this.jobId});
 
   // --- NEW: Helper method to generate the text for copying ---
-  String _getJobDetailsAsText() {
+  String _getJobDetailsAsText(Job job) {
     final buffer = StringBuffer();
     buffer.writeln('Job Details');
     buffer.writeln('-----------');
@@ -30,46 +32,56 @@ class JobInspectorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Job Inspector #${job.id}'),
+        title: Text('Job Inspector #$jobId'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          _buildInfoCard(context),
-          const SizedBox(height: 16),
-          _buildJsonCard(
-            context: context,
-            title: 'Request Payload',
-            jsonString: job.requestPayload,
-          ),
-          const SizedBox(height: 16),
-          // --- Add this new card for the prompt text ---
-          _buildJsonCard(
-            context: context,
-            title: 'Prompt Sent to AI',
-            jsonString: job.promptText,
-            isJson: false, // This tells the widget to display it as plain text
-          ),
-          const SizedBox(height: 16),
-          // --- NEW CARD FOR RAW RESPONSE ---
-          _buildJsonCard(
-            context: context,
-            title: 'Raw AI Response',
-            jsonString: job.rawAiResponse,
-            isJson: false, // Display as plain text
-          ),
-          const SizedBox(height: 16),
-          _buildJsonCard(
-            context: context,
-            title: 'Response Payload',
-            jsonString: job.responsePayload,
-          ),
-        ],
+      body: Consumer<JobController>(
+        builder: (context, jobController, child) {
+          // Find the latest version of the job from the controller's list
+          final job = jobController.jobs.firstWhere(
+            (j) => j.id == jobId,
+            // Provide a fallback in case the job isn't found
+            orElse: () => jobController.jobs.first, 
+          );
+
+          // The rest of the UI now uses the fresh 'job' object
+          return ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              _buildInfoCard(context, job),
+              const SizedBox(height: 16),
+              _buildJsonCard(
+                context: context,
+                title: 'Request Payload',
+                jsonString: job.requestPayload,
+              ),
+              const SizedBox(height: 16),
+              _buildJsonCard(
+                context: context,
+                title: 'Prompt Sent to AI',
+                jsonString: job.promptText,
+                isJson: false,
+              ),
+              const SizedBox(height: 16),
+              _buildJsonCard(
+                context: context,
+                title: 'Raw AI Response',
+                jsonString: job.rawAiResponse,
+                isJson: false,
+              ),
+              const SizedBox(height: 16),
+              _buildJsonCard(
+                context: context,
+                title: 'Parsed Response Payload',
+                jsonString: job.responsePayload,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
   
-  Widget _buildInfoCard(BuildContext context) {
+  Widget _buildInfoCard(BuildContext context, Job job) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -85,7 +97,7 @@ class JobInspectorScreen extends StatelessWidget {
                   icon: const Icon(Icons.copy),
                   tooltip: 'Copy Details',
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: _getJobDetailsAsText()));
+                    Clipboard.setData(ClipboardData(text: _getJobDetailsAsText(job)));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Job details copied to clipboard!')),
                     );
