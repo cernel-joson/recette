@@ -4,6 +4,20 @@ import 'ingredient_model.dart';
 import 'timing_info_model.dart';
 import 'package:recette/core/utils/fingerprint_helper.dart';
 
+// A helper function to safely decode lists, whether they are strings or already lists.
+List<T> _decodeList<T>(dynamic listData, T Function(dynamic) fromMap) {
+  if (listData == null) return [];
+  if (listData is String) {
+    if (listData.isEmpty) return [];
+    final decoded = json.decode(listData) as List<dynamic>;
+    return decoded.map(fromMap).toList();
+  }
+  if (listData is List) {
+    return listData.map(fromMap).toList();
+  }
+  return [];
+}
+
 /// Represents a full recipe with all its details.
 class Recipe implements Fingerprintable {
   final int? id;
@@ -174,36 +188,37 @@ class Recipe implements Fingerprintable {
 
   /// Factory constructor to create a Recipe from a database Map.
   /// This version is now more defensive to handle missing or null data.
+  // --- DEFINITIVE FIX for fromMap ---
+  // This version robustly handles data from both the database (as JSON strings)
+  // and from direct JSON objects (as Lists).
   factory Recipe.fromMap(Map<String, dynamic> map) {
     return Recipe(
       id: map['id'],
       parentRecipeId: map['parentRecipeId'],
       fingerprint: map['fingerprint'],
-      // Use the null-coalescing operator (??) to provide a default value.
       title: map['title'] ?? 'No Title',
       description: map['description'] ?? '',
-      prepTime: map['prepTime'] ?? '',
-      cookTime: map['cookTime'] ?? '',
-      totalTime: map['totalTime'] ?? '',
-      servings: map['servings'] ?? '',
-      // Safely decode JSON strings that might be null or empty.
-      ingredients: (json.decode(map['ingredients'] ?? '[]') as List)
-          .map((i) => Ingredient.fromMap(i))
-          .toList(),
-      instructions: List<String>.from(json.decode(map['instructions'] ?? '[]')),
+      prepTime: map['prepTime'] ?? map['prep_time'] ?? '',
+      cookTime: map['cookTime'] ?? map['cook_time'] ?? '',
+      totalTime: map['totalTime'] ?? map['total_time'] ?? '',
+    servings: map['servings'] ?? '',
+      
+      // Use the safe list decoder
+      ingredients: _decodeList(map['ingredients'], (i) => Ingredient.fromMap(i)),
+      instructions: _decodeList(map['instructions'], (i) => i.toString()),
+      otherTimings: _decodeList(map['otherTimings'], (t) => TimingInfo.fromMap(t)),
+      
       sourceUrl: map['sourceUrl'] ?? '',
-      otherTimings: map['otherTimings'] != null
-          ? (json.decode(map['otherTimings']) as List)
-              .map((t) => TimingInfo.fromMap(t))
-              .toList()
-          : [],
       healthRating: map['healthRating'],
       healthSummary: map['healthSummary'],
-      healthSuggestions: map['healthSuggestions'] != null
-          ? List<String>.from(json.decode(map['healthSuggestions']))
-          : [],
+      
+      // Use the safe list decoder for suggestions as well
+      healthSuggestions: _decodeList(map['healthSuggestions'], (s) => s.toString()),
+      
       dietaryProfileFingerprint: map['dietaryProfileFingerprint'],
-      nutritionalInfo: map['nutritionalInfo'] != null ? json.decode(map['nutritionalInfo']) : null,
+      nutritionalInfo: map['nutritionalInfo'] is String
+          ? json.decode(map['nutritionalInfo'])
+          : map['nutritionalInfo'],
     );
   }
 }

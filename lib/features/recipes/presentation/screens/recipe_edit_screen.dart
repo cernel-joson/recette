@@ -5,6 +5,7 @@ import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+import 'package:recette/core/jobs/data/models/job_model.dart';
 
 /// A screen for creating a new recipe or editing an existing one.
 class RecipeEditScreen extends StatelessWidget {
@@ -166,6 +167,23 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
                     label: const Text('Repopulate'),
                     onPressed: controller.isAnalyzing ? null : () => _showPasteTextDialog(context, controller),
                   ), */
+                  // --- NEW: Conditionally add the Discard button ---
+                  if (controller.sourceJobId != null)
+                    TextButton.icon(
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Discard'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      onPressed: () async {
+                        final jobRepo = JobRepository();
+                        await jobRepo.updateJobStatus(controller.sourceJobId!, JobStatus.archived);
+                        if (mounted) {
+                          Provider.of<JobController>(context, listen: false).loadJobs();
+                          Navigator.of(context).pop(true); // Pop and trigger a refresh
+                        }
+                      },
+                    ),
+                  const Spacer(), // Pushes buttons to the right
+                  // --- END OF NEW BUTTON ---
                   FilledButton.icon(
                     icon: const Icon(Icons.save),
                     // --- UPDATED: Save button logic ---

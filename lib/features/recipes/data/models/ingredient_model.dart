@@ -38,15 +38,18 @@ class Ingredient {
     );
   }
 
+  // --- THIS IS THE FIX ---
+  // Make the fromMap constructor defensive against null values.
   factory Ingredient.fromMap(Map<String, dynamic> map) {
     return Ingredient(
-      quantity: map['quantity'],
+      quantity: map['quantity'] ?? '', // Provide default value
       quantityNumeric: map['quantityNumeric'],
-      unit: map['unit'],
-      name: map['name'],
+      unit: map['unit'] ?? '', // Provide default value
+      name: map['name'] ?? 'Unknown Ingredient', // Provide default value
       notes: map['notes'] ?? '',
     );
   }
+  // --- END OF FIX ---
 
   factory Ingredient.fromString(String text) {
     final parts = text.split(' ');

@@ -11,8 +11,8 @@ import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 
 import 'package:recette/core/jobs/data/models/job_model.dart';
-import 'package:recette/features/inventory/presentation/widgets/meal_ideas_banner.dart';
-import 'package:recette/features/inventory/presentation/screens/meal_ideas_screen.dart';
+// import 'package:recette/features/inventory/presentation/widgets/meal_ideas_banner.dart';
+// import 'package:recette/features/inventory/presentation/screens/meal_ideas_screen.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 
 
@@ -287,7 +287,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   // This method is now much simpler. It just submits the job.
-  void _getMealIdeas() async {
+  /* void _getMealIdeas() async {
     final intentController = TextEditingController();
     final jobManager = Provider.of<JobManager>(context, listen: false);
 
@@ -337,13 +337,65 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
       );
     }
+  } */
+
+ // This method now just submits the job and provides immediate feedback.
+  void _getMealIdeas() async {
+    final intentController = TextEditingController();
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+
+    final userIntent = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("What's the situation?"),
+        content: TextField(
+          controller: intentController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: "e.g., 'I'm tired and need something quick.'",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(intentController.text),
+            child: const Text('Get Ideas'),
+          ),
+        ],
+      ),
+    );
+
+    if (userIntent == null || !mounted) return;
+
+    final inventoryList = await _inventoryService.getInventoryAsText();
+    final profile = await ProfileService.loadProfile();
+    final requestPayload = json.encode({
+      'inventory': inventoryList,
+      'dietary_profile': profile.fullProfileText,
+      'user_intent': userIntent,
+    });
+
+    await jobManager.submitJob(
+      jobType: 'meal_suggestion', // Use the specific job type
+      requestPayload: requestPayload,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating meal idea... Track progress in the Jobs Tray.'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
   }
   
-  void _viewMealIdeas(Job job) {
+  /* void _viewMealIdeas(Job job) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => MealIdeasScreen(job: job)),
     );
-  }
+  } */
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +454,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ],
             ),
+
           body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _groupedItems == null || _groupedItems!.isEmpty
+              ? const Center(child: Text('Your inventory is empty.'))
+
+          /*body: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column( // Wrap body in a Column to add the banner
                   children: [
@@ -413,7 +471,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         )),
                     Expanded(
                       child: _groupedItems == null || _groupedItems!.isEmpty
-                          ? const Center(child: Text('Your inventory is empty.'))
+                          ? const Center(child: Text('Your inventory is empty.'))*/
                           : ListView(
                             children: _groupedItems!.entries.map((entry) {
                               final location = entry.key;
@@ -445,9 +503,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               );
                             }).toList(),
                           ),
-                    ),
+                    /*),
                   ],
-                ),
+                ),*/
           floatingActionButton: FloatingActionButton.extended(
             onPressed: _getMealIdeas, // Call the refactored method
             tooltip: 'Get Meal Ideas',

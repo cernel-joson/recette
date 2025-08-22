@@ -258,6 +258,7 @@ def get_inventory_parse_prompt(inventory_text, locations):
     ---
     """
 
+''''
 def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
     """Creates a sophisticated prompt for generating context-aware meal ideas."""
     return f"""
@@ -280,4 +281,30 @@ def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
         "description": "A one-sentence description explaining why it's a good fit, or explaining why a suggestion cannot be reasonably made from the items provided."
       }}
     ]
+    """
+'''
+
+# --- REVISED, MORE POWERFUL PROMPT ---
+def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
+    """Creates a sophisticated prompt for generating a full recipe from context."""
+    return f"""
+    You are an expert recipe creator and kitchen assistant. Your primary task is to invent a new, complete recipe using ONLY the ingredients available in the user's "Current Inventory", while strictly adhering to their dietary profile and immediate situation.
+
+    **CONTEXT:**
+    - **User's Dietary Profile:** {dietary_profile}
+    - **Current Inventory:** {inventory_list}
+    - **User's Immediate Situation:** {user_intent}
+
+    **YOUR TASK:**
+    1.  Invent a single, creative recipe title that fits the context.
+    2.  Write a brief description of the dish.
+    3.  Estimate the prep time, cook time, and servings.
+    4.  Create a list of ingredients, using ONLY items from the user's inventory. You may assume common pantry staples like salt, pepper, and water are available. Do not invent other ingredients.
+    5.  Write a clear, step-by-step list of instructions.
+    6.  Generate relevant tags for the recipe.
+
+    You MUST return a single, clean JSON object that follows the exact structure defined below.
+    ---
+    {JSON_STRUCTURE_PROMPT}
+    ---
     """

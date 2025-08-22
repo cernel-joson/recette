@@ -25,10 +25,13 @@ class InventoryImportWorker implements JobWorker {
     final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash);
     final aiResult = responseBody['result'];
     final promptText = responseBody['prompt_text'];
+    final rawAiResponse = responseBody['raw_response_text'];
+
 
     return JobResult(
       responsePayload: json.encode(aiResult), // The AI result is a list of items
       promptText: promptText,
+      rawAiResponse: rawAiResponse,
       title: 'Parsed Inventory List',
     );
   }

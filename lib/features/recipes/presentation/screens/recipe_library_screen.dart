@@ -15,6 +15,7 @@ import 'package:recette/features/recipes/presentation/widgets/pending_job_banner
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 
 class RecipeLibraryScreen extends StatelessWidget {
   const RecipeLibraryScreen({
@@ -159,6 +160,15 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     }
   }
 
+  Future<void> _dismissJob(Job job) async {
+    final jobRepo = JobRepository();
+    await jobRepo.updateJobStatus(job.id!, JobStatus.archived);
+    if (mounted) {
+      // Refresh the job list so the banner disappears
+      Provider.of<JobController>(context, listen: false).loadJobs();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get the controller once to use in callbacks.
@@ -167,7 +177,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     return Consumer2<RecipeLibraryController, JobController>(
       builder: (context, libraryController, jobController, child) {
         // --- NEW: Find pending recipe jobs ---
-        final pendingNewRecipeJobs = jobController.jobs.where((job) {
+        /*final pendingNewRecipeJobs = jobController.jobs.where((job) {
           if (job.jobType != 'recipe_analysis' || job.status != JobStatus.complete) {
             return false;
           }
@@ -181,7 +191,29 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
           return recipeData.containsKey('url') || 
                 recipeData.containsKey('text') || 
                 recipeData.containsKey('image');
+        }).toList();*/
+        
+        // --- THIS IS THE FIX ---
+        // Find all completed jobs that result in a reviewable recipe.
+        final pendingNewRecipeJobs = jobController.jobs.where((job) {
+          final isCompletedRecipeJob =
+              (job.jobType == 'recipe_analysis' || job.jobType == 'meal_suggestion') &&
+              job.status == JobStatus.complete;
+
+          if (!isCompletedRecipeJob) return false;
+          
+          // For recipe_analysis, only show banner if it was a new import.
+          if (job.jobType == 'recipe_analysis') {
+            final requestData = json.decode(job.requestPayload);
+            final recipeData = requestData['recipe_data'] as Map<String, dynamic>;
+            return recipeData.containsKey('url') ||
+                   recipeData.containsKey('text') ||
+                   recipeData.containsKey('image');
+          }
+          
+          return true; // Always show banner for meal suggestions
         }).toList();
+        // --- END OF FIX ---
             
         return Scaffold(
           appBar: AppBar(
@@ -296,6 +328,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                   ...pendingNewRecipeJobs.map((job) => PendingJobBanner(
                         job: job,
                         onView: () => _reviewPendingJob(job),
+                        onDismiss: () => _dismissJob(job),
                       )),
                   
                   if (libraryController.recipes.isEmpty && pendingNewRecipeJobs.isEmpty)
