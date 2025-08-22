@@ -60,6 +60,13 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # ... after the 'Checkout code' step ...
+      - name: DEBUG - Print build.gradle.kts
+        run: |
+          echo "--- Contents of android/app/build.gradle.kts ---"
+          cat android/app/build.gradle.kts
+          echo "------------------------------------------------"
+
       # 5. Build the Release APK
       - name: Build Release APK
         run: |
