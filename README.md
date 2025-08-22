@@ -37,6 +37,7 @@ The project is a highly functional, single-user prototype. The core architecture
 
 This project is guided by a set of living design documents that outline its architecture and feature specifications.
 
+* **[Architectural Principles](./docs/00_ARCHITECTURAL_PRINCIPLES.md):** The foundational guide for the app's architecture and design patterns.
 * **[System Architecture](./docs/01_SYSTEM_ARCHITECTURE.md):** A high-level overview of the app's technical architecture, including the AI and data caching strategies.
 * **[Development Roadmap](./docs/02_ROADMAP.md):** The planned, high-level implementation sequence for the Recette app.
 * **[Feature Spec: Inventory System](./docs/03_FEATURE_INVENTORY_SYSTEM.md):** Detailed specification for the food inventory management system.
