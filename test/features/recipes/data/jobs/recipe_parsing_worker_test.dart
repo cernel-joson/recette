@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
-import 'package:recette/features/recipes/data/jobs/recipe_parsing_worker.dart';
+import 'package:recette/features/recipes/data/jobs/recipe_analysis_worker.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
-import 'package:recette/features/recipes/data/services/recipe_parsing_service.dart';
+import 'package:recette/features/recipes/data/services/recipe_analysis_service.dart';
 
 // Since the service uses static methods, we need a slightly different mocking approach.
 // We can't mock statics directly, so we'll use a wrapper or simply test the integration.
@@ -12,13 +12,13 @@ import 'package:recette/features/recipes/data/services/recipe_parsing_service.da
 // A more advanced setup would use a dependency injection framework to mock the service.
 
 void main() {
-  late RecipeParsingWorker worker;
+  late RecipeAnalysisWorker worker;
 
   setUp(() {
-    worker = RecipeParsingWorker();
+    worker = RecipeAnalysisWorker();
   });
 
-  group('RecipeParsingWorker', () {
+  group('RecipeAnalysisWorker', () {
     // A dummy recipe to be returned by the mocked service.
     final testRecipe = Recipe(
       id: 1,
@@ -33,7 +33,7 @@ void main() {
       sourceUrl: '',
     );
 
-    // Note: Because RecipeParsingService uses static methods, we can't easily
+    // Note: Because RecipeAnalysisService uses static methods, we can't easily
     // mock it without a larger refactor (e.g., using a service locator like get_it).
     // The following tests are commented out as they would require that refactor.
     // They serve as a template for how you would test this if the service was
@@ -46,7 +46,7 @@ void main() {
       
       // Arrange
       final job = Job(
-        jobType: 'recipe_parsing',
+        jobType: 'recipe_analysis',
         requestPayload: json.encode({'url': 'http://example.com'}),
         createdAt: DateTime.now(),
       );
@@ -62,7 +62,7 @@ void main() {
     test('execute throws an exception for an invalid payload', () async {
       // Arrange
       final job = Job(
-        jobType: 'recipe_parsing',
+        jobType: 'recipe_analysis',
         requestPayload: json.encode({'invalid_key': 'some_value'}),
         createdAt: DateTime.now(),
       );

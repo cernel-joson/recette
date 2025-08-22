@@ -167,10 +167,21 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     return Consumer2<RecipeLibraryController, JobController>(
       builder: (context, libraryController, jobController, child) {
         // --- NEW: Find pending recipe jobs ---
-        final pendingJobs = jobController.jobs
-            .where((job) =>
-                job.jobType == 'recipe_analysis' && job.status == JobStatus.complete)
-            .toList();
+        final pendingNewRecipeJobs = jobController.jobs.where((job) {
+          if (job.jobType != 'recipe_analysis' || job.status != JobStatus.complete) {
+            return false;
+          }
+          // Decode the request payload to inspect its contents.
+          final requestData = json.decode(job.requestPayload);
+          final recipeData = requestData['recipe_data'] as Map<String, dynamic>;
+          
+          // --- THIS IS THE LOGIC ---
+          // If the data contains a url, text, or image, it's a new recipe
+          // that needs to be reviewed.
+          return recipeData.containsKey('url') || 
+                recipeData.containsKey('text') || 
+                recipeData.containsKey('image');
+        }).toList();
             
         return Scaffold(
           appBar: AppBar(
@@ -282,12 +293,12 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
               return Column(
                 children: [
                   // --- NEW: Display a banner for each pending job ---
-                  ...pendingJobs.map((job) => PendingJobBanner(
+                  ...pendingNewRecipeJobs.map((job) => PendingJobBanner(
                         job: job,
                         onView: () => _reviewPendingJob(job),
                       )),
                   
-                  if (libraryController.recipes.isEmpty && pendingJobs.isEmpty)
+                  if (libraryController.recipes.isEmpty && pendingNewRecipeJobs.isEmpty)
                     const Expanded(
                       child: Center(
                         child: Text('No recipes found.'),

@@ -31,7 +31,7 @@ class RecipeAnalysisWorker implements JobWorker {
 
     return JobResult(
       responsePayload: json.encode(recipe.toMap()),
-      title: recipe.title,
+      title: recipe.title != 'No Title Provided' ? recipe.title : 'Recipe Analysis Result',
       promptText: promptText,
       rawAiResponse: rawResponseText, // <-- NEW
     );
