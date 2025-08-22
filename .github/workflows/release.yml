@@ -31,12 +31,14 @@ jobs:
 
       # 3. Deploy the Backend (versioned)
       - name: Deploy Backend to Google Cloud
-        # Add an 'id' to this step so we can reference its output
         id: deploy_backend
         run: |
           cd backend
-          # Deploy the function and capture the URL from the output
-          URL=$(gcloud functions deploy recette-api-${{ github.event.inputs.version }} \
+          # --- THIS IS THE FIX ---
+          # Replace the dots in the version tag with hyphens for the function name
+          VERSION_NAME=$(echo "${{ github.event.inputs.version }}" | sed 's/\./-/g')
+          
+          URL=$(gcloud functions deploy recette-api-${VERSION_NAME} \
             --gen2 \
             --runtime=python311 \
             --region=us-central1 \
@@ -46,7 +48,7 @@ jobs:
             --allow-unauthenticated \
             --memory=1Gi \
             --format='value(url)')
-          # Set the URL as an output of this step
+          # --- END OF FIX ---
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       # 4. Set up Flutter and Java
