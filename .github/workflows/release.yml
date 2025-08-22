@@ -17,7 +17,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.version }}
+          # Explicitly tell the action to check out a tag.
+          ref: 'refs/tags/${{ github.event.inputs.version }}'
 
       # 2. Set up Google Cloud CLI for backend deployment
       - name: Authenticate to Google Cloud
@@ -30,9 +31,12 @@ jobs:
 
       # 3. Deploy the Backend (versioned)
       - name: Deploy Backend to Google Cloud
+        # Add an 'id' to this step so we can reference its output
+        id: deploy_backend
         run: |
           cd backend
-          gcloud functions deploy recette-api-${{ github.event.inputs.version }} \
+          # Deploy the function and capture the URL from the output
+          URL=$(gcloud functions deploy recette-api-${{ github.event.inputs.version }} \
             --gen2 \
             --runtime=python311 \
             --region=us-central1 \
@@ -40,7 +44,10 @@ jobs:
             --entry-point=recipe_analyzer_api \
             --trigger-http \
             --allow-unauthenticated \
-            --memory=1Gi
+            --memory=1Gi \
+            --format='value(url)')
+          # Set the URL as an output of this step
+          echo "url=$URL" >> $GITHUB_OUTPUT
 
       # 4. Set up Flutter and Java
       - name: Set up Flutter
@@ -52,7 +59,14 @@ jobs:
 
       # 5. Build the Release APK
       - name: Build Release APK
-        run: flutter build apk --release
+        run: |
+          # Create a temporary .env file from the GitHub secret
+          echo "${{ secrets.ENV_FILE }}" > .env
+
+          # Now, build the app, defining the API_URL and all Firebase keys from the file
+          flutter build apk --release \
+            --dart-define=API_URL=${{ steps.deploy_backend.outputs.url }} \
+            --dart-define-from-file=.env
 
       # 6. Upload to Firebase App Distribution
       - name: Upload to Firebase App Distribution

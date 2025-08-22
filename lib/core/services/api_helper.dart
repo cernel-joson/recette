@@ -8,8 +8,15 @@ enum AiModel { pro, flash }
 /// A helper class to handle all communication with the back-end API.
 class ApiHelper {
   // The single source of truth for our cloud function URL.
-  static const String _cloudFunctionUrl =
-      "https://us-central1-recette-fdf64.cloudfunctions.net/recipe_analyzer_api";
+  // static const String _cloudFunctionUrl =
+  //     "https://us-central1-recette-fdf64.cloudfunctions.net/recipe_analyzer_api";
+  
+  // Read the URL from a compile-time environment variable.
+  // We provide a default value for local debugging.
+  static const String _cloudFunctionUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'https://us-central1-recette-fdf64.cloudfunctions.net/recette-api-dev',
+  );
 
   /// A private, generic analysis function that returns the raw JSON.
   /// It now returns Future<dynamic> to handle both Map and List responses.
