@@ -1,18 +1,13 @@
+// lib/features/dietary_profile/data/models/dietary_profile_model.dart
 import 'package:recette/core/utils/utils.dart';
 
-/// A model to represent the user's dietary profile.
-///
-/// By implementing [Fingerprintable], we can use our generic helper
-/// to generate a consistent hash of its content.
 class DietaryProfile implements Fingerprintable {
-  final String rules;
-  final String preferences;
+  final String markdownText;
 
-  DietaryProfile({this.rules = '', this.preferences = ''});
+  DietaryProfile({this.markdownText = ''});
 
-  /// A computed property that combines the rules and preferences
-  /// into a single string for AI analysis.
-  String get fullProfileText => '$rules\n\n$preferences'.trim();
+  // The fullProfileText is now just the markdownText.
+  String get fullProfileText => markdownText.trim();
 
   @override
   String get fingerprintableString => fullProfileText;
