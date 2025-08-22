@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
@@ -18,16 +19,33 @@ class RecipeAnalysisService {
 
   RecipeAnalysisService(this._jobManager);
   
-  Future<void> runAnalysisTasks({
+  Future<bool> runAnalysisTasks({
     required Recipe recipe,
-    required Set<RecipeAnalysisTask> tasks, // Use the new name
+    required Set<RecipeAnalysisTask> tasks,
   }) async {
-    if (tasks.isEmpty) return;
+    if (tasks.isEmpty) return false;
 
     final profile = await ProfileService.loadProfile();
+    final tasksToRun = Set<RecipeAnalysisTask>.from(tasks);
+
+    // --- CACHING LOGIC ---
+    if (tasks.contains(RecipeAnalysisTask.healthCheck)) {
+      final isCacheValid = FingerprintHelper.generate(profile) == recipe.dietaryProfileFingerprint;
+      if (isCacheValid) {
+        debugPrint("CACHE HIT for Health Check on Recipe ID ${recipe.id}. Skipping task.");
+        tasksToRun.remove(RecipeAnalysisTask.healthCheck);
+      }
+    }
+    // (Future caching logic for other tasks could go here)
+
+    if (tasksToRun.isEmpty) {
+      debugPrint("All requested analysis tasks were covered by cache. No job submitted.");
+      return false; // Indicates no job was submitted
+    }
+    // --- END CACHING LOGIC ---
 
     final requestPayload = json.encode({
-      'tasks': tasks.map((t) => t.toString().split('.').last).toList(),
+      'tasks': tasksToRun.map((t) => t.toString().split('.').last).toList(),
       'recipe_data': recipe.toMap(),
       'dietary_profile': profile.fullProfileText,
     });
@@ -36,6 +54,7 @@ class RecipeAnalysisService {
       jobType: 'recipe_analysis',
       requestPayload: requestPayload,
     );
+    return true; // Indicates a job was submitted
   }
 
   /*Future<Recipe> enhanceSingleRecipe({

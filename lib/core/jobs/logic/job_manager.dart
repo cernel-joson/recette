@@ -69,6 +69,13 @@ class JobManager {
 
       // 4. Mark the job as complete, now passing the full result.
       await _jobRepository.completeJob(job.id!, result);
+      
+      // 5. Call the worker's onComplete handler
+      // The job object needs the latest data before being passed to onComplete.
+      final completedJob = await _jobRepository.getJobById(job.id!);
+      if (completedJob != null) {
+        await worker.onComplete(completedJob);
+      }
     } catch (e) {
       debugPrint('Job failed: $e');
       // --- THIS IS THE FIX ---

@@ -26,4 +26,12 @@ class ProfileAnalysisWorker implements JobWorker {
       title: 'Profile Review Suggestions',
     );
   }
+
+  // --- ADD THIS METHOD ---
+  @override
+  Future<void> onComplete(Job job) async {
+    // This job type doesn't require any follow-up action,
+    // so the implementation is empty.
+  }
+  // --- END OF FIX ---
 }
