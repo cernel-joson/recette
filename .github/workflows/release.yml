@@ -1,5 +1,5 @@
 # .github/workflows/release.yml
-name: Release App and Backend
+name: Versioned Release
 
 # Allow this workflow to be triggered manually from the GitHub UI
 on:
