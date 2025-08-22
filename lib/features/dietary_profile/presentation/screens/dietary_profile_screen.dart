@@ -1,9 +1,12 @@
+// lib/features/dietary_profile/presentation/screens/dietary_profile_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
-import 'profile_review_screen.dart'; // Import the new review screen
+import 'profile_review_screen.dart';
 
-/// A screen for viewing and editing the user's dietary profile.
 class DietaryProfileScreen extends StatefulWidget {
   const DietaryProfileScreen({super.key});
 
@@ -12,7 +15,6 @@ class DietaryProfileScreen extends StatefulWidget {
 }
 
 class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
-  // Use two separate controllers for the text fields
   final _rulesController = TextEditingController();
   final _preferencesController = TextEditingController();
 
@@ -27,11 +29,9 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
 
   Future<void> _loadProfile() async {
     setState(() { _isLoading = true; });
-    // Load the profile model from the service
     final profile = await ProfileService.loadProfile();
     if (mounted) {
       setState(() {
-        // Populate the controllers from the model
         _rulesController.text = profile.rules;
         _preferencesController.text = profile.preferences;
         _isLoading = false;
@@ -40,67 +40,60 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    if (_isSaving) return;
     setState(() { _isSaving = true; });
 
-    final currentProfile = DietaryProfile(
+    final newProfile = DietaryProfile(
       rules: _rulesController.text,
       preferences: _preferencesController.text,
     );
 
-    if (currentProfile.fullProfileText.isEmpty) {
-      await ProfileService.saveProfile(DietaryProfile());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile cleared.')),
-        );
-        Navigator.of(context).pop();
-      }
-      setState(() { _isSaving = false; });
+    await ProfileService.saveProfile(newProfile);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Profile saved successfully!'),
+            backgroundColor: Colors.green),
+      );
+    }
+    setState(() { _isSaving = false; });
+  }
+  
+  Future<void> _runAiReview() async {
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+    final profile = DietaryProfile(
+      rules: _rulesController.text,
+      preferences: _preferencesController.text,
+    );
+
+    if (profile.fullProfileText.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Profile is empty. Nothing to review.'),
+            backgroundColor: Colors.orange),
+      );
       return;
     }
 
-    try {
-      // Step 1: Get AI review. This now returns a structured object.
-      final review = await ProfileService.reviewProfile(currentProfile);
+    final requestPayload = json.encode({
+      'profile_text': profile.fullProfileText,
+    });
 
-      // Step 2: Navigate to the new review screen.
-      // We await a result, which will be the final, user-approved profile.
-      final finalProfile = await Navigator.of(context).push<DietaryProfile>(
-        MaterialPageRoute(
-          builder: (context) => ProfileReviewScreen(
-            originalProfile: currentProfile,
-            review: review,
-          ),
+    await jobManager.submitJob(
+      jobType: 'profile_review',
+      requestPayload: requestPayload,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('AI review started... Track progress in the Jobs Tray.'),
+          backgroundColor: Colors.blue,
         ),
       );
-
-      // Step 3: If the user accepted and saved, the result will not be null.
-      if (finalProfile != null) {
-        await ProfileService.saveProfile(finalProfile);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Profile saved successfully!'),
-                backgroundColor: Colors.green),
-          );
-          Navigator.of(context).pop();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error: ${e.toString()}'),
-              backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() { _isSaving = false; });
-      }
     }
   }
+
 
   @override
   void dispose() {
@@ -160,17 +153,25 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const Spacer(), // Pushes the button to the bottom
-                  
-                  ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _saveProfile,
-                    icon: _isSaving
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.save),
-                    label: const Text('Review & Save Profile'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    ),
+                  const Spacer(),
+                  // NEW: A row with two distinct buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _runAiReview,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('AI Review'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _isSaving ? null : _saveProfile,
+                        icon: _isSaving
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.save),
+                        label: const Text('Save'),
+                      ),
+                    ],
                   )
                 ],
               ),
