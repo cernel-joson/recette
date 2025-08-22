@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-08-22
+### Added
+- **Asynchronous Job System:** Implemented a robust, app-wide system for handling all AI tasks in the background, ensuring the UI is never blocked.
+- **Persistent Job History:** All background jobs and their AI-generated results are now saved to the local database, creating a persistent "hopper" and preventing data loss.
+- **Universal Jobs Tray UI:** Added a global icon and a dedicated "Jobs Tray" screen to provide users with transparent feedback on the status of all background tasks.
+- **Developer Mode & Job Inspector:** Implemented a hidden developer mode with a powerful "Job Inspector" for debugging API calls, prompts, and raw AI responses.
+- **Dietary Profile Overhaul:** Refactored the dietary profile to use a flexible Markdown format, with a new tabbed UI for both raw text and a future visual editor.
+
+### Changed
+- **Architectural Refactor:** Performed a major refactoring to align the codebase with the principles of Separation of Concerns, moving business logic from UI controllers into dedicated services.
+- **Asynchronous AI Calls:** Converted all remaining direct AI API calls (Meal Suggestions, Inventory Import, Profile Review) to use the new asynchronous job system.
+- **Backend Prompt Engineering:** Significantly improved and consolidated backend prompts for better reliability and more accurate, "loyal" AI responses, especially for meal suggestions and health checks.
+
+### Fixed
+- Fixed numerous state management bugs, including lists not refreshing after saves and scroll positions jumping after edits.
+- Resolved several data parsing errors by making data models more robust to handle different JSON formats from the AI and the local database.
+
 ## [0.2.2+4] - 2025-08-18
 ### Changed
 - Updated Firebase options to pull from compile-time flags instead of .env
