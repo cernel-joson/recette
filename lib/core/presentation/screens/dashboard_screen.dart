@@ -14,6 +14,7 @@ import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen
 import 'package:recette/core/presentation/screens/about_screen.dart';
 import 'package:recette/core/services/developer_service.dart';
 import 'package:provider/provider.dart';
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -95,6 +96,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recette'),
+        actions: [
+          const JobsTrayIcon(),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),

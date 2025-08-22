@@ -1,6 +1,7 @@
 // lib/features/shopping_list/presentation/screens/shopping_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:recette/features/shopping_list/shopping_list.dart';
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -41,7 +42,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Shopping List')),
+      appBar: AppBar(
+        title: const Text('Shopping List'),
+        actions: [
+          const JobsTrayIcon(), // Add the new global icon
+        ]
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(

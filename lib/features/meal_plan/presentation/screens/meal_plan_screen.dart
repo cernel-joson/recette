@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:recette/features/meal_plan/meal_plan.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_library_screen.dart'; // To select recipes
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
 class MealPlanScreen extends StatefulWidget {
   const MealPlanScreen({super.key});
@@ -49,7 +50,12 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Meal Plan')),
+      appBar: AppBar(
+        title: const Text('Meal Plan'),
+        actions: [
+          const JobsTrayIcon(), // Add the new global icon
+        ]
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(

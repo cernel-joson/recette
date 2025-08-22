@@ -8,6 +8,7 @@ import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/core/presentation/widgets/health_rating_icon.dart';
 import 'package:recette/features/recipes/data/services/recipe_analysis_service.dart';
 import 'package:recette/features/recipes/presentation/widgets/recipe_analysis_dialog.dart';
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
 import 'package:provider/provider.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
@@ -202,6 +203,9 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
             ],
           ),
           leading: BackButton(onPressed: () => Navigator.of(context).pop(_didChange)),
+          actions: [
+            const JobsTrayIcon(),
+          ],
         ),
         body: _currentRecipe == null
             ? const Center(child: CircularProgressIndicator())

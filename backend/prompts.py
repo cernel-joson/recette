@@ -261,9 +261,7 @@ def get_inventory_parse_prompt(inventory_text, locations):
 def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
     """Creates a sophisticated prompt for generating context-aware meal ideas."""
     return f"""
-    You are an empathetic and expert kitchen assistant. Your goal is to help the user decide what to make by providing simple, actionable, and relevant meal ideas.
-
-    Analyze the complete context provided below.
+    You are an expert kitchen assistant. Your primary and most important task is to suggest meal ideas using ONLY the ingredients available in the user's "Current Inventory".
 
     **CONTEXT:**
     - **User's Dietary Profile:** {dietary_profile}
@@ -271,15 +269,15 @@ def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
     - **User's Immediate Situation:** {user_intent}
 
     **YOUR TASK:**
-    Based on all of the provided context, suggest 3 to 5 simple meal ideas. For each idea, provide a title and a brief, one-sentence description explaining why it's a good fit for the user's situation.
+    1.  Analyze the "Current Inventory" list.
+    2.  Based ONLY on the items in the inventory, suggest 1 to 3 simple meal ideas that align with the user's dietary profile and situation.
+    3.  If the provided inventory contains nonsensical items (like clothing) or if it is impossible to create a meal that aligns with the health profile, you MUST state this clearly in your description. Do not invent ingredients the user does not have.
 
     Return a single, clean JSON array of objects with the following structure:
     [
       {{
         "title": "...",
-        "description": "..."
+        "description": "A one-sentence description explaining why it's a good fit, or explaining why a suggestion cannot be reasonably made from the items provided."
       }}
     ]
-
-    - Do not include any text or formatting before or after the JSON array.
     """

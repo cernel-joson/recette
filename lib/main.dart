@@ -16,6 +16,8 @@ import 'firebase_options.dart'; // Import the generated file
 import 'package:recette/core/presentation/screens/dashboard_screen.dart';
 import 'package:recette/core/services/developer_service.dart';
 import 'package:recette/features/dietary_profile/data/jobs/profile_analysis_worker.dart';
+import 'package:recette/features/inventory/data/jobs/inventory_import_worker.dart';
+import 'package:recette/features/inventory/data/jobs/meal_suggestion_worker.dart';
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
 // from anywhere in the app, which is essential for the share handler.
@@ -42,6 +44,8 @@ void main() async {
   final Map<String, JobWorker> workers = {
     'recipe_analysis': RecipeAnalysisWorker(),
     'profile_review': ProfileAnalysisWorker(),
+    'inventory_import': InventoryImportWorker(),
+    'meal_suggestion': MealSuggestionWorker(),
   };
   final jobManager = JobManager(
     jobRepository: jobRepository,

@@ -1,9 +1,20 @@
 // lib/features/inventory/presentation/screens/inventory_screen.dart
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:recette/features/inventory/data/models/inventory_models.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
+import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+
+import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/features/inventory/presentation/widgets/meal_ideas_banner.dart';
+import 'package:recette/features/inventory/presentation/screens/meal_ideas_screen.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
@@ -94,6 +105,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   void _showImportDialog() async {
     final textController = TextEditingController();
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+
     final result = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -113,7 +126,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 FilledButton(
                   onPressed: () async {
                     if (textController.text.isNotEmpty) {
-                      await _inventoryService.importInventoryFromText(textController.text);
+                      // Get locations to provide context to the AI
+                      final locations = await _inventoryService.getLocations();
+                      final locationNames = locations.map((loc) => loc.name).toList();
+
+                      final requestPayload = json.encode({
+                        'text': textController.text,
+                        'locations': locationNames,
+                      });
+
+                      await jobManager.submitJob(
+                        jobType: 'inventory_import',
+                        requestPayload: requestPayload,
+                      );
+
+                      if (mounted) {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                           const SnackBar(
+                             content: Text('Inventory import started...'),
+                             backgroundColor: Colors.blue,
+                           ),
+                         );
+                      }
                       Navigator.of(context).pop(true);
                     }
                   },
@@ -122,9 +156,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ],
             ));
     
-    if (result == true) {
-      _refreshInventory();
-    }
+    // No need to refresh here, the job system will handle updates.
   }
 
   void _showItemDialog({InventoryItem? item}) async {
@@ -254,9 +286,177 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+  // This method is now much simpler. It just submits the job.
+  void _getMealIdeas() async {
+    final intentController = TextEditingController();
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+
+    final userIntent = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("What's the situation?"),
+        content: TextField(
+          controller: intentController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: "e.g., 'I'm tired and need something quick.'",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(intentController.text),
+            child: const Text('Get Ideas'),
+          ),
+        ],
+      ),
+    );
+
+    if (userIntent == null || !mounted) return;
+
+    // Gather context and build payload
+    final inventoryList = await _inventoryService.getInventoryAsText();
+    final profile = await ProfileService.loadProfile();
+    final requestPayload = json.encode({
+      'inventory': inventoryList,
+      'dietary_profile': profile.fullProfileText,
+      'user_intent': userIntent,
+    });
+
+    await jobManager.submitJob(
+      jobType: 'meal_suggestion',
+      requestPayload: requestPayload,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating meal ideas... Track progress in the Jobs Tray.'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
+  }
+  
+  void _viewMealIdeas(Job job) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => MealIdeasScreen(job: job)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // We now need to listen to the JobController to see completed meal suggestion jobs
+    return Consumer<JobController>(
+      builder: (context, jobController, child) {
+        final pendingMealJobs = jobController.jobs.where((job) =>
+            job.jobType == 'meal_suggestion' && job.status == JobStatus.complete);
+        
+        return Scaffold(
+          appBar: _isSelecting
+          ? AppBar(
+              leading: IconButton(icon: const Icon(Icons.close), onPressed: _clearSelection),
+              title: Text('${_selectedItemIds.length} selected'),
+              actions: [
+                IconButton(icon: const Icon(Icons.drive_file_move), onPressed: _showMoveDialog, tooltip: 'Move Items'),
+              ],
+            )
+          : AppBar(
+              title: const Text('My Inventory'),
+              actions: [
+                const JobsTrayIcon(), // Add the new global icon
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'add') {
+                      _showItemDialog();
+                    } else if (value == 'import') {
+                      _showImportDialog();
+                    } else if (value == 'export') {
+                      _exportInventory();
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'add',
+                      child: ListTile(
+                        leading: Icon(Icons.add_circle_outline),
+                        title: Text('Add Item'),
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'import',
+                      child: ListTile(
+                        leading: Icon(Icons.download),
+                        title: Text('Import from Text'),
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'export',
+                      child: ListTile(
+                        leading: Icon(Icons.upload_file),
+                        title: Text('Export to Text'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column( // Wrap body in a Column to add the banner
+                  children: [
+                    // --- NEW: Display a banner for each pending job ---
+                    ...pendingMealJobs.map((job) => MealIdeasBanner(
+                          job: job,
+                          onView: () => _viewMealIdeas(job),
+                        )),
+                    Expanded(
+                      child: _groupedItems == null || _groupedItems!.isEmpty
+                          ? const Center(child: Text('Your inventory is empty.'))
+                          : ListView(
+                            children: _groupedItems!.entries.map((entry) {
+                              final location = entry.key;
+                              final items = entry.value;
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
+                                    child: Text(
+                                      location,
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  ...items.map((item) => ListTile(
+                                        title: Text(item.name),
+                                        subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                          onPressed: () async {
+                                            await _inventoryService.deleteItem(item.id!);
+                                            _refreshInventory();
+                                          },
+                                        ),
+                                        onTap: () => _showItemDialog(item: item),
+                                      )),
+                                  const Divider(),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                    ),
+                  ],
+                ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _getMealIdeas, // Call the refactored method
+            tooltip: 'Get Meal Ideas',
+            icon: const Icon(Icons.lightbulb_outline),
+            label: const Text('What can I make?'),
+          ),
+        );
+      },
+    );
     return Scaffold(
       appBar: _isSelecting
           ? AppBar(
@@ -269,20 +469,40 @@ class _InventoryScreenState extends State<InventoryScreen> {
           : AppBar(
               title: const Text('My Inventory'),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _showItemDialog(),
-                  tooltip: 'Add Item',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.upload_file),
-                  onPressed: _exportInventory,
-                  tooltip: 'Export to Text',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.download_for_offline_outlined),
-                  onPressed: _showImportDialog,
-                  tooltip: 'Import from Text',
+                const JobsTrayIcon(), // Add the new global icon
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'add') {
+                      _showItemDialog();
+                    } else if (value == 'import') {
+                      _showImportDialog();
+                    } else if (value == 'export') {
+                      _exportInventory();
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'add',
+                      child: ListTile(
+                        leading: Icon(Icons.add_circle_outline),
+                        title: Text('Add Item'),
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'import',
+                      child: ListTile(
+                        leading: Icon(Icons.download),
+                        title: Text('Import from Text'),
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'export',
+                      child: ListTile(
+                        leading: Icon(Icons.upload_file),
+                        title: Text('Export to Text'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

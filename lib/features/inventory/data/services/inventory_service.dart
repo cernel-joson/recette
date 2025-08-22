@@ -104,49 +104,6 @@ class InventoryService {
     return buffer.toString();
   }
 
-  // --- UPDATED: Import logic is now location-aware ---
-  Future<void> importInventoryFromText(String text) async {
-    if (text.trim().isEmpty) return;
-
-    // 1. Get current locations to provide context to the AI
-    final locations = await getLocations();
-    final locationNames = locations.map((loc) => loc.name).toList();
-    final locationNameMap = {for (var loc in locations) loc.name.toLowerCase(): loc.id};
-
-    // 2. Send the raw text AND location context to the backend for parsing.
-    final requestBody = {
-      'inventory_import_request': {
-        'text': text,
-        'locations': locationNames,
-      }
-    };
-    final responseBody = await ApiHelper.analyzeRaw(requestBody, model: AiModel.flash);
-    
-    // --- NEW: Extract data from the new response structure ---
-    final aiResult = responseBody['result'];
-    final promptText = responseBody['prompt_text'];
-    
-    final parsedItems = aiResult as List<dynamic>;
-
-    // 3. Use a transaction to update the local database.
-    final db = await _db.database;
-    await db.transaction((txn) async {
-      await txn.delete('inventory');
-      for (var itemMap in parsedItems) {
-        final locationName = (itemMap['location_name'] as String?)?.toLowerCase();
-        final locationId = locationNameMap[locationName];
-
-        final item = InventoryItem(
-          name: itemMap['name'] ?? 'Unknown Item',
-          quantity: itemMap['quantity'] ?? '',
-          unit: itemMap['unit'] ?? '',
-          locationId: locationId, // Assign the found location ID
-        );
-        await txn.insert('inventory', item.toMap());
-      }
-    });
-  }
-
   // --- Location Management ---
   Future<List<Location>> getLocations() async {
     final db = await _db.database;

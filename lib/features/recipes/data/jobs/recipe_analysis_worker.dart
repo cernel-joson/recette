@@ -79,13 +79,18 @@ class RecipeAnalysisWorker implements JobWorker {
 
       if (originalRecipe == null) return;
 
-      // 1. Decode the raw, unprocessed AI response. This is the correct source of truth.
-      final rawAiResult = json.decode(job.rawAiResponse!);
+      // --- THIS IS THE FIX ---
+      // Sanitize the raw response string to remove markdown fences.
+      final jsonString = job.rawAiResponse!.trim().replaceAll("```json", "").replaceAll("```", "").trim();
       
-      // 2. Use fromJson, which is designed to handle the AI's data structure.
+      // Decode the sanitized string.
+      final rawAiResult = json.decode(jsonString);
+      
+      // Use fromJson, which is designed to handle the AI's data structure.
       final updatedDataFromAi = Recipe.fromJson(rawAiResult, originalRecipe.sourceUrl);
+      // --- END OF FIX ---
 
-      // 3. Combine the new AI data with the original recipe's core data.
+      // Combine the new AI data with the original recipe's core data.
       final finalRecipe = originalRecipe.copyWith(
         tags: updatedDataFromAi.tags,
         healthRating: updatedDataFromAi.healthRating,

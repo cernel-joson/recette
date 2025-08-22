@@ -6,6 +6,7 @@ import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/features/dietary_profile/data/utils/profile_parser.dart';
+import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
 
 class DietaryProfileScreen extends StatefulWidget {
@@ -107,6 +108,9 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> with Single
             Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
           ],
         ),
+        actions: [
+          const JobsTrayIcon(), // Add the new global icon
+        ]
       ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
