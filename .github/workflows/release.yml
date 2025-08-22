@@ -56,7 +56,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           # Specify the version of Flutter that matches your project's requirements.
-          flutter-version: '3.22.2' 
+          flutter-version: '3.35.1' 
           channel: 'stable'
           cache: true
 
