@@ -95,7 +95,7 @@ class _JobListItem extends StatelessWidget {
         title = job.jobType.replaceAll('_', ' ').toUpperCase();
     }
 
-    return '${title}: ${(job.title ?? 'Job #${job.id}')}';
+    return '$title: ${(job.title ?? 'Job #${job.id}')}';
   }
 
   void _onTap(BuildContext context) {

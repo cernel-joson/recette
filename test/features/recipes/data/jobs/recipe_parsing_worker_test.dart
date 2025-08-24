@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/features/recipes/data/jobs/recipe_analysis_worker.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
-import 'package:recette/features/recipes/data/services/recipe_analysis_service.dart';
 
 // Since the service uses static methods, we need a slightly different mocking approach.
 // We can't mock statics directly, so we'll use a wrapper or simply test the integration.

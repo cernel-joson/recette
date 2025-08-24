@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
 

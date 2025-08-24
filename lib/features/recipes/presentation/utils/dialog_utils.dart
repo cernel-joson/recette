@@ -227,8 +227,7 @@ class DialogUtils {
   }
 
   // Navigation logic also stays here.
-  static Future<void> _navigateToEditScreen(BuildContext context, Recipe? recipe,
-      {bool showPasteDialog = false}) async {
+  static Future<void> _navigateToEditScreen(BuildContext context, Recipe? recipe) async {
     final controller = Provider.of<RecipeLibraryController>(context, listen: false);
     final result = await Navigator.push<bool>(
       context,

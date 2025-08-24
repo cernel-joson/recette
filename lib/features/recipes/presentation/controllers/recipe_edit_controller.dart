@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
 import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';

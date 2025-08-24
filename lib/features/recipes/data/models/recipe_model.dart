@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'ingredient_model.dart';
 import 'timing_info_model.dart';
 import 'package:recette/core/utils/fingerprint_helper.dart';

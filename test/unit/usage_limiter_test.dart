@@ -3,7 +3,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:recette/core/utils/usage_limiter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Use a mock for SharedPreferences to isolate the limiter's logic.
 import '../mocks/mock_shared_preferences.mocks.dart';

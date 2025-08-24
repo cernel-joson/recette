@@ -55,7 +55,7 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
   Future<void> _editIngredient(BuildContext context, RecipeEditController controller, int index) async {
     final updatedIngredient = await showDialog<Ingredient>(
       context: context,
-      builder: (context) => IngredientEditDialog(ingredient: controller.ingredients![index]),
+      builder: (context) => IngredientEditDialog(ingredient: controller.ingredients[index]),
     );
     if (updatedIngredient != null) {
       controller.editIngredient(index, updatedIngredient);
@@ -63,7 +63,7 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
   }
 
   Future<void> _editInstruction(BuildContext context, RecipeEditController controller, int index) async {
-    final textController = TextEditingController(text: controller.instructions![index]);
+    final textController = TextEditingController(text: controller.instructions[index]);
     final updatedInstruction = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -97,7 +97,7 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
   Future<void> _editOtherTiming(BuildContext context, RecipeEditController controller, int index) async {
     final updatedTiming = await showDialog<TimingInfo>(
       context: context,
-      builder: (context) => TimingInfoEditDialog(timingInfo: controller.otherTimings![index]),
+      builder: (context) => TimingInfoEditDialog(timingInfo: controller.otherTimings[index]),
     );
     if (updatedTiming != null) {
       controller.editOtherTiming(index, updatedTiming);
@@ -114,8 +114,8 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Discard'),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Discard'),
           ),
         ],
       ),

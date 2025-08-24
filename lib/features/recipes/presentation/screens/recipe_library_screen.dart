@@ -8,7 +8,6 @@ import 'package:recette/features/recipes/presentation/controllers/controllers.da
 import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart';
 import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
-import 'package:recette/core/presentation/widgets/widgets.dart';
 import 'package:recette/features/recipes/presentation/widgets/pending_job_banner.dart';
 
 // --- ADD THIS IMPORT ---

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';

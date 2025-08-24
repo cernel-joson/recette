@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Import provider
 import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core

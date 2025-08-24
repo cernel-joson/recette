@@ -97,7 +97,7 @@ class InventoryService {
       for (var item in items) {
         final quantity = item.quantity ?? '';
         final unit = item.unit ?? '';
-        buffer.writeln('- ${quantity} ${unit} ${item.name}'.trim());
+        buffer.writeln('- $quantity $unit ${item.name}'.trim());
       }
     });
     

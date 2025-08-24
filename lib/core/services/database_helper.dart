@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
 
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 14;
+  static const int _dbVersion = 15;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -70,6 +70,10 @@ class DatabaseHelper {
     if (oldVersion < 12) await _addColumnIfNotExists(db, 'job_history', 'title', 'TEXT');
     if (oldVersion < 13) await _addColumnIfNotExists(db, 'job_history', 'error_message', 'TEXT');
     if (oldVersion < 14) await _addColumnIfNotExists(db, 'job_history', 'raw_ai_response', 'TEXT');
+    if (oldVersion < 15) {
+      await db.execute('DROP TABLE IF EXISTS meal_plan');
+      await _createMealPlanTables(db);
+    }
     debugPrint("--- _upgradeDB complete. ---");
   }
 
@@ -173,8 +177,6 @@ class DatabaseHelper {
     return maps.isNotEmpty;
   }
   
-  // --- Other methods remain largely the same ---
-  
   Future<List<String>> getAllUniqueTags() async {
     final db = await instance.database;
     final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
@@ -263,7 +265,6 @@ class DatabaseHelper {
         )
       ''');
 
-      // --- NEW: Insert default locations ---
       var batch = db.batch();
       batch.insert('locations', {'name': 'Pantry'});
       batch.insert('locations', {'name': 'Fridge'});
@@ -281,18 +282,17 @@ class DatabaseHelper {
       )
     ''');
   }
-  
+
   Future<void> _createMealPlanTables(Database db) async {
     await db.execute('''
-      CREATE TABLE meal_plan (
+      CREATE TABLE meal_plan_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL UNIQUE,
-        breakfast_recipe_id INTEGER,
-        lunch_recipe_id INTEGER,
-        dinner_recipe_id INTEGER,
-        FOREIGN KEY (breakfast_recipe_id) REFERENCES recipes (id) ON DELETE SET NULL,
-        FOREIGN KEY (lunch_recipe_id) REFERENCES recipes (id) ON DELETE SET NULL,
-        FOREIGN KEY (dinner_recipe_id) REFERENCES recipes (id) ON DELETE SET NULL
+        date TEXT NOT NULL,
+        meal_type TEXT NOT NULL,
+        entry_type TEXT NOT NULL,
+        recipe_id INTEGER,
+        text_entry TEXT,
+        FOREIGN KEY (recipe_id) REFERENCES recipes (id) ON DELETE SET NULL
       )
     ''');
   }

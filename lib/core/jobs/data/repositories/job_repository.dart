@@ -32,7 +32,7 @@ class JobRepository {
     final id = await db.insert('job_history', job.toMap());
 
     // Return a new Job object that includes the database-assigned ID.
-    return Job.fromMap({...?job.toMap(), 'id': id});
+    return Job.fromMap({...job.toMap(), 'id': id});
   }
 
   /// Updates the status of an existing job.
