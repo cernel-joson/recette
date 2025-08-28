@@ -23,7 +23,7 @@ class HealthRatingIcon extends StatelessWidget {
       case 'AVOID':
       // Legacy Case
       case 'RED':
-        return const Text('❌', style: TextStyle(fontSize: 20));
+        return const Text('🚩', style: TextStyle(fontSize: 20));
       default:
         // A neutral icon for "UNRATED" or null
         return const Icon(Icons.circle_outlined, color: Colors.grey);
