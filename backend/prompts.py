@@ -308,3 +308,31 @@ def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
     {JSON_STRUCTURE_PROMPT}
     ---
     """
+
+def get_conversational_chat_prompt(user_message, profile_text, inventory_text, chat_history):
+    """Creates the prompt for a freeform, context-aware chat."""
+
+    # Conditionally build the context string
+    context = "--- USER CONTEXT ---\n"
+    if profile_text:
+        context += f"Dietary Profile:\n{profile_text}\n\n"
+    if inventory_text:
+        context += f"Current Inventory:\n{inventory_text}\n\n"
+
+    # Format chat history
+    history = "\n".join([f"{msg['role']}: {msg['text']}" for msg in chat_history])
+
+    return f"""
+    You are Recette, a friendly and knowledgeable kitchen assistant. Your goal is to help the user with their questions about food, recipes, and nutrition based on the context they provide.
+
+    {context if (profile_text or inventory_text) else ""}
+    --- CHAT HISTORY ---
+    {history if history else "This is the beginning of your conversation."}
+    ---
+
+    Here is the user's latest message:
+    user: {user_message}
+
+    Your Task:
+    Respond to the user's message in a helpful, conversational tone. Your response should be a single, clean string.
+    """

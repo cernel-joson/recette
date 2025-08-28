@@ -205,7 +205,7 @@ class Recipe implements DataModel, Fingerprintable {
       prepTime: map['prepTime'] ?? map['prep_time'] ?? '',
       cookTime: map['cookTime'] ?? map['cook_time'] ?? '',
       totalTime: map['totalTime'] ?? map['total_time'] ?? '',
-    servings: map['servings'] ?? '',
+      servings: map['servings'] ?? '',
       
       // Use the safe list decoder
       ingredients: _decodeList(map['ingredients'], (i) => Ingredient.fromMap(i)),

@@ -11,6 +11,7 @@ from . import recipe_analysis_service
 from . import recipe_tools_service
 from . import inventory_service
 from . import profile_service
+from prompts import get_conversational_chat_prompt
 
 # --- Initialization ---
 PROJECT_ID = "recette-fdf64"
@@ -67,6 +68,28 @@ def recipe_analyzer_api(request):
             response_data = inventory_service.handle_inventory_import(request_json, model)
         elif 'review_text' in request_json:
             response_data = profile_service.handle_profile_review(request_json, model)
+        elif 'chat_request' in request_json:
+            # 1. Get data from the app's request
+            user_message = request_json.get('user_message', '')
+            profile_text = request_json.get('profile_text', '')
+            inventory_text = request_json.get('inventory_text', '')
+            chat_history = request_json.get('chat_history', []) # Expects a list of {'role': 'user'/'model', 'text': '...'}
+
+            # 2. Create the prompt
+            prompt = get_conversational_chat_prompt(user_message, profile_text, inventory_text, chat_history)
+
+            # 3. Call Gemini
+            response = model.generate_content(prompt)
+            json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
+            ai_result = json.loads(json_string)
+            
+            return {
+                "prompt_text": prompt,
+                "result": ai_result
+            }
+
+            # 4. Return the plain text response
+            return response.text
         else:
             raise Exception("Invalid request. Could not determine the correct handler.", 400)
 
