@@ -1,7 +1,7 @@
 // test/models/inventory_models_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:recette/features/inventory/data/models/inventory_models.dart';
+import 'package:recette/features/inventory/data/models/inventory_item_model.dart';
 
 void main() {
   group('InventoryItem Model Tests', () {

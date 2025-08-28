@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/core/presentation/widgets/health_rating_icon.dart';
+import 'package:recette/core/presentation/widgets/widgets.dart';
 
 /// A widget that displays a summary of a recipe for use in lists.
 class RecipeCard extends StatelessWidget {

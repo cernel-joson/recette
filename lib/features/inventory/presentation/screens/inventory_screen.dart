@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/features/inventory/data/models/inventory_models.dart';
+import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';

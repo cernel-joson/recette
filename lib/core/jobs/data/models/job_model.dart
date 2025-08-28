@@ -15,8 +15,8 @@ class Job {
   final String requestPayload;
   final String? promptText;
   final String? responsePayload;
-  final String? rawAiResponse; // <-- NEW FIELD
-  final String? errorMessage; // <-- NEW FIELD
+  final String? rawAiResponse;
+  final String? errorMessage;
   final DateTime createdAt;
   final DateTime? completedAt;
 
@@ -30,8 +30,8 @@ class Job {
     required this.requestPayload,
     this.promptText,
     this.responsePayload,
-    this.rawAiResponse, // <-- NEW
-    this.errorMessage, // <-- NEW
+    this.rawAiResponse,
+    this.errorMessage,
     required this.createdAt,
     this.completedAt,
   });
@@ -48,8 +48,8 @@ class Job {
       'request_payload': requestPayload,
       'prompt_text': promptText,
       'response_payload': responsePayload,
-      'raw_ai_response': rawAiResponse, // <-- NEW
-      'error_message': errorMessage, // <-- NEW
+      'raw_ai_response': rawAiResponse,
+      'error_message': errorMessage,
       'created_at': createdAt.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
     };
@@ -67,8 +67,8 @@ class Job {
       requestPayload: map['request_payload'],
       promptText: map['prompt_text'],
       responsePayload: map['response_payload'],
-      rawAiResponse: map['raw_ai_response'], // <-- NEW
-      errorMessage: map['error_message'], // <-- NEW
+      rawAiResponse: map['raw_ai_response'],
+      errorMessage: map['error_message'],
       createdAt: DateTime.parse(map['created_at']),
       completedAt: map['completed_at'] != null ? DateTime.parse(map['completed_at']) : null,
     );

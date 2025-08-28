@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
-import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/features/recipes/presentation/screens/recipe_edit_screen.dart';
-import 'package:recette/features/recipes/data/services/recipe_analysis_service.dart';
-import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
+import 'package:recette/features/recipes/recipes.dart';
 
 import 'dart:convert';
 import 'package:recette/core/jobs/logic/job_manager.dart';

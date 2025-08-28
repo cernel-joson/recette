@@ -46,11 +46,12 @@ void main() async {
     'inventory_import': InventoryImportWorker(),
     'meal_suggestion': MealSuggestionWorker(),
   };
-  final jobManager = JobManager(
-    jobRepository: jobRepository,
-    jobController: jobController,
-    workers: workers,
-  );
+  
+  workers.forEach((key, value) {
+    JobManager.instance.registerWorker(key, value);
+  });
+
+  final jobManager = JobManager.instance;
   // Create an instance of the new developer service
   final developerService = DeveloperService();
 

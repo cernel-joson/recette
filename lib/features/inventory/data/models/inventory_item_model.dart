@@ -1,54 +1,8 @@
-// lib/features/inventory/data/models/inventory_models.dart
-
-/// A simple model for user-defined storage locations (e.g., 'Fridge', 'Pantry').
-class Location {
-  final int? id;
-  final String name;
-  final String? iconName;
-
-  Location({this.id, required this.name, this.iconName});
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'icon_name': iconName,
-    };
-  }
-
-  factory Location.fromMap(Map<String, dynamic> map) {
-    return Location(
-      id: map['id'],
-      name: map['name'],
-      iconName: map['icon_name'],
-    );
-  }
-}
-
-/// A simple model for user-defined item categories (e.g., 'Dairy', 'Vegetables').
-class InventoryCategory {
-  final int? id;
-  final String name;
-
-  InventoryCategory({this.id, required this.name});
-
-   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-    };
-  }
-
-  factory InventoryCategory.fromMap(Map<String, dynamic> map) {
-    return InventoryCategory(
-      id: map['id'],
-      name: map['name'],
-    );
-  }
-}
+import 'package:recette/core/data/repositories/data_repository.dart';
 
 /// The core model representing a single item in the user's inventory.
-class InventoryItem {
+class InventoryItem implements DataModel {
+  @override
   final int? id;
   final String name;
   final String? brand;
@@ -71,6 +25,7 @@ class InventoryItem {
     this.notes,
   });
 
+  @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,

@@ -3,14 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/core/presentation/widgets/health_rating_icon.dart';
-import 'package:recette/features/recipes/data/services/recipe_analysis_service.dart';
-import 'package:recette/features/recipes/presentation/widgets/recipe_analysis_dialog.dart';
-import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
-
-import 'package:provider/provider.dart';
+import 'package:recette/core/presentation/widgets/widgets.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
 
 // Enum to define the result of the popup menu

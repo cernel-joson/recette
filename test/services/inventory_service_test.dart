@@ -2,7 +2,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:recette/features/inventory/data/models/inventory_models.dart';
+import 'package:recette/features/inventory/data/models/inventory_item_model.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 

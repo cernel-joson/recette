@@ -1,86 +1,94 @@
 import 'package:flutter/foundation.dart';
 import 'package:recette/core/services/api_helper.dart';
 import 'package:recette/core/services/database_helper.dart';
-import 'package:recette/features/inventory/data/models/inventory_models.dart';
+import 'package:recette/features/inventory/data/models/models.dart';
+import 'package:recette/features/inventory/data/repositories/repositories.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart'; // Import profile service
 
 class InventoryService {
-  final DatabaseHelper _db;
+  final InventoryRepository _repository;
 
-  // Public constructor uses the real instance
-  InventoryService() : _db = DatabaseHelper.instance;
+  // Public constructor uses a real repository instance
+  InventoryService() : _repository = InventoryRepository();
 
   // Internal constructor for testing
   @visibleForTesting
-  InventoryService.internal(this._db);
+  InventoryService.internal(this._repository);
 
-  // --- NEW: Method to move a batch of items to a new location ---
-  Future<void> moveItemsToLocation(List<int> itemIds, int locationId) async {
-    if (itemIds.isEmpty) return;
-    final db = await _db.database;
-    await db.transaction((txn) async {
-      for (final itemId in itemIds) {
-        await txn.update(
-          'inventory',
-          {'location_id': locationId},
-          where: 'id = ?',
-          whereArgs: [itemId],
-        );
-      }
-    });
+  // --- Item Management ---
+  Future<List<InventoryItem>> getInventory() => _repository.items.getAll();
+
+  Future<void> addItem(InventoryItem item) async {
+    await _repository.items.create(item);
+  }
+
+  Future<void> updateItem(InventoryItem item) async {
+    await _repository.items.update(item);
+  }
+
+  Future<void> deleteItem(int id) async {
+    await _repository.items.delete(id);
+  }
+
+  // --- Category Management ---
+  Future<List<InventoryCategory>> getCategories() =>
+      _repository.categories.getAll();
+
+  Future<void> addCategory(InventoryCategory category) async {
+    await _repository.categories.create(category);
+  }
+
+  Future<void> updateCategory(InventoryCategory category) async {
+    await _repository.categories.update(category);
+  }
+
+  Future<void> deleteCategory(int id) async {
+    await _repository.categories.delete(id);
+  }
+
+  // --- Location Management ---
+  Future<List<Location>> getLocations() => _repository.locations.getAll();
+
+  Future<void> addLocation(Location location) async {
+    await _repository.locations.create(location);
+  }
+
+  Future<void> updateLocation(Location location) async {
+    await _repository.locations.update(location);
+  }
+
+  Future<void> deleteLocation(int id) async {
+    await _repository.locations.delete(id);
   }
   
-  // --- NEW: Method to get inventory grouped by location ---
+  // --- RE-IMPLEMENTED: Method to move a batch of items ---
+  Future<void> moveItemsToLocation(List<int> itemIds, int locationId) async {
+    await _repository.moveItemsToLocation(itemIds, locationId);
+  }
+  
+  // --- RE-IMPLEMENTED: Method to get inventory grouped by location ---
   Future<Map<String, List<InventoryItem>>> getGroupedInventory() async {
-    final db = await _db.database;
+    // 1. Fetch all data from the repository in parallel
+    final locationsFuture = _repository.locations.getAll();
+    final itemsFuture = _repository.items.getAll();
 
-    // 1. Fetch all locations and all items in parallel
-    final locationsFuture = getLocations();
-    final itemsFuture = db.query('inventory', orderBy: 'name ASC');
-    
     final locations = await locationsFuture;
-    final itemMaps = await itemsFuture;
-    
-    final items = List.generate(itemMaps.length, (i) => InventoryItem.fromMap(itemMaps[i]));
+    final items = await itemsFuture;
+
+    // Sort items alphabetically by name
+    items.sort((a, b) => a.name.compareTo(b.name));
 
     // 2. Create a lookup map for location names
     final locationMap = {for (var loc in locations) loc.id!: loc.name};
 
-    // 3. Group items by location name
+    // 3. Group items by location name (Business Logic)
     final groupedItems = <String, List<InventoryItem>>{};
-
     for (final item in items) {
       final locationName = locationMap[item.locationId] ?? 'Uncategorized';
-      if (groupedItems.containsKey(locationName)) {
-        groupedItems[locationName]!.add(item);
-      } else {
-        groupedItems[locationName] = [item];
-      }
+      (groupedItems[locationName] ??= []).add(item);
     }
 
     return groupedItems;
-  }
-
-  // --- Item Management ---
-  Future<List<InventoryItem>> getInventory() async {
-    final db = await _db.database;
-    final List<Map<String, dynamic>> maps = await db.query('inventory', orderBy: 'name ASC');
-    return List.generate(maps.length, (i) => InventoryItem.fromMap(maps[i]));
-  }
-
-  Future<void> addItem(InventoryItem item) async {
-    final db = await _db.database;
-    await db.insert('inventory', item.toMap());
-  }
-
-  Future<void> updateItem(InventoryItem item) async {
-    final db = await _db.database;
-    await db.update('inventory', item.toMap(), where: 'id = ?', whereArgs: [item.id]);
-  }
-
-  Future<void> deleteItem(int id) async {
-    final db = await _db.database;
-    await db.delete('inventory', where: 'id = ?', whereArgs: [id]);
   }
   
   /// Exports the entire inventory to a simple, formatted text string with location headings.
@@ -102,50 +110,6 @@ class InventoryService {
     });
     
     return buffer.toString();
-  }
-
-  // --- Location Management ---
-  Future<List<Location>> getLocations() async {
-    final db = await _db.database;
-    final List<Map<String, dynamic>> maps = await db.query('locations', orderBy: 'name ASC');
-    return List.generate(maps.length, (i) => Location.fromMap(maps[i]));
-  }
-
-  Future<void> addLocation(Location location) async {
-    final db = await _db.database;
-    await db.insert('locations', location.toMap());
-  }
-
-  Future<void> updateLocation(Location location) async {
-    final db = await _db.database;
-    await db.update('locations', location.toMap(), where: 'id = ?', whereArgs: [location.id]);
-  }
-
-  Future<void> deleteLocation(int id) async {
-    final db = await _db.database;
-    await db.delete('locations', where: 'id = ?', whereArgs: [id]);
-  }
-
-  // --- Category Management ---
-  Future<List<InventoryCategory>> getCategories() async {
-    final db = await _db.database;
-    final List<Map<String, dynamic>> maps = await db.query('categories', orderBy: 'name ASC');
-    return List.generate(maps.length, (i) => InventoryCategory.fromMap(maps[i]));
-  }
-
-  Future<void> addCategory(InventoryCategory category) async {
-    final db = await _db.database;
-    await db.insert('categories', category.toMap());
-  }
-
-  Future<void> updateCategory(InventoryCategory category) async {
-    final db = await _db.database;
-    await db.update('categories', category.toMap(), where: 'id = ?', whereArgs: [category.id]);
-  }
-
-  Future<void> deleteCategory(int id) async {
-    final db = await _db.database;
-    await db.delete('categories', where: 'id = ?', whereArgs: [id]);
   }
 
   // --- NEW METHOD FOR MEAL IDEAS ---

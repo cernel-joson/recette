@@ -1,17 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/features/recipes/presentation/screens/recipe_view_screen.dart'; // Import the new view screen
-import 'package:recette/features/recipes/presentation/screens/recipe_edit_screen.dart';
-import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/features/recipes/presentation/controllers/controllers.dart';
-import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart';
-import 'package:recette/features/recipes/presentation/widgets/widgets.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
-import 'package:recette/features/recipes/presentation/widgets/pending_job_banner.dart';
-
-// --- ADD THIS IMPORT ---
-import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
+import 'package:recette/features/recipes/recipes.dart';
+import 'package:recette/core/presentation/widgets/widgets.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';

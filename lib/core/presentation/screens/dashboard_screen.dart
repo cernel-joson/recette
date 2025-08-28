@@ -4,13 +4,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/main.dart'; // Import main.dart to get access to the navigatorKey
-import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart'; // Import the new screen
-import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart'; // Add this import
-import 'package:recette/features/shopping_list/presentation/screens/shopping_list_screen.dart';
-import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen.dart';
+import 'package:recette/features/dietary_profile/presentation/screens/screens.dart'; // Import the new screen
+import 'package:recette/features/inventory/presentation/screens/screens.dart'; // Add this import
+import 'package:recette/features/shopping_list/presentation/screens/screens.dart';
+import 'package:recette/features/meal_plan/presentation/screens/screens.dart';
 import 'package:recette/core/presentation/screens/about_screen.dart';
 import 'package:recette/core/services/developer_service.dart';
 import 'package:provider/provider.dart';

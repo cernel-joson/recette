@@ -4,12 +4,7 @@ import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
-
-// Define a specific exception for this business rule.
-class RecipeExistsException implements Exception {
-  final String message;
-  RecipeExistsException(this.message);
-}
+import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';
 
 class RecipeEditController with ChangeNotifier {
   final Recipe? _initialRecipe;

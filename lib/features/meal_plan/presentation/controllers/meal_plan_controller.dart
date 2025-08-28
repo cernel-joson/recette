@@ -1,40 +1,78 @@
-import 'package:flutter/material.dart';
-import 'package:recette/features/meal_plan/meal_plan.dart';
+import 'package:flutter/foundation.dart';
+import 'package:recette/features/meal_plan/data/models/meal_plan_entry_model.dart';
+import 'package:recette/features/meal_plan/data/services/meal_plan_service.dart';
+import 'package:recette/features/recipes/data/models/recipe_model.dart';
 
 class MealPlanController with ChangeNotifier {
-  final MealPlanService _service = MealPlanService();
-
-  Map<String, List<MealPlanEntry>> _mealPlan = {};
-  Map<String, List<MealPlanEntry>> get mealPlan => _mealPlan;
-
+  final MealPlanService _mealPlanService;
+  List<MealPlanEntry> _entries = [];
   bool _isLoading = false;
+  DateTime _selectedDate = DateTime.now();
+
+  MealPlanController({MealPlanService? mealPlanService})
+      : _mealPlanService = mealPlanService ?? MealPlanService() {
+    loadEntries();
+  }
+
+  // --- Getters for UI state ---
+  List<MealPlanEntry> get entries => _entries;
   bool get isLoading => _isLoading;
+  DateTime get selectedDate => _selectedDate;
 
-  DateTime _focusedDate = DateTime.now();
-  DateTime get focusedDate => _focusedDate;
+  /// Returns a map of dates to meal entries for the calendar view.
+  Map<DateTime, List<MealPlanEntry>> get groupedEntries {
+    final map = <DateTime, List<MealPlanEntry>>{};
+    for (final entry in _entries) {
+      final date = DateTime(entry.date.year, entry.date.month, entry.date.day);
+      (map[date] ??= []).add(entry);
+    }
+    return map;
+  }
 
-  Future<void> loadMealPlan(DateTime startDate, DateTime endDate) async {
+  /// Returns the meal entries for the currently selected date.
+  List<MealPlanEntry> get entriesForSelectedDate {
+    return _entries
+        .where((entry) =>
+            entry.date.year == _selectedDate.year &&
+            entry.date.month == _selectedDate.month &&
+            entry.date.day == _selectedDate.day)
+        .toList();
+  }
+
+  // --- State Modification Methods ---
+
+  void setSelectedDate(DateTime date) {
+    _selectedDate = date;
+    notifyListeners();
+  }
+
+  Future<void> loadEntries() async {
     _isLoading = true;
     notifyListeners();
-    _mealPlan = await _service.getMealPlanForDateRange(startDate, endDate);
+    _entries = await _mealPlanService.getEntries();
     _isLoading = false;
     notifyListeners();
   }
 
-  void setFocusedDate(DateTime date) {
-    _focusedDate = date;
-    notifyListeners();
-  }
-
-  Future<void> addEntry(MealPlanEntry entry) async {
-    await _service.addMealPlanEntry(entry);
-    loadMealPlan(
-        _focusedDate.subtract(const Duration(days: 30)), _focusedDate.add(const Duration(days: 30)));
+  Future<void> addRecipeToMealPlan(
+      Recipe recipe, DateTime date, MealType mealType) async {
+    final newEntry = MealPlanEntry(
+      date: date,
+      mealType: mealType,
+      recipeId: recipe.id!,
+      recipeTitle: recipe.title,
+    );
+    await _mealPlanService.addEntry(newEntry);
+    await loadEntries(); // Reload to reflect the change
   }
 
   Future<void> deleteEntry(int id) async {
-    await _service.deleteMealPlanEntry(id);
-    loadMealPlan(
-        _focusedDate.subtract(const Duration(days: 30)), _focusedDate.add(const Duration(days: 30)));
+    await _mealPlanService.deleteEntry(id);
+    await loadEntries(); // Reload
+  }
+
+  Future<void> clearPlan() async {
+    await _mealPlanService.clearPlan();
+    await loadEntries(); // Reload
   }
 }

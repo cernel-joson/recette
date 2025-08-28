@@ -1,6 +1,8 @@
 import 'dart:convert';
-import 'ingredient_model.dart';
-import 'timing_info_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:recette/core/data/repositories/data_repository.dart';
+import 'package:recette/features/recipes/data/models/ingredient_model.dart';
+import 'package:recette/features/recipes/data/models/timing_info_model.dart';
 import 'package:recette/core/utils/fingerprint_helper.dart';
 
 // A helper function to safely decode lists, whether they are strings or already lists.
@@ -18,7 +20,9 @@ List<T> _decodeList<T>(dynamic listData, T Function(dynamic) fromMap) {
 }
 
 /// Represents a full recipe with all its details.
-class Recipe implements Fingerprintable {
+@immutable
+class Recipe implements DataModel, Fingerprintable {
+  @override
   final int? id;
   final int? parentRecipeId;
   final String? fingerprint;
@@ -132,6 +136,7 @@ class Recipe implements Fingerprintable {
   }
 
   /// Converts a Recipe object into a Map for database insertion.
+  @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,
