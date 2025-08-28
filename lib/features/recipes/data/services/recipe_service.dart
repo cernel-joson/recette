@@ -68,4 +68,14 @@ class RecipeService {
         .where((recipe) => recipe.parentRecipeId == parentRecipeId)
         .toList();
   }
+
+  Future<void> batchInsertRecipes(List<Recipe> recipes) {
+    return _repository.recipes.batchInsert(recipes);
+  }
+
+  Future<void> clearAllRecipes() async {
+    await _repository.recipes.clear();
+    await _repository.recipeTags.clear();
+    await _repository.tags.clear();
+  }
 }

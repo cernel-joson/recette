@@ -16,4 +16,13 @@ class ProfileService {
       markdownText: prefs.getString(_profileKey) ?? '',
     );
   }
+
+  static Future<DietaryProfile> getProfile() async {
+    return loadProfile();
+  }
+
+  static Future<void> clearProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_profileKey);
+  }
 }

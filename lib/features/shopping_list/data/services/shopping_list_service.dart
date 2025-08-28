@@ -1,37 +1,27 @@
 import 'package:flutter/foundation.dart';
-import 'package:recette/core/services/database_helper.dart';
-import 'package:recette/features/shopping_list/data/models/models.dart';
+import 'package:recette/features/shopping_list/data/models/shopping_list_item_model.dart';
+import 'package:recette/features/shopping_list/data/repositories/shopping_list_repository.dart';
 
-// --- SERVICE ---
+/// Service for managing the shopping list.
 class ShoppingListService {
-  final DatabaseHelper _db;
+  final ShoppingListRepository _repository;
 
-  // Public constructor uses the real instance
-  ShoppingListService() : _db = DatabaseHelper.instance;
+  // Public constructor
+  ShoppingListService() : _repository = ShoppingListRepository();
 
-  // Internal constructor for testing
+  // Constructor for testing
   @visibleForTesting
-  ShoppingListService.internal(this._db);
+  ShoppingListService.internal(this._repository);
 
-  Future<List<ShoppingListItem>> getItems() async {
-    final db = await _db.database;
-    final maps = await db.query('shopping_list_items', orderBy: 'id DESC');
-    return List.generate(maps.length, (i) => ShoppingListItem.fromMap(maps[i]));
-  }
+  Future<List<ShoppingListItem>> getItems() => _repository.items.getAll();
 
-  Future<void> addItem(String name) async {
-    if (name.trim().isEmpty) return;
-    final db = await _db.database;
-    await db.insert('shopping_list_items', {'name': name, 'is_checked': 0});
-  }
+  Future<void> addItem(ShoppingListItem item) => _repository.items.create(item);
 
-  Future<void> updateItem(ShoppingListItem item) async {
-    final db = await _db.database;
-    await db.update('shopping_list_items', item.toMap(), where: 'id = ?', whereArgs: [item.id]);
-  }
+  Future<void> updateItem(ShoppingListItem item) => _repository.items.update(item);
 
-  Future<void> deleteItem(int id) async {
-    final db = await _db.database;
-    await db.delete('shopping_list_items', where: 'id = ?', whereArgs: [id]);
-  }
+  Future<void> deleteItem(int id) => _repository.items.delete(id);
+
+  Future<void> clearList() => _repository.items.clear();
+  
+  Future<void> batchInsertItems(List<ShoppingListItem> items) => _repository.items.batchInsert(items);
 }

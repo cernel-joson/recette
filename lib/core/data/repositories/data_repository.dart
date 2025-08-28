@@ -55,8 +55,22 @@ class DataRepository<T extends DataModel> {
     return await db.delete(tableName, where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Deletes all records from the table
   Future<void> clear() async {
     final db = await DatabaseHelper.instance.database;
     await db.delete(tableName);
+  }
+
+  /// --- NEW: Inserts a list of items in a single transaction ---
+  Future<void> batchInsert(List<T> items) async {
+    if (items.isEmpty) return;
+    final db = await DatabaseHelper.instance.database;
+    await db.transaction((txn) async {
+      for (final item in items) {
+        // We strip out the ID to ensure the database auto-generates a new one
+        final map = item.toMap()..remove('id');
+        await txn.insert(tableName, map);
+      }
+    });
   }
 }

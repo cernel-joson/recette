@@ -28,6 +28,10 @@ class MealPlanService {
     return _repository.entries.delete(id);
   }
   
+  Future<void> batchInsertEntries(List<MealPlanEntry> entries) {
+    return _repository.entries.batchInsert(entries);
+  }
+  
   /// Deletes all entries from the meal plan.
   Future<void> clearPlan() {
     return _repository.entries.clear();

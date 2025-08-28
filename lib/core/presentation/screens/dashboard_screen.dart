@@ -15,6 +15,8 @@ import 'package:recette/core/services/developer_service.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 
+import 'package:recette/core/presentation/screens/settings_screen.dart';
+
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -160,6 +162,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               subtitle: 'Create and manage your grocery lists',
               onTap: () {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const ShoppingListScreen()));
+              },
+            ),
+            DashboardCard(
+              icon: Icons.settings_outlined,
+              title: 'Settings',
+              subtitle: 'Import & Export Data',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
               },
             ),
             DashboardCard(

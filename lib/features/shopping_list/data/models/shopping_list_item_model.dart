@@ -1,12 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:recette/core/data/repositories/data_repository.dart';
 
+@immutable
 class ShoppingListItem implements DataModel {
   @override
   final int? id;
   final String name;
   final bool isChecked;
 
-  ShoppingListItem({this.id, required this.name, this.isChecked = false});
+  ShoppingListItem({
+    this.id,
+    required this.name,
+    this.isChecked = false
+  });
 
   @override
   Map<String, dynamic> toMap() {
@@ -22,6 +28,14 @@ class ShoppingListItem implements DataModel {
       id: map['id'],
       name: map['name'],
       isChecked: map['is_checked'] == 1,
+    );
+  }
+
+  ShoppingListItem copyWith({int? id, String? name, bool? isChecked}) {
+    return ShoppingListItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      isChecked: isChecked ?? this.isChecked,
     );
   }
 }

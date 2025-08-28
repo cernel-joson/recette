@@ -5,6 +5,7 @@ import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/meal_plan/data/models/meal_plan_entry_model.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/shopping_list/shopping_list.dart';
+import 'package:recette/features/dietary_profile/data/models/models.dart';
 
 /// A model representing a complete backup of the user's application data.
 @immutable
@@ -22,7 +23,8 @@ class DataBackup {
   final List<Location> inventoryLocations;
   final List<ShoppingListItem> shoppingListItems;
   final List<MealPlanEntry> mealPlanEntries;
-
+  final DietaryProfile? dietaryProfile;
+  
   const DataBackup({
     required this.version,
     required this.createdAt,
@@ -32,26 +34,28 @@ class DataBackup {
     this.inventoryLocations = const [],
     this.shoppingListItems = const [],
     this.mealPlanEntries = const [],
+    this.dietaryProfile,
   });
 
-  /// Converts the DataBackup object to a JSON string.
-  String toJson() {
-    return json.encode({
+  // --- SERIALIZATION LOGIC ---
+
+  /// Converts the object to a Map. Consistent with other models.
+  Map<String, dynamic> toMap() {
+    return {
       'version': version,
       'createdAt': createdAt.toIso8601String(),
       'recipes': recipes.map((r) => r.toMap()).toList(),
       'inventoryItems': inventoryItems.map((i) => i.toMap()).toList(),
-      'inventoryCategories':
-          inventoryCategories.map((c) => c.toMap()).toList(),
+      'inventoryCategories': inventoryCategories.map((c) => c.toMap()).toList(),
       'inventoryLocations': inventoryLocations.map((l) => l.toMap()).toList(),
       'shoppingListItems': shoppingListItems.map((s) => s.toMap()).toList(),
       'mealPlanEntries': mealPlanEntries.map((m) => m.toMap()).toList(),
-    });
+      'dietaryProfile': dietaryProfile?.fullProfileText,
+    };
   }
 
-  /// Creates a DataBackup object from a JSON string.
-  factory DataBackup.fromJson(String source) {
-    final map = json.decode(source);
+  /// Creates an object from a Map. Consistent with other models.
+  factory DataBackup.fromMap(Map<String, dynamic> map) {
     return DataBackup(
       version: map['version'],
       createdAt: DateTime.parse(map['createdAt']),
@@ -73,6 +77,15 @@ class DataBackup {
       mealPlanEntries: (map['mealPlanEntries'] as List)
           .map((item) => MealPlanEntry.fromMap(item))
           .toList(),
+      dietaryProfile: map['dietaryProfile'] != null
+          ? DietaryProfile(markdownText: map['dietaryProfile'])
+          : null,
     );
   }
+
+  /// --- NEW: Converts the object directly to a JSON string ---
+  String toJson() => json.encode(toMap());
+
+  /// --- NEW: Creates an object directly from a JSON string ---
+  factory DataBackup.fromJson(String source) => DataBackup.fromMap(json.decode(source));
 }

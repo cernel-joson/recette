@@ -90,6 +90,24 @@ class InventoryService {
 
     return groupedItems;
   }
+
+  Future<void> batchInsertCategories(List<InventoryCategory> categories) {
+    return _repository.categories.batchInsert(categories);
+  }
+
+  Future<void> batchInsertLocations(List<Location> locations) {
+    return _repository.locations.batchInsert(locations);
+  }
+
+  Future<void> batchInsertItems(List<InventoryItem> inventoryItems) {
+    return _repository.items.batchInsert(inventoryItems);
+  }
+
+  Future<void> clearAllInventory() async {
+    _repository.items.clear();
+    _repository.categories.clear();
+    _repository.locations.clear();
+  }
   
   /// Exports the entire inventory to a simple, formatted text string with location headings.
   Future<String> getInventoryAsText() async {

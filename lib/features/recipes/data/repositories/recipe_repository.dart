@@ -11,6 +11,18 @@ class RecipeRepository {
     fromMap: (map) => Recipe.fromMap(map),
   );
 
+  /// A generic repository specifically for handling Recipe objects.
+  final recipeTags = DataRepository<Recipe>(
+    tableName: 'recipe_tags',
+    fromMap: (map) => Recipe.fromMap(map),
+  );
+  
+  /// A generic repository specifically for handling Recipe objects.
+  final tags = DataRepository<Recipe>(
+    tableName: 'tags',
+    fromMap: (map) => Recipe.fromMap(map),
+  );
+
   /// --- Custom Tag Management Logic ---
   /// This logic is specific to recipes and doesn't fit the generic repository.
 
