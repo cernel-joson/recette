@@ -45,7 +45,6 @@ class DatabaseHelper {
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    // --- All upgrade logic remains the same ---
     debugPrint("--- executing _upgradeDB (Upgrading from v$oldVersion to v$newVersion) ---");
     
     if (oldVersion < 2) await _addColumnIfNotExists(db, 'recipes', 'otherTimings', 'TEXT');
@@ -80,112 +79,6 @@ class DatabaseHelper {
     debugPrint("--- _upgradeDB complete. ---");
   }
 
-  // --- REFACTORED: Centralized method for inserting/updating tags ---
-  Future<void> _manageTags(Transaction txn, int recipeId, List<String> tags) async {
-    await txn.delete('recipe_tags', where: 'recipeId = ?', whereArgs: [recipeId]);
-    for (String tagName in tags) {
-      var existingTag = await txn.query('tags', where: 'name = ?', whereArgs: [tagName.toLowerCase()]);
-      int tagId;
-      if (existingTag.isEmpty) {
-        tagId = await txn.insert('tags', {'name': tagName.toLowerCase()});
-      } else {
-        tagId = existingTag.first['id'] as int;
-      }
-      await txn.insert('recipe_tags', {'recipeId': recipeId, 'tagId': tagId});
-    }
-  }
-
-  // --- REFACTORED: Centralized method for getting tags ---
-  Future<List<String>> _getTagsForRecipe(DatabaseExecutor db, int recipeId) async {
-    final List<Map<String, dynamic>> result = await db.rawQuery('''
-        SELECT T.name FROM tags T
-        INNER JOIN recipe_tags RT ON T.id = RT.tagId
-        WHERE RT.recipeId = ?
-    ''', [recipeId]);
-    return result.map((map) => map['name'] as String).toList();
-  }
-
-  // --- REFACTORED: A single, private helper to query recipes and attach their tags ---
-  Future<List<Recipe>> _getRecipesWithTags({String? where, List<Object?>? whereArgs}) async {
-    final db = await instance.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'recipes',
-      where: where,
-      whereArgs: whereArgs,
-      orderBy: 'title ASC',
-    );
-
-    if (maps.isEmpty) return [];
-
-    // Use Future.wait for more efficient, parallel fetching of tags.
-    final recipes = await Future.wait(maps.map((map) async {
-      final recipe = Recipe.fromMap(map);
-      recipe.tags = await _getTagsForRecipe(db, recipe.id!);
-      return recipe;
-    }));
-    
-    return recipes.toList();
-  }
-
-  // --- REFACTORED: insert and update now use a transaction for atomicity ---
-  Future<int> insert(Recipe recipe, List<String> tags) async {
-    final db = await instance.database;
-    return await db.transaction((txn) async {
-      final newId = await txn.insert('recipes', recipe.toMap());
-      await _manageTags(txn, newId, tags);
-      return newId;
-    });
-  }
-
-  Future<int> update(Recipe recipe, List<String> tags) async {
-    final db = await instance.database;
-    return await db.transaction((txn) async {
-      final rowsAffected = await txn.update('recipes', recipe.toMap(), where: 'id = ?', whereArgs: [recipe.id]);
-      await _manageTags(txn, recipe.id!, tags);
-      return rowsAffected;
-    });
-  }
-
-  Future<int> delete(int id) async {
-    final db = await instance.database;
-    return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
-  }
-
-  // --- All public recipe-fetching methods now use the central helper ---
-  Future<List<Recipe>> getAllRecipes() async {
-    return _getRecipesWithTags();
-  }
-
-  Future<Recipe?> getRecipeById(int id) async {
-    final recipes = await _getRecipesWithTags(where: 'id = ?', whereArgs: [id]);
-    return recipes.isNotEmpty ? recipes.first : null;
-  }
-
-  Future<List<Recipe>> getVariationsForRecipe(int parentId) async {
-    return _getRecipesWithTags(where: 'parentRecipeId = ?', whereArgs: [parentId]);
-  }
-  
-  Future<List<Recipe>> searchRecipes(String whereClause, List<Object?> whereArgs) async {
-    return _getRecipesWithTags(where: whereClause, whereArgs: whereArgs);
-  }
-
-  Future<bool> doesRecipeExist(String fingerprint) async {
-    final db = await instance.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'recipes',
-      where: 'fingerprint = ?',
-      whereArgs: [fingerprint],
-      limit: 1
-    );
-    return maps.isNotEmpty;
-  }
-  
-  Future<List<String>> getAllUniqueTags() async {
-    final db = await instance.database;
-    final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
-    return result.map((map) => map['name'] as String).toList();
-  }
-
   Future<void> _addColumnIfNotExists(Database db, String tableName, String columnName, String columnType) async {
     var result = await db.rawQuery("PRAGMA table_info($tableName)");
     var columnNames = result.map((row) => row['name'] as String).toList();
@@ -194,7 +87,9 @@ class DatabaseHelper {
     }
   }
 
-  // --- REFACTORED: Helper for Recipe-related tables ---
+  // --- SCHEMA DEFINITIONS ---
+  // These methods define the database schema and are appropriately called by onCreate/onUpgrade.
+
   Future<void> _createRecipeTable(Database db) async {
     await db.execute('''
       CREATE TABLE recipes ( 
@@ -341,5 +236,73 @@ class DatabaseHelper {
     timestamp DATETIME NOT NULL
   )
 ''');
+  }
+
+  // --- NONE OF THESE FUNCTIONS SHOULD BE HERE
+
+  // --- REFACTORED: Centralized method for inserting/updating tags ---
+  Future<void> _manageTags(Transaction txn, int recipeId, List<String> tags) async {
+    await txn.delete('recipe_tags', where: 'recipeId = ?', whereArgs: [recipeId]);
+    for (String tagName in tags) {
+      var existingTag = await txn.query('tags', where: 'name = ?', whereArgs: [tagName.toLowerCase()]);
+      int tagId;
+      if (existingTag.isEmpty) {
+        tagId = await txn.insert('tags', {'name': tagName.toLowerCase()});
+      } else {
+        tagId = existingTag.first['id'] as int;
+      }
+      await txn.insert('recipe_tags', {'recipeId': recipeId, 'tagId': tagId});
+    }
+  }
+
+  // --- REFACTORED: Centralized method for getting tags ---
+  Future<List<String>> _getTagsForRecipe(DatabaseExecutor db, int recipeId) async {
+    final List<Map<String, dynamic>> result = await db.rawQuery('''
+        SELECT T.name FROM tags T
+        INNER JOIN recipe_tags RT ON T.id = RT.tagId
+        WHERE RT.recipeId = ?
+    ''', [recipeId]);
+    return result.map((map) => map['name'] as String).toList();
+  }
+
+  // --- REFACTORED: insert and update now use a transaction for atomicity ---
+  Future<int> insert(Recipe recipe, List<String> tags) async {
+    final db = await instance.database;
+    return await db.transaction((txn) async {
+      final newId = await txn.insert('recipes', recipe.toMap());
+      await _manageTags(txn, newId, tags);
+      return newId;
+    });
+  }
+
+  Future<int> update(Recipe recipe, List<String> tags) async {
+    final db = await instance.database;
+    return await db.transaction((txn) async {
+      final rowsAffected = await txn.update('recipes', recipe.toMap(), where: 'id = ?', whereArgs: [recipe.id]);
+      await _manageTags(txn, recipe.id!, tags);
+      return rowsAffected;
+    });
+  }
+
+  Future<int> delete(int id) async {
+    final db = await instance.database;
+    return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<bool> doesRecipeExist(String fingerprint) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      where: 'fingerprint = ?',
+      whereArgs: [fingerprint],
+      limit: 1
+    );
+    return maps.isNotEmpty;
+  }
+  
+  Future<List<String>> getAllUniqueTags() async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
+    return result.map((map) => map['name'] as String).toList();
   }
 }

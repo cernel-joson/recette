@@ -17,6 +17,7 @@ import 'package:recette/core/services/developer_service.dart';
 import 'package:recette/features/dietary_profile/data/jobs/profile_analysis_worker.dart';
 import 'package:recette/features/inventory/data/jobs/inventory_import_worker.dart';
 import 'package:recette/features/inventory/data/jobs/meal_suggestion_worker.dart';
+import 'package:recette/core/presentation/screens/main_screen.dart';
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
 // from anywhere in the app, which is essential for the share handler.
@@ -96,7 +97,7 @@ class RecetteApp extends StatelessWidget {
         ),
       ),
       // Set the DashboardScreen as the new home screen.
-      home: const DashboardScreen(),
+      home: const MainScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

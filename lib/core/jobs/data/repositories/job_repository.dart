@@ -4,6 +4,21 @@ import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/logic/job_broadcast_service.dart';
 
 class JobRepository {
+  // --- This is the list of essential columns for job processing ---
+  static const _lightweightColumns = [
+    'id',
+    'job_type',
+    'title',
+    'status',
+    'priority',
+    'request_fingerprint',
+    'request_payload',
+    'response_payload',
+    'created_at',
+    'completed_at',
+    'error_message'
+  ];
+
   /// Creates a new job in the database and returns it with its new ID.
   Future<Job> createJob({
     required String jobType,
@@ -47,6 +62,7 @@ class JobRepository {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'job_history',
+      columns: _lightweightColumns,
       where: 'status = ?',
       whereArgs: [JobStatus.queued.name],
       orderBy: 'created_at ASC',
@@ -65,6 +81,7 @@ class JobRepository {
       'job_history',
       where: 'id = ?',
       whereArgs: [jobId],
+      limit: 1,
     );
 
     if (maps.isNotEmpty) {

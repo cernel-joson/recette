@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/features/recipes/data/services/recipe_service.dart';
 
 class ExportService {
   /// Fetches all recipes, converts them to a JSON file, and triggers sharing.
   static Future<void> exportLibrary() async {
+    final recipeService = RecipeService();
     // 1. Fetch all recipes from the database.
-    final recipes = await DatabaseHelper.instance.getAllRecipes();
+    final recipes = await recipeService.getAllRecipes();
     if (recipes.isEmpty) {
       throw Exception('Your recipe library is empty. Nothing to export.');
     }

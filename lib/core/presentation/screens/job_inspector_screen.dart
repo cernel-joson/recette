@@ -6,9 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart'; // Import Provider
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+import 'package:recette/core/jobs/presentation/controllers/job_inspector_controller.dart';
 
 class JobInspectorScreen extends StatelessWidget {
   final int jobId; // Pass the job ID instead of the whole object
+
   const JobInspectorScreen({super.key, required this.jobId});
 
   // --- NEW: Helper method to generate the text for copying ---
@@ -30,54 +32,62 @@ class JobInspectorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Job Inspector #$jobId'),
-      ),
-      body: Consumer<JobController>(
-        builder: (context, jobController, child) {
-          // Find the latest version of the job from the controller's list
-          final job = jobController.jobs.firstWhere(
-            (j) => j.id == jobId,
-            // Provide a fallback in case the job isn't found
-            orElse: () => jobController.jobs.first, 
-          );
-
-          // The rest of the UI now uses the fresh 'job' object
-          return ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              _buildInfoCard(context, job),
-              const SizedBox(height: 16),
-              _buildJsonCard(
-                context: context,
-                title: 'Request Payload',
-                jsonString: job.requestPayload,
-              ),
-              const SizedBox(height: 16),
-              _buildJsonCard(
-                context: context,
-                title: 'Prompt Sent to AI',
-                jsonString: job.promptText,
-                isJson: false,
-              ),
-              const SizedBox(height: 16),
-              _buildJsonCard(
-                context: context,
-                title: 'Raw AI Response',
-                jsonString: job.rawAiResponse,
-                isJson: false,
-              ),
-              const SizedBox(height: 16),
-              _buildJsonCard(
-                context: context,
-                title: 'Parsed Response Payload',
-                jsonString: job.responsePayload,
-              ),
-            ],
+    return ChangeNotifierProvider(
+      create: (_) => JobInspectorController(jobId),
+      child: Consumer<JobInspectorController>(
+        builder: (context, controller, child) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(controller.job?.title ?? 'Job Inspector'),
+            ),
+            body: controller.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : controller.error != null
+                    ? Center(child: Text(controller.error!))
+                    : controller.job == null
+                        ? const Center(child: Text('Job data is unavailable.'))
+                        : _buildInspectorBody(context, controller),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildInspectorBody(
+      BuildContext context, JobInspectorController controller) {
+    final job = controller.job!;
+    final textTheme = Theme.of(context).textTheme;// The rest of the UI now uses the fresh 'job' object
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildInfoCard(context, job),
+        const SizedBox(height: 16),
+        _buildJsonCard(
+          context: context,
+          title: 'Request Payload',
+          jsonString: job.requestPayload,
+        ),
+        const SizedBox(height: 16),
+        _buildJsonCard(
+          context: context,
+          title: 'Prompt Sent to AI',
+          jsonString: job.promptText,
+          isJson: false,
+        ),
+        const SizedBox(height: 16),
+        _buildJsonCard(
+          context: context,
+          title: 'Raw AI Response',
+          jsonString: job.rawAiResponse,
+          isJson: false,
+        ),
+        const SizedBox(height: 16),
+        _buildJsonCard(
+          context: context,
+          title: 'Parsed Response Payload',
+          jsonString: job.responsePayload,
+        ),
+      ],
     );
   }
   

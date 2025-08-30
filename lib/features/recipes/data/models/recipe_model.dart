@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:recette/core/data/repositories/data_repository.dart';
 import 'package:recette/features/recipes/data/models/ingredient_model.dart';
 import 'package:recette/features/recipes/data/models/timing_info_model.dart';
@@ -20,7 +19,6 @@ List<T> _decodeList<T>(dynamic listData, T Function(dynamic) fromMap) {
 }
 
 /// Represents a full recipe with all its details.
-@immutable
 class Recipe implements DataModel, Fingerprintable {
   @override
   final int? id;
@@ -36,26 +34,26 @@ class Recipe implements DataModel, Fingerprintable {
   final List<String> instructions;
   final String sourceUrl;
   final List<TimingInfo> otherTimings;
-  String? healthRating; // e.g., "GREEN", "YELLOW", "RED"
-  String? healthSummary; // AI-generated summary
-  List<String>? healthSuggestions; // AI-generated suggestions
-  String? dietaryProfileFingerprint; // Hash of the profile used for the rating
+  final String? healthRating; // e.g., "GREEN", "YELLOW", "RED"
+  final String? healthSummary; // AI-generated summary
+  final List<String>? healthSuggestions; // AI-generated suggestions
+  final String? dietaryProfileFingerprint; // Hash of the profile used for the rating
   final Map<String, dynamic>? nutritionalInfo;
-  List<String> tags;
+  final List<String> tags;
 
   Recipe({
     this.id,
     this.parentRecipeId,
     this.fingerprint,
     required this.title,
-    required this.description,
-    required this.prepTime,
-    required this.cookTime,
-    required this.totalTime,
-    required this.servings,
-    required this.ingredients,
-    required this.instructions,
-    required this.sourceUrl,
+    this.description = '',
+    this.prepTime = '',
+    this.cookTime = '',
+    this.totalTime = '',
+    this.servings = '',
+    this.ingredients = const [],
+    this.instructions = const [],
+    this.sourceUrl = '',
     this.otherTimings = const [],
     this.healthRating,
     this.healthSummary,
@@ -196,6 +194,19 @@ class Recipe implements DataModel, Fingerprintable {
   // This version robustly handles data from both the database (as JSON strings)
   // and from direct JSON objects (as Lists).
   factory Recipe.fromMap(Map<String, dynamic> map) {
+    // Helper function for safe list decoding
+    List<T> _safeDecodeList<T>(String? jsonString, T Function(dynamic) fromMap) {
+      if (jsonString == null || jsonString.isEmpty || jsonString == 'null') return [];
+      final decoded = json.decode(jsonString) as List;
+      return decoded.map((item) => fromMap(item)).toList();
+    }
+    
+    // Helper for simple string lists
+    List<String> _safeDecodeStringList(String? jsonString) {
+      if (jsonString == null || jsonString.isEmpty || jsonString == 'null') return [];
+      return List<String>.from(json.decode(jsonString));
+    }
+
     return Recipe(
       id: map['id'],
       parentRecipeId: map['parentRecipeId'],
@@ -208,16 +219,16 @@ class Recipe implements DataModel, Fingerprintable {
       servings: map['servings'] ?? '',
       
       // Use the safe list decoder
-      ingredients: _decodeList(map['ingredients'], (i) => Ingredient.fromMap(i)),
-      instructions: _decodeList(map['instructions'], (i) => i.toString()),
-      otherTimings: _decodeList(map['otherTimings'], (t) => TimingInfo.fromMap(t)),
+      ingredients: _safeDecodeList(map['ingredients'], (item) => Ingredient.fromMap(item)),
+      instructions: _safeDecodeStringList(map['instructions']),
+      otherTimings: _safeDecodeList(map['otherTimings'], (item) => TimingInfo.fromMap(item)),
       
       sourceUrl: map['sourceUrl'] ?? '',
       healthRating: map['healthRating'],
       healthSummary: map['healthSummary'],
       
       // Use the safe list decoder for suggestions as well
-      healthSuggestions: _decodeList(map['healthSuggestions'], (s) => s.toString()),
+      healthSuggestions: _safeDecodeStringList(map['healthSuggestions']),
       
       dietaryProfileFingerprint: map['dietaryProfileFingerprint'],
       nutritionalInfo: map['nutritionalInfo'] is String

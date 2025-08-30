@@ -109,7 +109,6 @@ class _DietaryProfileScreenState extends State<DietaryProfileScreen> with Single
           ],
         ),
         actions: [
-          const JobsTrayIcon(), // Add the new global icon
         ]
       ),
       bottomNavigationBar: BottomAppBar(

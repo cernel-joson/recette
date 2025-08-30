@@ -8,10 +8,10 @@ import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/core/presentation/widgets/widgets.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/features/recipes/data/services/recipe_service.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete, createVariation }
-
 
 // --- THIS IS THE MISSING WIDGET CLASS ---
 class RecipeViewScreen extends StatefulWidget {
@@ -24,10 +24,17 @@ class RecipeViewScreen extends StatefulWidget {
 // --- END OF MISSING WIDGET CLASS ---
 
 class _RecipeViewScreenState extends State<RecipeViewScreen> {
+  final RecipeService _recipeService;
   Recipe? _currentRecipe;
   Recipe? _parentRecipe;
   List<Recipe> _variations = [];
   bool _didChange = false;
+
+  
+  _RecipeViewScreenState({
+    // Using default initializers for convenience
+    RecipeService? recipeService,
+  })  : _recipeService = recipeService ?? RecipeService();
 
   @override
   void initState() {
@@ -36,14 +43,14 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
   }
 
   Future<void> _loadRecipeData() async {
-    final recipe = await DatabaseHelper.instance.getRecipeById(widget.recipeId);
+    final recipe = await _recipeService.getRecipeById(widget.recipeId);
     if (recipe == null) return;
 
     Recipe? parent;
     if (recipe.parentRecipeId != null) {
-      parent = await DatabaseHelper.instance.getRecipeById(recipe.parentRecipeId!);
+      parent = await _recipeService.getRecipeById(recipe.parentRecipeId!);
     }
-    final variations = await DatabaseHelper.instance.getVariationsForRecipe(recipe.id!);
+    final variations = await _recipeService.getVariationsForRecipe(recipe.id!);
 
     if (mounted) {
       setState(() {
@@ -137,7 +144,7 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
       ),
     );
     if (confirm == true) {
-      await DatabaseHelper.instance.delete(_currentRecipe!.id!);
+      await _recipeService.deleteRecipe(_currentRecipe!.id!);
       if (mounted) Navigator.of(context).pop(true);
     }
   }
@@ -200,7 +207,6 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
           ),
           leading: BackButton(onPressed: () => Navigator.of(context).pop(_didChange)),
           actions: [
-            const JobsTrayIcon(),
           ],
         ),
         body: _currentRecipe == null

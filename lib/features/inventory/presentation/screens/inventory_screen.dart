@@ -417,7 +417,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           : AppBar(
               title: const Text('My Inventory'),
               actions: [
-                const JobsTrayIcon(), // Add the new global icon
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'add') {
@@ -527,7 +526,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           : AppBar(
               title: const Text('My Inventory'),
               actions: [
-                const JobsTrayIcon(), // Add the new global icon
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'add') {

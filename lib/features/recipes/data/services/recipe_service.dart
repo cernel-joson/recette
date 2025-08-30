@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/recipes/data/repositories/recipe_repository.dart';
@@ -15,13 +14,9 @@ class RecipeService {
   })  : _repository = repository ?? RecipeRepository(),
         _jobManager = jobManager ?? JobManager.instance;
 
-  Future<List<Recipe>> getAllRecipes() async {
-    return _repository.recipes.getAll();
-  }
+  Future<List<Recipe>> getAllRecipes() => _repository.getAllRecipes();
 
-  Future<Recipe?> getRecipeById(int id) async {
-    return _repository.recipes.getById(id);
-  }
+  Future<Recipe?> getRecipeById(int id) => _repository.getRecipeById(id);
 
   Future<Recipe> createRecipe(Recipe recipe, {int? jobId}) async {
     // Business Logic: Enforce the no-duplicates rule.
@@ -38,9 +33,7 @@ class RecipeService {
       await _repository.addTagsToRecipe(createdRecipe.id!, recipe.tags);
     }
     
-    // 5. "CLOSE THE LOOP" BY RESOLVING THE JOB
     if (jobId != null) {
-      // await _jobManager.archiveJob(jobId, createdRecipe.id.toString());
       await _jobManager.archiveJob(jobId);
     }
 
@@ -77,5 +70,10 @@ class RecipeService {
     await _repository.recipes.clear();
     await _repository.recipeTags.clear();
     await _repository.tags.clear();
+  }
+
+  /// Retrieves the most recently added recipes for the dashboard.
+  Future<List<Recipe>> getRecentRecipes({int limit = 5}) {
+    return _repository.getRecentRecipes(limit: limit);
   }
 }

@@ -1,21 +1,6 @@
-// lib/screens/dashboard_screen.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/core/core.dart';
-import 'package:recette/main.dart'; // Import main.dart to get access to the navigatorKey
-import 'package:recette/features/dietary_profile/presentation/screens/screens.dart'; // Import the new screen
-import 'package:recette/features/inventory/presentation/screens/screens.dart'; // Add this import
-import 'package:recette/features/shopping_list/presentation/screens/screens.dart';
-import 'package:recette/features/meal_plan/presentation/screens/screens.dart';
-import 'package:recette/core/presentation/screens/about_screen.dart';
-import 'package:recette/core/services/developer_service.dart';
-import 'package:provider/provider.dart';
-import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
-
-import 'package:recette/core/presentation/screens/settings_screen.dart';
 
 /// The main landing screen of the app, serving as a visual menu.
 class DashboardScreen extends StatefulWidget {
@@ -26,184 +11,107 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // A stream subscription to listen for incoming share events.
-  late StreamSubscription _intentDataStreamSubscription;
+  final RecipeService _recipeService = RecipeService();
+  late Future<List<Recipe>> _recentRecipesFuture;
 
   @override
   void initState() {
     super.initState();
-    // Start listening for share events when the screen is first created.
-    _listenForSharedData();
+    _loadDashboardData();
   }
 
-  @override
-  void dispose() {
-    // Cancel the subscription when the screen is disposed to prevent memory leaks.
-    _intentDataStreamSubscription.cancel();
-    super.dispose();
-  }
-
-  /// Sets up listeners for handling shared data, both when the app is
-  /// launched from a share and when it's already running.
-  void _listenForSharedData() {
-    // The modern API uses a single stream for all shared media.
-    _intentDataStreamSubscription =
-        ReceiveSharingIntent.instance.getMediaStream().listen((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) _handleSharedIntent(value.first);
-    }, onError: (err) {
-      debugPrint("getMediaStream error: $err");
+  void _loadDashboardData() {
+    setState(() {
+      _recentRecipesFuture = _recipeService.getRecentRecipes(limit: 5);
     });
-
-    // Also check for media shared when the app was closed.
-    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) _handleSharedIntent(value.first);
-    });
-  }
-
-  // --- REFACTORED: This method now uses the job system ---
-  void _handleSharedIntent(SharedMediaFile file) {
-    final context = navigatorKey.currentContext;
-    if (context == null) return;
-
-    final importService = Provider.of<RecipeImportService>(context, listen: false);
-
-    // Show a confirmation snackbar immediately
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Shared content received! Parsing in the background...'),
-        backgroundColor: Colors.blue,
-      ),
-    );
-
-    // Use the import service to submit the job asynchronously
-    try {
-      if (file.type == SharedMediaType.text || file.type == SharedMediaType.url) {
-        importService.importFromUrl(file.path);
-      } else if (file.type == SharedMediaType.image) {
-        importService.importFromImage(file.path);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch for changes in DeveloperService
-    final devService = context.watch<DeveloperService>();
-    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recette'),
-        actions: [
-          const JobsTrayIcon(),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: ListView(
-          children: [
-            DashboardCard(
-              icon: Icons.collections_bookmark_outlined,
-              title: 'My Recipe Library',
-              subtitle: 'View, add, and manage your saved recipes',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const RecipeLibraryScreen()),
-                );
-              },
-            ),
-            // --- NEW INVENTORY CARD ---
-            DashboardCard(
-              icon: Icons.kitchen_outlined,
-              title: 'My Inventory',
-              subtitle: 'Track the food you have on hand',
-              onTap: () {
-                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const InventoryScreen()),
-                );
-              },
-            ),
-            // --- END NEW CARD ---
-            const SizedBox(height: 8),
-            // NEW: Add a card for the Dietary Profile
-            DashboardCard(
-              icon: Icons.person_outline,
-              title: 'My Dietary Profile',
-              subtitle: 'Set your health goals and preferences',
-              onTap: () {
-                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const DietaryProfileScreen()),
-                );
-              },
-            ),
-            // ... After Dietary Profile Card
-            const SizedBox(height: 8),
-            DashboardCard(
-              icon: Icons.calendar_month_outlined,
-              title: 'Meal Planner',
-              subtitle: 'Plan your meals for the week ahead',
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const MealPlanScreen()));
-              },
-            ),
-            const SizedBox(height: 8),
-            DashboardCard(
-              icon: Icons.shopping_cart_outlined,
-              title: 'Shopping List',
-              subtitle: 'Create and manage your grocery lists',
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const ShoppingListScreen()));
-              },
-            ),
-            DashboardCard(
-              icon: Icons.settings_outlined,
-              title: 'Settings',
-              subtitle: 'Import & Export Data',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-            ),
-            DashboardCard(
-              icon: Icons.info_outline,
-              title: 'About Recette',
-              subtitle: 'App version and information',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AboutScreen()),
-                );
-              },
-            ),
-            // --- Conditionally render the Developer Options card ---
-            if (devService.isDeveloperMode) ...[
-              const SizedBox(height: 8),
-              DashboardCard(
-                icon: Icons.developer_mode,
-                title: 'Developer Options',
-                subtitle: 'Debugging tools and feature flags',
-                onTap: () {
-                  // TODO: Navigate to the Developer Options screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Developer screen not yet implemented.')),
-                  );
-                },
-              ),
+      body: FutureBuilder<List<Recipe>>(
+        future: _recentRecipesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No recent recipes found.'));
+          }
+
+          final recentRecipes = snapshot.data!;
+
+          return ListView(
+            padding: const EdgeInsets.all(8.0),
+            children: [
+              _buildGreetingCard(),
+              const SizedBox(height: 16),
+              _buildRecentlyAddedSection(context, recentRecipes),
             ],
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  /// A simple card that displays a time-based greeting.
+  Widget _buildGreetingCard() {
+    final hour = DateTime.now().hour;
+    String greeting;
+    if (hour < 12) {
+      greeting = 'Good morning!';
+    } else if (hour < 17) {
+      greeting = 'Good afternoon!';
+    } else {
+      greeting = 'Good evening!';
+    }
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.wb_sunny_outlined),
+        title: Text(greeting),
+        subtitle: const Text('What are we cooking today?'),
+      ),
+    );
+  }
+
+  /// A section to display a horizontally-scrolling list of recent recipes.
+  Widget _buildRecentlyAddedSection(BuildContext context, List<Recipe> recipes) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text(
+            'Recently Added',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 200, // Constrain the height of the horizontal list
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: recipes.length,
+            itemBuilder: (context, index) {
+              final recipe = recipes[index];
+              return SizedBox(
+                width: 300, // Give each card a fixed width
+                child: RecipeCard(
+                  recipe: recipe,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RecipeViewScreen(recipeId: recipe.id!),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

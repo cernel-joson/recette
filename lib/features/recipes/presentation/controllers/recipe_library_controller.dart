@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
-import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
-
-// --- NEW: Instantiate the search service ---
-final SearchService _searchService = SearchService();
+import 'package:flutter/foundation.dart';
+import 'package:recette/features/recipes/data/models/recipe_model.dart';
 
 class RecipeLibraryController with ChangeNotifier {
+  final RecipeService _recipeService;
+  final SearchService _searchService;
+
   List<Recipe> _recipes = []; // Default to empty list
   List<Recipe> _searchResults = []; // --- NEW: List for search results ---
   bool _isLoading = true;
@@ -14,14 +15,18 @@ class RecipeLibraryController with ChangeNotifier {
   // --- NEW: Add property to track navigation state ---
   int? _navigatedFromRecipeId;
 
+  RecipeLibraryController({
+    RecipeService? recipeService,
+    SearchService? searchService,
+  }) : _recipeService = recipeService ?? RecipeService(),
+       _searchService = searchService ?? SearchService() {
+    loadRecipes();
+  }
+
   // --- NEW: Public getter for the UI to read the state ---
-  int? get navigatedFromRecipeId => _navigatedFromRecipeId;
   List<Recipe> get recipes => _isSearchActive ? _searchResults : _recipes;
   bool get isLoading => _isLoading;
-
-  RecipeLibraryController() {
-    loadInitialRecipes();
-  }
+  int? get navigatedFromRecipeId => _navigatedFromRecipeId;
 
   // --- NEW: Methods to manage the navigation state ---
   void setNavigationOrigin(int recipeId) {
@@ -34,13 +39,13 @@ class RecipeLibraryController with ChangeNotifier {
   }
 
   /// Loads the initial, default view (e.g., recent recipes).
-  Future<void> loadInitialRecipes() async {
+  Future<void> loadRecipes() async {
     _isLoading = true;
     notifyListeners();
 
     // For now, we still load all recipes for the default view.
     // This can be changed later to "recent" or "favorites".
-    final recipeList = await DatabaseHelper.instance.getAllRecipes();
+    final recipeList = await _recipeService.getAllRecipes();
     _recipes = recipeList;
     _isLoading = false;
     _isSearchActive = false;
@@ -66,11 +71,5 @@ class RecipeLibraryController with ChangeNotifier {
     _searchResults = await _searchService.searchRecipes(query);
     _isLoading = false;
     notifyListeners();
-  }
-
-  Future<void> deleteRecipe(int id) async {
-    await DatabaseHelper.instance.delete(id);
-    // After deleting, reload the initial list.
-    await loadInitialRecipes();
   }
 }

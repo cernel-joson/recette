@@ -23,6 +23,57 @@ class RecipeRepository {
     fromMap: (map) => Recipe.fromMap(map),
   );
 
+  // --- Centralized Query Helper ---
+  Future<List<Recipe>> _getRecipesWithTags({String? where, List<Object?>? whereArgs}) async {
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: 'title ASC',
+    );
+
+    if (maps.isEmpty) return [];
+
+    return await Future.wait(maps.map((map) async {
+      final recipe = Recipe.fromMap(map);
+      final tags = await getTagsForRecipe(recipe.id!);
+      return recipe.copyWith(tags: tags);
+    }));
+  }
+
+  // --- Public Query Methods ---
+  
+  Future<List<Recipe>> getAllRecipes() => _getRecipesWithTags();
+
+  Future<Recipe?> getRecipeById(int id) async {
+    final recipes = await _getRecipesWithTags(where: 'id = ?', whereArgs: [id]);
+    return recipes.isNotEmpty ? recipes.first : null;
+  }
+  
+  Future<List<Recipe>> getVariationsForRecipe(int parentId) {
+    return _getRecipesWithTags(where: 'parentRecipeId = ?', whereArgs: [parentId]);
+  }
+
+  Future<List<Recipe>> searchRecipes(String whereClause, List<Object?> whereArgs) {
+    return _getRecipesWithTags(where: whereClause, whereArgs: whereArgs);
+  }
+
+  /// Fetches a list of the most recently added recipes.
+  Future<List<Recipe>> getRecentRecipes({int limit = 5}) async {
+    // This custom query remains as it has special ordering and limiting.
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'recipes',
+      orderBy: 'id DESC',
+      limit: limit,
+    );
+    if (maps.isEmpty) return [];
+    return List.generate(maps.length, (i) => Recipe.fromMap(maps[i]));
+  }
+
+  // --- Tag Management ---
+
   /// --- Custom Tag Management Logic ---
   /// This logic is specific to recipes and doesn't fit the generic repository.
 
@@ -61,6 +112,12 @@ class RecipeRepository {
     final db = await DatabaseHelper.instance.database;
     await db.delete('recipe_tags', where: 'recipeId = ?', whereArgs: [recipeId]);
   }
+
+  Future<List<String>> getAllUniqueTags() async {
+    final db = await DatabaseHelper.instance.database;
+    final result = await db.query('tags', orderBy: 'name ASC');
+    return result.map((map) => map['name'] as String).toList();
+  }
   
   /// Checks if a recipe with the given fingerprint exists in the database.
   Future<bool> fingerprintExists(String fingerprint) async {
@@ -73,5 +130,12 @@ class RecipeRepository {
       limit: 1,
     );
     return result.isNotEmpty;
+  }
+  
+  Future<void> clearAll() async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('recipes');
+    await db.delete('tags');
+    await db.delete('recipe_tags');
   }
 }

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/core/presentation/widgets/widgets.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
@@ -82,7 +81,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
 
       final result = await ImportService.importLibrary();
       
-      controller.loadInitialRecipes();
+      controller.loadRecipes();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
@@ -146,7 +145,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     // If the result is true (meaning a save happened), refresh the library.
     if (result == true && mounted) {
       // Get the controller and tell it to reload the recipes.
-      Provider.of<RecipeLibraryController>(context, listen: false).loadInitialRecipes();
+      Provider.of<RecipeLibraryController>(context, listen: false).loadRecipes();
     }
   }
 
@@ -217,7 +216,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                   // 2. IMPORTANT: Reset the library's state to the default view.
                   //    This clears the search, clears the navigation origin, and
                   //    prevents the infinite loop.
-                  controller.loadInitialRecipes();
+                  controller.loadRecipes();
 
                   // 3. Now, from the clean state, navigate to the recipe.
                   //    Because the state is clean, when the user presses back on the
@@ -236,7 +235,6 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
             title: const Text('My Recipe Library'),
             // --- THIS IS THE REFACTORED ACTIONS SECTION ---
             actions: [
-              const JobsTrayIcon(), // Add the new global icon
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'import') {
@@ -353,7 +351,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                                 controller.search(result);
                               } else if (result == true) {
                                 controller.clearNavigationOrigin();
-                                controller.loadInitialRecipes();
+                                controller.loadRecipes();
                               }
                             },
                           );

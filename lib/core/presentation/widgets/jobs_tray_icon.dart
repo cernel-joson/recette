@@ -1,63 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
-// --- ADD THIS IMPORT ---
-import 'package:recette/core/presentation/screens/jobs_tray_screen.dart';
 
-class JobsTrayIcon extends StatefulWidget {
-  const JobsTrayIcon({super.key});
+/// An icon for the AppBar that provides a visual indication of background
+/// job activity and serves as a button to open the Jobs Tray screen.
+class JobsTrayIcon extends StatelessWidget {
+  /// A callback function that is executed when the icon is tapped.
+  final VoidCallback onTap;
 
-  @override
-  State<JobsTrayIcon> createState() => _JobsTrayIconState();
-}
-
-class _JobsTrayIconState extends State<JobsTrayIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  const JobsTrayIcon({
+    super.key,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<JobController>(
-      builder: (context, controller, child) {
-        // Start or stop the animation based on the controller's state.
-        if (controller.hasActiveJobs) {
-          _animationController.repeat();
-        } else {
-          _animationController.stop();
-        }
+    // Listen to the JobController to know if there are active jobs.
+    final hasActiveJobs =
+        context.select((JobController controller) => controller.hasActiveJobs);
 
-        return IconButton(
-          icon: controller.hasActiveJobs
-              ? RotationTransition(
-                  turns: _animationController,
-                  child: const Icon(Icons.sync),
-                )
-              : const Icon(Icons.history),
-          tooltip: 'Job History',
-          onPressed: () {
-            // --- THIS IS THE FIX ---
-            // Navigate to the new JobsTrayScreen.
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const JobsTrayScreen()),
-            );
-          },
-        );
-      },
+    return IconButton(
+      onPressed: onTap,
+      icon: hasActiveJobs
+          // If jobs are active, show a spinning progress indicator.
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          // Otherwise, show a standard history icon.
+          : const Icon(Icons.history),
     );
   }
 }

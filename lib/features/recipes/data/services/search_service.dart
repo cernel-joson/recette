@@ -1,5 +1,5 @@
-import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/repositories/recipe_repository.dart';
 
 // 1. ADD THIS CLASS DEFINITION AT THE TOP OF THE FILE
 /// A simple data class to hold the components of a parsed SQL query.
@@ -11,11 +11,16 @@ class SearchQuery {
 }
 
 class SearchService {
-  final DatabaseHelper _db = DatabaseHelper.instance;
+  final RecipeRepository _repository;
+
+  // 3. UPDATE CONSTRUCTOR FOR DEPENDENCY INJECTION
+  SearchService({
+    RecipeRepository? repository,
+  })  : _repository = repository ?? RecipeRepository();
 
   Future<List<Recipe>> searchRecipes(String rawQuery) async {
     final (sqlWhereClause, sqlArgs) = _parseQuery(rawQuery);
-    return await _db.searchRecipes(sqlWhereClause, sqlArgs);
+    return await _repository.searchRecipes(sqlWhereClause, sqlArgs);
   }
 
   // 2. MAKE THE METHOD PUBLIC AND UPDATE ITS RETURN TYPE

@@ -7,9 +7,17 @@ import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
 import 'package:recette/features/recipes/recipes.dart';
+import 'package:recette/features/recipes/data/services/recipe_service.dart';
 
 // Renamed from RecipeParsingWorker
 class RecipeAnalysisWorker implements JobWorker {
+  final RecipeService _recipeService;
+  
+  RecipeAnalysisWorker({
+    // Using default initializers for convenience
+    RecipeService? recipeService,
+  })  : _recipeService = recipeService ?? RecipeService();
+
   @override
   Future<JobResult> execute(Job job) async {
     final requestData = json.decode(job.requestPayload);
@@ -75,7 +83,7 @@ class RecipeAnalysisWorker implements JobWorker {
       final db = DatabaseHelper.instance;
       final jobRepo = JobRepository();
       final recipeId = recipeData['id'] as int;
-      final originalRecipe = await db.getRecipeById(recipeId);
+      final originalRecipe = await _recipeService.getRecipeById(recipeId);
 
       if (originalRecipe == null) return;
 

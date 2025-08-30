@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/features/recipes/data/repositories/recipe_repository.dart';
 
 class FilterBottomSheet extends StatefulWidget {
   const FilterBottomSheet({super.key});
@@ -9,6 +9,12 @@ class FilterBottomSheet extends StatefulWidget {
 }
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
+  final RecipeRepository _recipeRepository;
+
+  _FilterBottomSheetState({
+    RecipeRepository? recipeRepository,
+  }) : _recipeRepository = recipeRepository ?? RecipeRepository();
+
   List<String> _allTags = [];
   Set<String> _selectedTags = {};
   final _includeController = TextEditingController();
@@ -21,7 +27,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 
   Future<void> _loadTags() async {
-    final tags = await DatabaseHelper.instance.getAllUniqueTags();
+    final tags = await _recipeRepository.getAllUniqueTags();
     if (mounted) {
       setState(() {
         _allTags = tags;
