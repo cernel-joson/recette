@@ -10,7 +10,6 @@ enum RecipeAnalysisTask {
   generateTags,
   healthCheck,
   estimateNutrition,
-  findSimilar // The new task for our fuzzy matching
 }
 
 class RecipeAnalysisService {
@@ -53,6 +52,7 @@ class RecipeAnalysisService {
       jobType: 'recipe_analysis',
       requestPayload: requestPayload,
     );
+    
     return true; // Indicates a job was submitted
   }
 
@@ -185,4 +185,80 @@ class RecipeAnalysisService {
     // This would be similar to enhanceSingleRecipe but would handle
     // a list of recipes and a list of results.
   }*/
+
+  /// --- NEW ORCHESTRATOR METHOD ---
+  /// This method handles the full workflow: first analyzing a recipe,
+  /// then using that result to find similar recipes.
+  Future<List<int>> analyzeAndFindSimilar({
+    required Recipe recipeToProcess,
+    required List<Recipe> candidateRecipes,
+  }) async {
+    // --- STEP 1: Analyze the new recipe ---
+    // We create a request body for the initial analysis.
+    final analysisRequestBody = {
+      'recipe_analysis_request': {
+        // Define the tasks needed to get a complete recipe object
+        'tasks': ['parse', 'generateTags', 'estimateNutrition', 'healthCheck'],
+        'recipe_data': recipeToProcess.toMap(), 
+        // Assume profile is loaded elsewhere or passed in
+        'dietary_profile': (await ProfileService.loadProfile()).fullProfileText,
+      }
+    };
+
+    // Make the first API call to fully analyze the recipe
+    final analysisResponseBody = await ApiHelper.analyzeRaw(analysisRequestBody, model: AiModel.pro);
+    final analysisResult = analysisResponseBody['result'];
+
+    if (analysisResult == null) {
+      // Handle error: the initial analysis failed
+      throw Exception('Failed to analyze the primary recipe.');
+    }
+
+    // --- STEP 2: Find similar recipes using the analyzed result ---
+    // Now, create the request body for the second, separate API call.
+    final findSimilarRequestBody = {
+      'find_similar_request': {
+        // Use the fully analyzed recipe from the first call's result
+        'primary_recipe': analysisResult, 
+        'candidate_recipes': candidateRecipes.map((r) => r.toMap()).toList(),
+      }
+    };
+    
+    // Make the second API call
+    final similarResponseBody = await ApiHelper.analyzeRaw(findSimilarRequestBody, model: AiModel.pro);
+    final similarResult = similarResponseBody['result'];
+    
+    if (similarResult == null || similarResult['similar_recipe_ids'] == null) {
+      return []; // Return an empty list if no similarities were found or if there was an error
+    }
+    
+    // Return the final list of IDs
+    return List<int>.from(similarResult['similar_recipe_ids']);
+  }
+  
+  /// This method only tries to find similar recipes.
+  Future<List<int>> findSimilar({
+    required Recipe recipeToProcess,
+    required List<Recipe> candidateRecipes,
+  }) async {
+    // Find similar recipes using the analyzed result ---
+    // Now, create the request body for the second, separate API call.
+    final findSimilarRequestBody = {
+      'find_similar_request': {
+        'primary_recipe': recipeToProcess.toMap(), 
+        'candidate_recipes': candidateRecipes.map((r) => r.toMap()).toList(),
+      }
+    };
+    
+    // Make the second API call
+    final similarResponseBody = await ApiHelper.analyzeRaw(findSimilarRequestBody, model: AiModel.pro);
+    final similarResult = similarResponseBody['result'];
+    
+    if (similarResult == null || similarResult['similar_recipe_ids'] == null) {
+      return []; // Return an empty list if no similarities were found or if there was an error
+    }
+    
+    // Return the final list of IDs
+    return List<int>.from(similarResult['similar_recipe_ids']);
+  }
 }

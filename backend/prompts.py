@@ -1,4 +1,8 @@
 import json
+import base64
+from vertexai.generative_models import Part
+from .utils import scrape_text_from_url # Assuming utils.py is in the same directory
+
 # --- Refactored Prompts for DRY Principle ---
 
 # Define the common JSON structure as a constant.
@@ -62,17 +66,81 @@ def _get_tag_instructions():
     return """- **Generate Tags**: You MUST analyze the recipe's title and ingredients to generate a JSON array of 5-7 relevant tags for cuisine, meal type, etc. Populate the `tags` field."""
 
 def _get_health_check_instructions():
-    return """- **Perform Health Check**: You MUST analyze the recipe for its health implications. If a dietary profile is provided, analyze against it. **If the dietary profile is empty, you MUST perform the analysis based on general healthy eating guidelines (e.g., low in added sugar and sodium, balanced macronutrients).** Your task is to:
+    return """- **Perform Health Check**: You MUST analyze the recipe for its health implications against the provided dietary profile (or general guidelines if none is provided). Your task is to:
         1. Assign a `health_rating` of `SAFE`, `CAUTION`, or `AVOID`.
-           - `SAFE` means the recipe aligns perfectly.
-           - `CAUTION` means it's acceptable in moderation but has minor issues.
-           - `AVOID` means it significantly violates one or more core health rules.
-        2. Write a brief, one or two-sentence `summary` of your findings.
-        3. Provide a bulleted list of specific, actionable `suggestions` for improvement.
-        4. Populate the entire `health_analysis` object in the JSON with these findings."""
+        2. Write a brief `summary` of your findings.
+        3. Provide specific, actionable `suggestions` for improvement.
+        4. Your response for this task MUST be a JSON object with the key `health_analysis` containing these findings."""
 
 def _get_nutrition_instructions():
-    return """- **Estimate Nutrition**: You MUST provide a detailed nutritional breakdown per serving. You should analyze the ingredient list and quantities, and use your internal knowledge to calculate the nutritional values. Populate the `nutritional_info` object with all the specified fields."""
+    return """- **Estimate Nutrition**: You MUST provide a detailed nutritional breakdown per serving. Populate the `nutritional_info` object with all the specified fields."""
+
+def build_recipe_analysis_prompt(tasks, recipe_data, dietary_profile=''):
+    """
+    Builds the complete prompt for all recipe analysis tasks.
+    This function now handles all context (URL, text, image) and provides
+    unambiguous instructions for the AI's response format.
+    """
+    has_image = 'image' in recipe_data
+    is_parsing_new_recipe = 'parse' in tasks
+
+    prompt_parts = []
+    initial_instruction = "You are an expert recipe analysis API."
+
+    if is_parsing_new_recipe:
+        parse_instruction = "Your primary job is to parse the recipe from the provided "
+        parse_instruction += "image." if has_image else "text or URL content."
+        prompt_parts.extend([
+            initial_instruction,
+            parse_instruction,
+            JSON_STRUCTURE_PROMPT,
+            "\nAfter parsing the core recipe, you MUST perform the following additional analysis tasks:"
+        ])
+    else:
+        prompt_parts.extend([
+            initial_instruction,
+            "Your job is to analyze the provided recipe JSON object and perform the following analysis tasks:"
+        ])
+
+    task_functions = {
+        "generateTags": _get_tag_instructions,
+        "healthCheck": _get_health_check_instructions,
+        "estimateNutrition": _get_nutrition_instructions
+    }
+    for task in tasks:
+        if task in task_functions:
+            prompt_parts.append(task_functions[task]())
+
+    # --- Centralized Context Handling ---
+    if is_parsing_new_recipe:
+        if 'url' in recipe_data and recipe_data['url']:
+            scraped_text = scrape_text_from_url(recipe_data['url'])
+            prompt_parts.extend(["\n--- RECIPE URL CONTENT ---\n", scraped_text])
+        elif 'text' in recipe_data and recipe_data['text']:
+            pasted_text = recipe_data['text']
+            prompt_parts.extend(["\n--- RECIPE TEXT ---\n", pasted_text])
+        elif has_image:
+            image_data = recipe_data['image']
+            image_part = Part.from_data(data=base64.b64decode(image_data), mime_type="image/jpeg")
+            # Image must come first for multimodal prompts
+            prompt_parts.insert(0, image_part)
+    else:
+        prompt_parts.append(f"\n--- RECIPE JSON TO ANALYZE ---\n{json.dumps(recipe_data)}")
+
+    if "healthCheck" in tasks and dietary_profile:
+        prompt_parts.extend(["\n--- DIETARY PROFILE FOR HEALTH CHECK ---\n", dietary_profile])
+
+    # --- NEW: Dynamic Final Instruction ---
+    if is_parsing_new_recipe:
+        # If parsing, we want the whole recipe object back.
+        final_instruction = "\nYour response MUST be a single, clean JSON object matching the full structure defined above. All requested tasks must be completed."
+        prompt_parts.append(final_instruction)
+    else:
+        # If only analyzing, we want a smaller, targeted JSON object back.
+        final_instruction = "\nYour response MUST be a single JSON object containing ONLY the keys for the tasks you performed (e.g., `health_analysis`, `nutritional_info`, `tags`)."
+        prompt_parts.append(final_instruction)
+
+    return prompt_parts
 
 # --- UNIFIED ANALYSIS PROMPT ---
 
@@ -113,10 +181,23 @@ def get_recipe_analysis_prompt(tasks, has_image=False):
         if task in task_functions:
             prompt_parts.append(task_functions[task]()) # Call function to get instructions
 
-    prompt_parts.append("\nYour response MUST be a single, clean JSON object matching the structure defined above. All requested tasks must be completed.")
+    if 'parse' in tasks:
+        prompt_parts.append("\nYour response MUST be a single, clean JSON object matching the structure defined above. All requested tasks must be completed.")
 
     return "\n".join(prompt_parts)
 
+def build_find_similar_prompt(primary_recipe, candidate_recipes):
+    """Creates the specific prompt for the findSimilar task."""
+    prompt_text = """
+        You are an expert recipe analyst. Compare the 'PRIMARY RECIPE' to the 'CANDIDATE RECIPES'.
+        Based on title and ingredients, identify which candidates are semantically very similar.
+        Return a single JSON object with ONE key: 'similar_recipe_ids', containing a list of the integer IDs of ONLY the similar recipes.
+    """
+    return [
+        prompt_text,
+        "\n--- PRIMARY RECIPE ---\n", json.dumps(primary_recipe),
+        "\n--- CANDIDATE RECIPES ---\n", json.dumps(candidate_recipes)
+    ]
 
 # NEW: A dedicated, separate prompt for the findSimilar tool.
 def get_find_similar_prompt():
@@ -309,30 +390,28 @@ def get_meal_ideas_prompt(inventory_list, dietary_profile, user_intent):
     ---
     """
 
-def get_conversational_chat_prompt(user_message, profile_text, inventory_text, chat_history):
+# --- RENAMED for consistency ---
+def build_chat_prompt(user_message, profile_text, inventory_text, chat_history):
     """Creates the prompt for a freeform, context-aware chat."""
-
-    # Conditionally build the context string
-    context = "--- USER CONTEXT ---\n"
+    context_parts = ["--- USER CONTEXT ---\n"]
     if profile_text:
-        context += f"Dietary Profile:\n{profile_text}\n\n"
+        context_parts.append(f"Dietary Profile:\n{profile_text}\n\n")
     if inventory_text:
-        context += f"Current Inventory:\n{inventory_text}\n\n"
+        context_parts.append(f"Current Inventory:\n{inventory_text}\n\n")
+
+    # Only include context if it exists
+    full_context = "".join(context_parts) if len(context_parts) > 1 else ""
 
     # Format chat history
     history = "\n".join([f"{msg['role']}: {msg['text']}" for msg in chat_history])
-
-    return f"""
+    
+    system_instruction = f"""
     You are Recette, a friendly and knowledgeable kitchen assistant. Your goal is to help the user with their questions about food, recipes, and nutrition based on the context they provide.
-
-    {context if (profile_text or inventory_text) else ""}
+    {full_context}
     --- CHAT HISTORY ---
     {history if history else "This is the beginning of your conversation."}
     ---
-
-    Here is the user's latest message:
     user: {user_message}
+    model:""" # Prime the model to respond
 
-    Your Task:
-    Respond to the user's message in a helpful, conversational tone. Your response should be a single, clean string.
-    """
+    return [system_instruction] # Return as a list for consistency

@@ -1,32 +1,26 @@
 # backend/recipe_tools_service.py
-import json
-from .prompts import get_find_similar_prompt
+from . import prompts
+from . import gemini_service
 
 def handle_find_similar(request_json, model):
-    """Handles the specific task of finding similar recipes."""
+    """
+    Orchestrates the recipe similarity comparison process.
+    1. Extracts primary and candidate recipes from the request.
+    2. Builds the prompt using the prompts module.
+    3. Calls the Gemini service to get the result.
+    """
     find_similar_request = request_json['find_similar_request']
-    primary_recipe = find_similar_request['primary_recipe']
-    candidate_recipes = find_similar_request['candidate_recipes']
+    developer_mode = request_json.get("developer_mode", False)
 
-    prompt_text = get_find_similar_prompt()
-    prompt_parts = [
-        prompt_text,
-        "\n--- PRIMARY RECIPE ---\n", json.dumps(primary_recipe),
-        "\n--- CANDIDATE RECIPES ---\n", json.dumps(candidate_recipes)
-    ]
+    # 1. Extract data
+    primary_recipe = find_similar_request.get('primary_recipe', {})
+    candidate_recipes = find_similar_request.get('candidate_recipes', [])
 
-    # Store the full prompt text before making the call.
-    full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
-
-    # In developer mode, we return the prompt itself. Otherwise, we call the model.
-    # if request_json.get("developer_mode", False):
-    #    return {"prompt_text": prompt_parts[0]}
+    # 2. Build the prompt
+    prompt_parts = prompts.build_find_similar_prompt(primary_recipe, candidate_recipes)
     
-    response = model.generate_content(prompt_parts)
-    json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-    ai_result = json.loads(json_string)
+    # 3. Call the central Gemini service
+    response_data = gemini_service.call_gemini(model, prompt_parts, developer_mode)
     
-    return {
-        "prompt_text": full_prompt_text,
-        "result": ai_result
-    }
+    # The result from Gemini will be in response_data['result']
+    return response_data

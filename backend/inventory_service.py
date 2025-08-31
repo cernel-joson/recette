@@ -1,62 +1,47 @@
-import json
-from prompts import get_inventory_parse_prompt, get_meal_ideas_prompt
+from . import prompts
+from . import gemini_service
 
 def handle_inventory_import(request_json, model):
-    """Handles all requests related to parsing a new recipe."""
-    prompt_parts = []
+    """
+    Orchestrates the inventory import process:
+    1. Extracts data from the request.
+    2. Builds the prompt using the prompts module.
+    3. Calls the Gemini service to get the result.
+    """
+    inventory_import_request = request_json['inventory_import_request']
+    developer_mode = request_json.get("developer_mode", False)
+
+    # 1. Extract data
+    inventory_text = inventory_import_request.get('inventory_import_request', {}).get('text', '')
+    locations = inventory_import_request.get('locations', [])
+
+    # 2. Build the prompt
+    prompt_parts = prompts.get_inventory_parse_prompt(inventory_text, locations)
     
-    if 'inventory_import_request' in request_json:
-        inventory_text = request_json['inventory_import_request']['text']
-        # NEW: Get locations from the request to pass to the prompt
-        locations = request_json['inventory_import_request'].get('locations', [])
-        prompt = get_inventory_parse_prompt(inventory_text, locations)
-        prompt_parts = [prompt]
-    else:
-        raise Exception("Invalid parsing request.", 400)
+    # 3. Call the central Gemini service
+    response_data = gemini_service.call_gemini(model, prompt_parts, developer_mode)
 
-    # Store the full prompt text before making the call.
-    full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
-
-    # In developer mode, we return the prompt itself. Otherwise, we call the model.
-    if request_json.get("developer_mode", False):
-        return {"prompt_text": prompt_parts[0]}
-
-    response = model.generate_content(prompt_parts)
-    json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-    ai_result = json.loads(json_string)
-    
-    return {
-        "prompt_text": full_prompt_text,
-        "result": ai_result
-    }
+    return response_data
 
 def handle_meal_suggestion(request_json, model):
-    """Handles all requests related to parsing a new recipe."""
-    prompt_parts = []
+    """
+    Orchestrates the meal suggestion process:
+    1. Extracts data from the request.
+    2. Builds the prompt using the prompts module.
+    3. Calls the Gemini service to get the result.
+    """
+    meal_suggestion_request = request_json['meal_suggestion_request']
+    developer_mode = request_json.get("developer_mode", False)
+
+    # 1. Extract data
+    inventory = meal_suggestion_request.get('inventory', [])
+    profile = meal_suggestion_request.get('dietary_profile', 'No profile provided.')
+    intent = meal_suggestion_request.get('user_intent', 'No specific situation provided.')
+
+    # 2. Build the prompt
+    prompt_parts = prompts.get_meal_ideas_prompt(inventory, profile, intent)
     
-    if 'meal_suggestion_request' in request_json:        
-        data = request_json['meal_suggestion_request']
-        inventory = data.get('inventory', [])
-        profile = data.get('dietary_profile', 'No profile provided.')
-        intent = data.get('user_intent', 'No specific situation provided.')
-        
-        prompt = get_meal_ideas_prompt(inventory, profile, intent)
-        prompt_parts = [prompt]
-    else:
-        raise Exception("Invalid parsing request.", 400)
+    # 3. Call the central Gemini service
+    response_data = gemini_service.call_gemini(model, prompt_parts, developer_mode)
 
-    # Store the full prompt text before making the call.
-    full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
-
-    # In developer mode, we return the prompt itself. Otherwise, we call the model.
-    if request_json.get("developer_mode", False):
-        return {"prompt_text": prompt_parts[0]}
-
-    response = model.generate_content(prompt_parts)
-    json_string = response.text.strip().replace("```json", "").replace("```", "").strip()
-    ai_result = json.loads(json_string)
-    
-    return {
-        "prompt_text": full_prompt_text,
-        "result": ai_result
-    }
+    return response_data

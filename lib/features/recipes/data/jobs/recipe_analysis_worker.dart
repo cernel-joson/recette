@@ -1,6 +1,7 @@
 // lib/features/recipes/data/jobs/recipe_analysis_worker.dart
 
 import 'dart:convert';
+import 'dart:developer' as developer; // 1. Import the developer log
 import 'package:recette/core/core.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
@@ -25,11 +26,17 @@ class RecipeAnalysisWorker implements JobWorker {
     final responseJson = await ApiHelper.analyzeRaw({
       'recipe_analysis_request': requestData
     }, model: AiModel.pro);
+    
+    // --- 2. DEBUG LOGGING ---
+    // This will print the raw server response to your debug console.
+    developer.log('--- RAW AI RESPONSE FROM SERVER ---');
+    developer.log(jsonEncode(responseJson)); // Use jsonEncode for clean printing
+    developer.log('--- END RAW AI RESPONSE ---');
 
     final aiResult = responseJson['result'];
     final promptText = responseJson['prompt_text'];
-    final rawResponseText = responseJson['raw_response_text']; // <-- NEW
-    final errorMessage = responseJson['error']; // <-- NEW
+    final rawResponseText = responseJson['raw_response_text'];
+    final errorMessage = responseJson['error'];
 
     // If parsing failed on the backend, throw an exception here
     if (aiResult == null) {

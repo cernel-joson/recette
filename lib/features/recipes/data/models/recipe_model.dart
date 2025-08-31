@@ -201,10 +201,21 @@ class Recipe implements DataModel, Fingerprintable {
       return decoded.map((item) => fromMap(item)).toList();
     }
     
-    // Helper for simple string lists
+    // Helper for safely decoding simple lists of strings
     List<String> _safeDecodeStringList(String? jsonString) {
       if (jsonString == null || jsonString.isEmpty || jsonString == 'null') return [];
-      return List<String>.from(json.decode(jsonString));
+      try {
+        // First, try to decode it as a JSON list
+        final decoded = json.decode(jsonString);
+        if (decoded is List) {
+          return List<String>.from(decoded);
+        }
+        // If it's not a list (e.g., a single string), wrap it in a list
+        return [decoded.toString()];
+      } catch (e) {
+        // If it's not valid JSON at all, treat it as a single-item list
+        return [jsonString];
+      }
     }
 
     return Recipe(
