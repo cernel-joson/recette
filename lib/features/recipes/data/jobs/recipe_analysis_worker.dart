@@ -9,6 +9,7 @@ import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 
 // Renamed from RecipeParsingWorker
 class RecipeAnalysisWorker implements JobWorker {
@@ -94,7 +95,6 @@ class RecipeAnalysisWorker implements JobWorker {
 
       if (originalRecipe == null) return;
 
-      // --- THIS IS THE FIX ---
       // Sanitize the raw response string to remove markdown fences.
       final jsonString = job.rawAiResponse!.trim().replaceAll("```json", "").replaceAll("```", "").trim();
       
@@ -103,7 +103,15 @@ class RecipeAnalysisWorker implements JobWorker {
       
       // Use fromJson, which is designed to handle the AI's data structure.
       final updatedDataFromAi = Recipe.fromJson(rawAiResult, originalRecipe.sourceUrl);
-      // --- END OF FIX ---
+
+      // Get the profile that was used in this job's API call.
+      final profile = await ProfileService.loadProfile();
+      final newProfileFingerprint = FingerprintHelper.generate(profile);
+      
+      // We need the fingerprint of the recipe *as it was analyzed*.
+      // We can regenerate it from the original recipe object that was sent in the job payload.
+      final recipeFingerprintForAnalysis = FingerprintHelper.generate(originalRecipe);
+
 
       // Combine the new AI data with the original recipe's core data.
       final finalRecipe = originalRecipe.copyWith(
@@ -111,8 +119,10 @@ class RecipeAnalysisWorker implements JobWorker {
         healthRating: updatedDataFromAi.healthRating,
         healthSummary: updatedDataFromAi.healthSummary,
         healthSuggestions: updatedDataFromAi.healthSuggestions,
-        dietaryProfileFingerprint: updatedDataFromAi.dietaryProfileFingerprint,
         nutritionalInfo: updatedDataFromAi.nutritionalInfo,
+        // Store the fingerprints that this analysis is valid for.
+        dietaryProfileFingerprint: newProfileFingerprint,
+        fingerprint: recipeFingerprintForAnalysis
       );
 
       // 4. Save the fully updated recipe and archive the job.

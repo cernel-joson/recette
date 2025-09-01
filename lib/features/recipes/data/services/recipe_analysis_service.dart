@@ -4,6 +4,7 @@ import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
 
 // Enum to define the different kinds of analysis a user can request.
 enum RecipeAnalysisTask {
@@ -26,10 +27,9 @@ class RecipeAnalysisService {
     final profile = await ProfileService.loadProfile();
     final tasksToRun = Set<RecipeAnalysisTask>.from(tasks);
 
-    // --- CACHING LOGIC ---
+    // --- RE-IMPLEMENTED CACHING LOGIC ---
     if (tasks.contains(RecipeAnalysisTask.healthCheck)) {
-      final isCacheValid = FingerprintHelper.generate(profile) == recipe.dietaryProfileFingerprint;
-      if (isCacheValid) {
+      if (_isHealthCacheValid(recipe, profile)) {
         debugPrint("CACHE HIT for Health Check on Recipe ID ${recipe.id}. Skipping task.");
         tasksToRun.remove(RecipeAnalysisTask.healthCheck);
       }
@@ -54,6 +54,23 @@ class RecipeAnalysisService {
     );
     
     return true; // Indicates a job was submitted
+  }
+
+  /// Private helper to check if the health data is still valid.
+  bool _isHealthCacheValid(Recipe recipe, DietaryProfile profile) {
+    // 1. Generate the fingerprint for the CURRENT state of the dietary profile.
+    final currentProfileFingerprint = FingerprintHelper.generate(profile);
+
+    // 2. The recipe's own content fingerprint should have been set when it was last saved.
+    final currentRecipeFingerprint = FingerprintHelper.generate(recipe);
+
+    // 3. The cache is valid ONLY IF:
+    //    - A health rating exists.
+    //    - The stored profile fingerprint matches the current profile fingerprint.
+    //    - The recipe's stored content fingerprint matches its current content fingerprint.
+    return recipe.healthRating != null &&
+        recipe.dietaryProfileFingerprint == currentProfileFingerprint &&
+        recipe.fingerprint == currentRecipeFingerprint;
   }
 
   /*Future<Recipe> enhanceSingleRecipe({
