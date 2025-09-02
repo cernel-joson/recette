@@ -6,13 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
-
 import 'package:recette/core/jobs/data/models/job_model.dart';
-// import 'package:recette/features/inventory/presentation/widgets/meal_ideas_banner.dart';
-// import 'package:recette/features/inventory/presentation/screens/meal_ideas_screen.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 
 
@@ -24,21 +20,20 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  final InventoryService _inventoryService = InventoryService();
-  // State now holds the list of items directly, not the Future
-  List<InventoryItem>? _items;
-  // State now holds the grouped map of items
+  // The service is now a late final variable, initialized from the provider.
+  late final InventoryService _inventoryService;
+  
   Map<String, List<InventoryItem>>? _groupedItems;
   List<Location> _locations = [];
   bool _isLoading = true;
-
-  // --- NEW: State for selection mode ---
   bool _isSelecting = false;
   final Set<int> _selectedItemIds = {};
 
   @override
   void initState() {
     super.initState();
+    // Get the service from the context. listen: false is important in initState.
+    _inventoryService = Provider.of<InventoryService>(context, listen: false);
     _refreshInventory();
   }
 
@@ -513,98 +508,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         );
       },
-    );
-    return Scaffold(
-      appBar: _isSelecting
-          ? AppBar(
-              leading: IconButton(icon: const Icon(Icons.close), onPressed: _clearSelection),
-              title: Text('${_selectedItemIds.length} selected'),
-              actions: [
-                IconButton(icon: const Icon(Icons.drive_file_move), onPressed: _showMoveDialog, tooltip: 'Move Items'),
-              ],
-            )
-          : AppBar(
-              title: const Text('My Inventory'),
-              actions: [
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'add') {
-                      _showItemDialog();
-                    } else if (value == 'import') {
-                      _showImportDialog();
-                    } else if (value == 'export') {
-                      _exportInventory();
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
-                      value: 'add',
-                      child: ListTile(
-                        leading: Icon(Icons.add_circle_outline),
-                        title: Text('Add Item'),
-                      ),
-                    ),
-                    const PopupMenuItem<String>(
-                      value: 'import',
-                      child: ListTile(
-                        leading: Icon(Icons.download),
-                        title: Text('Import from Text'),
-                      ),
-                    ),
-                    const PopupMenuItem<String>(
-                      value: 'export',
-                      child: ListTile(
-                        leading: Icon(Icons.upload_file),
-                        title: Text('Export to Text'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-      // --- UPDATED BODY TO DISPLAY GROUPED LIST ---
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _groupedItems == null || _groupedItems!.isEmpty
-              ? const Center(child: Text('Your inventory is empty.'))
-              : ListView(
-                  children: _groupedItems!.entries.map((entry) {
-                    final location = entry.key;
-                    final items = entry.value;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
-                          child: Text(
-                            location,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        ...items.map((item) => ListTile(
-                              title: Text(item.name),
-                              subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                onPressed: () async {
-                                  await _inventoryService.deleteItem(item.id!);
-                                  _refreshInventory();
-                                },
-                              ),
-                              onTap: () => _showItemDialog(item: item),
-                            )),
-                        const Divider(),
-                      ],
-                    );
-                  }).toList(),
-                ),
-      // --- NEW FAB ---
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showMealIdeasDialog,
-        tooltip: 'Get Meal Ideas',
-        icon: const Icon(Icons.lightbulb_outline),
-        label: const Text('What can I make?'),
-      ),
     );
   }
 }
