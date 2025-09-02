@@ -75,7 +75,7 @@ class ImportService {
     await _inventoryService.batchInsertLocations(backup.inventoryLocations);
     await _inventoryService.batchInsertItems(backup.inventoryItems);
     await _recipeService.batchInsertRecipes(backup.recipes);
-    await _shoppingListService.batchInsertItems(backup.shoppingListItems);
+    await _shoppingListService.batchInsert(backup.shoppingListItems);
     await _mealPlanService.batchInsertEntries(backup.mealPlanEntries);
 
     if (backup.dietaryProfile != null) {

@@ -38,7 +38,7 @@ class ExportService {
     final inventoryItems = await _inventoryService.getInventory();
     final inventoryCategories = await _inventoryService.getCategories();
     final inventoryLocations = await _inventoryService.getLocations();
-    final shoppingListItems = await _shoppingListService.getItems();
+    final shoppingListItems = await _shoppingListService.getAllItems();
     final mealPlanEntries = await _mealPlanService.getEntries();
     final profile = await ProfileService.getProfile();
 

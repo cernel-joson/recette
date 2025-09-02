@@ -1,9 +1,9 @@
-import 'package:recette/core/data/repositories/data_repository.dart';
+import 'package:recette/core/data/models/list_item_model.dart';
 
-/// A simple model for user-defined storage locations (e.g., 'Fridge', 'Pantry').
-class Location implements DataModel {
+class Location implements ListCategory {
   @override
   final int? id;
+  @override
   final String name;
   final String? iconName;
 
@@ -11,18 +11,10 @@ class Location implements DataModel {
 
   @override
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'icon_name': iconName,
-    };
+    return {'id': id, 'name': name, 'icon_name': iconName};
   }
 
   factory Location.fromMap(Map<String, dynamic> map) {
-    return Location(
-      id: map['id'],
-      name: map['name'],
-      iconName: map['icon_name'],
-    );
+    return Location(id: map['id'], name: map['name'], iconName: map['icon_name']);
   }
 }

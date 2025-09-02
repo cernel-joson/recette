@@ -5,7 +5,6 @@ import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
-import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 
 class InventoryImportWorker implements JobWorker {

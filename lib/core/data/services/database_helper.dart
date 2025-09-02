@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
 
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 16;
+  static const int _dbVersion = 17;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -75,6 +75,7 @@ class DatabaseHelper {
       await _createMealPlanTables(db);
     }
     if (oldVersion < 16) await _createChatMessagesTable(db);
+    if (oldVersion < 17) await _createShoppingListCategoriesTable(db);
 
     debugPrint("--- _upgradeDB complete. ---");
   }
@@ -234,6 +235,15 @@ class DatabaseHelper {
     role TEXT NOT NULL, -- 'user' or 'model'
     content TEXT NOT NULL,
     timestamp DATETIME NOT NULL
+  )
+''');
+  }
+
+  Future<void> _createShoppingListCategoriesTable(Database db) async {
+    await db.execute('''
+  CREATE TABLE shopping_list_categories  (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
   )
 ''');
   }

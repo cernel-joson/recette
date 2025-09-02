@@ -19,6 +19,12 @@ import 'package:recette/features/inventory/data/services/inventory_service.dart'
 import 'package:recette/features/inventory/data/jobs/meal_suggestion_worker.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:recette/core/presentation/screens/main_screen.dart';
+import 'package:recette/features/shopping_list/data/services/shopping_list_service.dart';
+import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart'; // Import ShoppingListController
+
+import 'package:recette/features/meal_plan/data/repositories/meal_plan_repository.dart'; // Import repository
+import 'package:recette/features/meal_plan/data/services/meal_plan_service.dart'; // Import service
+import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_controller.dart'; // Import controller
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
 // from anywhere in the app, which is essential for the share handler.
@@ -62,6 +68,13 @@ void main() async {
   final recipeImportService = RecipeImportService(jobManager, usageLimiter);
   final inventoryService = InventoryService();
   final inventoryController = InventoryController(inventoryService: inventoryService);
+  final shoppingListService = ShoppingListService();
+  final shoppingListController = ShoppingListController(shoppingListService: shoppingListService);
+  final mealPlanController = MealPlanController();
+
+  // --- NEW: Load initial data for the singleton controllers ---
+  await inventoryController.loadItems();
+  await shoppingListController.loadItems();
 
   runApp(
     // Use MultiProvider to provide both the controller and the manager
@@ -74,7 +87,10 @@ void main() async {
         Provider.value(value: recipeService),
         Provider.value(value: recipeImportService),
         Provider.value(value: inventoryService),
-        ChangeNotifierProvider.value(value: inventoryController),
+        Provider.value(value: shoppingListService),
+        ChangeNotifierProvider.value(value: shoppingListController),
+        ChangeNotifierProvider.value(value: mealPlanController),
+        ChangeNotifierProvider.value(value: inventoryController), 
       ],
       child: const RecetteApp(),
     ),

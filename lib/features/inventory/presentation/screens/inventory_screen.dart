@@ -8,42 +8,24 @@ import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 
-class InventoryScreen extends StatefulWidget {
+class InventoryScreen extends StatelessWidget  {
   const InventoryScreen({super.key});
 
-  @override
-  State<InventoryScreen> createState() => _InventoryScreenState();
-}
-
-class _InventoryScreenState extends State<InventoryScreen> {
-  late final InventoryController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = InventoryController();
-    _controller.loadItems();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-  
   // --- All previous logic is GONE. The UI now delegates to the controller ---
-  void _exportInventory() async {
-    final inventoryText = await _controller.getInventoryAsText();
+  void _exportInventory(BuildContext context) async {
+    final controller = Provider.of<InventoryController>(context, listen: false);
+    final inventoryText = await controller.getInventoryAsText();
     Share.share(inventoryText, subject: 'My Kitchen Inventory');
   }
 
-  void _showMoveDialog() async {
+  void _showMoveDialog(BuildContext context) async {
+    final controller = Provider.of<InventoryController>(context, listen: false);
     final Location? selectedLocation = await showDialog<Location>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Move to...'),
         content: DropdownButtonFormField<Location>(
-          items: _controller.locations.map((loc) => DropdownMenuItem(value: loc, child: Text(loc.name))).toList(),
+          items: controller.locations.map((loc) => DropdownMenuItem(value: loc, child: Text(loc.name))).toList(),
           onChanged: (Location? value) {
             Navigator.of(context).pop(value);
           },
@@ -53,11 +35,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
 
     if (selectedLocation != null) {
-      await _controller.moveSelectedItems(selectedLocation.id!);
+      await controller.moveSelectedItems(selectedLocation.id!);
     }
   }
 
-  void _showImportDialog() async {
+  void _showImportDialog(BuildContext context) async {
     final textController = TextEditingController();
     final jobManager = Provider.of<JobManager>(context, listen: false);
 
@@ -94,7 +76,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         requestPayload: requestPayload,
                       );
 
-                      if (mounted) {
+                      if (context.mounted) {
                          ScaffoldMessenger.of(context).showSnackBar(
                            const SnackBar(
                              content: Text('Inventory import started...'),
@@ -111,7 +93,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ));
   }
 
-  void _showItemDialog({InventoryItem? item}) async {
+  void _showItemDialog(BuildContext context, {InventoryItem? item}) async {
+    final controller = Provider.of<InventoryController>(context, listen: false);
     final nameController = TextEditingController(text: item?.name ?? '');
     final quantityController = TextEditingController(text: item?.quantity ?? '');
     final unitController = TextEditingController(text: item?.unit ?? '');
@@ -130,7 +113,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               TextField(controller: unitController, decoration: const InputDecoration(labelText: 'Unit')),
               DropdownButtonFormField<int>(
                 value: selectedLocationId,
-                items: _controller.locations.map((loc) => DropdownMenuItem(value: loc.id, child: Text(loc.name))).toList(),
+                items: controller.locations.map((loc) => DropdownMenuItem(value: loc.id, child: Text(loc.name))).toList(),
                 onChanged: (int? value) => selectedLocationId = value,
                 decoration: const InputDecoration(labelText: 'Location'),
               ),
@@ -148,9 +131,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   locationId: selectedLocationId,
                 );
                 if (item == null) {
-                  await _controller.addItem(newItem);
+                  await controller.addItem(newItem);
                 } else {
-                  await _controller.updateItem(newItem);
+                  await controller.updateItem(newItem);
                 }
                 Navigator.of(context).pop(true);
               },
@@ -162,8 +145,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _getMealIdeas() async {
-    // ... (This logic remains the same as it uses JobManager and ProfileService)
+  void _getMealIdeas(BuildContext context) async {
+    final controller = Provider.of<InventoryController>(context, listen: false);
     final intentController = TextEditingController();
     final jobManager = Provider.of<JobManager>(context, listen: false);
 
@@ -189,9 +172,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
     );
 
-    if (userIntent == null || !mounted) return;
+    if (userIntent == null || !context.mounted) return;
 
-    final inventoryList = await _controller.getInventoryAsText();
+    final inventoryList = await controller.getInventoryAsText();
     final profile = await ProfileService.loadProfile();
     final requestPayload = json.encode({
       'inventory': inventoryList,
@@ -204,7 +187,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       requestPayload: requestPayload,
     );
 
-    if (mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Generating meal idea... Track progress in the Jobs Tray.'),
@@ -216,73 +199,67 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _controller,
-      child: Consumer<InventoryController>(
-        builder: (context, controller, child) {
-          return Scaffold(
-            appBar: controller.isSelecting
-                ? AppBar(
-                    leading: IconButton(icon: const Icon(Icons.close), onPressed: controller.clearSelection),
-                    title: Text('${controller.selectedItemIds.length} selected'),
-                    actions: [
-                      IconButton(icon: const Icon(Icons.drive_file_move), onPressed: _showMoveDialog, tooltip: 'Move Items'),
-                    ],
-                  )
-                : AppBar(
-                    title: const Text('My Inventory'),
-                    actions: [
-                      PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'add') _showItemDialog();
-                          if (value == 'import') _showImportDialog();
-                          if (value == 'export') _exportInventory();
-                        },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(value: 'add', child: ListTile(leading: Icon(Icons.add_circle_outline), title: Text('Add Item'))),
-                          const PopupMenuItem<String>(value: 'import', child: ListTile(leading: Icon(Icons.download), title: Text('Import from Text'))),
-                          const PopupMenuItem<String>(value: 'export', child: ListTile(leading: Icon(Icons.upload_file), title: Text('Export to Text'))),
-                        ],
-                      ),
-                    ],
-                  ),
-            body: controller.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : controller.groupedItems.isEmpty
-                    ? const Center(child: Text('Your inventory is empty.'))
-                    : ListView(
-                        children: controller.groupedItems.entries.map((entry) {
-                          final location = entry.key;
-                          final items = entry.value;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
-                                child: Text(location, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                              ),
-                              ...items.map((item) => ListTile(
-                                    title: Text(item.name),
-                                    subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                      onPressed: () => controller.deleteItem(item.id!),
-                                    ),
-                                    onTap: () => _showItemDialog(item: item),
-                                  )),
-                              const Divider(),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-            floatingActionButton: FloatingActionButton.extended(
-              onPressed: _getMealIdeas,
-              tooltip: 'Get Meal Ideas',
-              icon: const Icon(Icons.lightbulb_outline),
-              label: const Text('What can I make?'),
+    final controller = Provider.of<InventoryController>(context);
+    return Scaffold(
+      appBar: controller.isSelecting
+          ? AppBar(
+              leading: IconButton(icon: const Icon(Icons.close), onPressed: controller.clearSelection),
+              title: Text('${controller.selectedItemIds.length} selected'),
+              actions: [
+                IconButton(icon: const Icon(Icons.drive_file_move), onPressed: () => _showMoveDialog(context), tooltip: 'Move Items'),
+              ],
+            )
+          : AppBar(
+              title: const Text('My Inventory'),
+              actions: [
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'add') _showItemDialog(context);
+                    if (value == 'import') _showImportDialog(context);
+                    if (value == 'export') _exportInventory(context);
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(value: 'add', child: ListTile(leading: Icon(Icons.add_circle_outline), title: Text('Add Item'))),
+                    const PopupMenuItem<String>(value: 'import', child: ListTile(leading: Icon(Icons.download), title: Text('Import from Text'))),
+                    const PopupMenuItem<String>(value: 'export', child: ListTile(leading: Icon(Icons.upload_file), title: Text('Export to Text'))),
+                  ],
+                ),
+              ],
             ),
-          );
-        },
+      body: controller.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : controller.groupedItems.isEmpty
+              ? const Center(child: Text('Your inventory is empty.'))
+              : ListView(
+                  children: controller.groupedItems.entries.map((entry) {
+                    final location = entry.key;
+                    final items = entry.value;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
+                          child: Text(location, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        ),
+                        ...items.map((item) => ListTile(
+                              title: Text(item.name),
+                              subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () => controller.deleteItem(item.id!),
+                              ),
+                              onTap: () => _showItemDialog(context, item: item),
+                            )),
+                        const Divider(),
+                      ],
+                    );
+                  }).toList(),
+                ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _getMealIdeas(context),
+        tooltip: 'Get Meal Ideas',
+        icon: const Icon(Icons.lightbulb_outline),
+        label: const Text('What can I make?'),
       ),
     );
   }

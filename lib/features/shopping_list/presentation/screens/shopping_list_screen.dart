@@ -9,156 +9,115 @@ class ShoppingListScreen extends StatefulWidget {
   State<ShoppingListScreen> createState() => _ShoppingListScreenState();
 }
 
-class _ShoppingListScreenState extends State<ShoppingListScreen> {
-  // Manually create and hold the controller instance.
-  late final ShoppingListController _controller;
+class _ShoppingListScreenState extends State<ShoppingListScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    // Create the controller and start loading data when the widget is mounted.
-    _controller = ShoppingListController();
-    _controller.loadItems();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
   void dispose() {
-    // Ensure the controller is disposed when the widget is removed.
-    _controller.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Provide the existing controller instance to the widget tree.
-    return ChangeNotifierProvider.value(
-      value: _controller,
-      child: Consumer<ShoppingListController>(
-        builder: (context, controller, child) {
-          return Scaffold(
-            // The original Scaffold and its contents remain unchanged.
-            appBar: AppBar(
-              title: const Text('Shopping List'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.delete_sweep_outlined),
-                  tooltip: 'Clear All Items',
-                  onPressed: controller.items.isEmpty
-                      ? null
-                      : () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Clear Shopping List?'),
-                              content: const Text(
-                                  'Are you sure you want to delete all items?'),
-                              actions: [
-                                TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    child: const Text('Cancel')),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                  child: const Text('Clear'),
-                                  style: TextButton.styleFrom(
-                                      foregroundColor: Colors.red),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await controller.clearList();
-                          }
-                        },
-                ),
-              ],
-            ),
-            body: Column(
-              children: [
-                _AddItemBar(controller: controller),
-                Expanded(
-                  child: controller.isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          itemCount: controller.items.length,
-                          itemBuilder: (context, index) {
-                            final item = controller.items[index];
-                            return CheckboxListTile(
-                              value: item.isChecked,
-                              onChanged: (_) => controller.toggleItem(item),
-                              title: Text(
-                                item.name,
-                                style: TextStyle(
-                                  decoration: item.isChecked
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                ),
-                              ),
-                              secondary: IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.red),
-                                onPressed: () => controller.deleteItem(item.id!),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
+    final controller = Provider.of<ShoppingListController>(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Shopping List'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
+            Tab(icon: Icon(Icons.article), text: 'Markdown'),
+          ],
+        ),
       ),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FilledButton.icon(
+              icon: const Icon(Icons.save),
+              label: const Text('Save Changes'),
+              onPressed: () async {
+                if (_tabController.index == 1) {
+                  await controller.reconcileMarkdownChanges();
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Shopping list saved!'), backgroundColor: Colors.green),
+                );
+              },
+            )
+          ],
+        ),
+      ),
+      body: controller.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildVisualEditor(controller),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: controller.textController,
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: '## Produce\n- 2 Apples...',
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
-}
 
-class _AddItemBar extends StatefulWidget {
-  final ShoppingListController controller;
-  const _AddItemBar({required this.controller});
-
-  @override
-  State<_AddItemBar> createState() => _AddItemBarState();
-}
-
-class _AddItemBarState extends State<_AddItemBar> {
-  final _textController = TextEditingController();
-
-  @override
-  void dispose() {
-    _textController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    widget.controller.addItem(_textController.text);
-    _textController.clear();
-    FocusScope.of(context).unfocus();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              decoration: const InputDecoration(
-                labelText: 'Add a new item...',
-                border: OutlineInputBorder(),
+  Widget _buildVisualEditor(ShoppingListController controller) {
+    if (controller.groupedItems.isEmpty) {
+      return const Center(child: Text('Your shopping list is empty.'));
+    }
+    return ListView(
+      children: controller.groupedItems.entries.map((entry) {
+        final category = entry.key;
+        final items = entry.value;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
+              child: Text(
+                category.name,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
-              onSubmitted: (_) => _submit(),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            icon: const Icon(Icons.add),
-            onPressed: _submit,
-          ),
-        ],
-      ),
+            ...items.map((item) => CheckboxListTile(
+                  value: item.isChecked,
+                  onChanged: (_) => controller.toggleItem(item),
+                  title: Text(
+                    item.parsedName ?? item.rawText,
+                    style: TextStyle(
+                      decoration: item.isChecked ? TextDecoration.lineThrough : TextDecoration.none,
+                    ),
+                  ),
+                  subtitle: Text(item.parsedQuantity ?? ''),
+                  secondary: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => controller.deleteItem(item.id!),
+                  ),
+                )),
+            const Divider(),
+          ],
+        );
+      }).toList(),
     );
   }
 }

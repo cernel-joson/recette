@@ -1,24 +1,39 @@
 import 'package:flutter/foundation.dart';
-import 'package:recette/core/data/repositories/data_repository.dart';
+import 'package:recette/core/data/models/list_item_model.dart';
 
 @immutable
-class ShoppingListItem implements DataModel {
+class ShoppingListItem implements ListItem {
   @override
   final int? id;
-  final String name;
+  @override
+  final int? categoryId;
+
+  @override
+  final String rawText;
+  @override
+  final String? parsedName;
+  @override
+  final String? parsedQuantity;
+
   final bool isChecked;
 
-  ShoppingListItem({
+  const ShoppingListItem({
     this.id,
-    required this.name,
-    this.isChecked = false
+    this.categoryId,
+    required this.rawText,
+    this.parsedName,
+    this.parsedQuantity,
+    this.isChecked = false,
   });
 
   @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': name,
+      'category_id': categoryId,
+      'raw_text': rawText,
+      'parsed_name': parsedName,
+      'parsed_quantity': parsedQuantity,
       'is_checked': isChecked ? 1 : 0,
     };
   }
@@ -26,15 +41,28 @@ class ShoppingListItem implements DataModel {
   factory ShoppingListItem.fromMap(Map<String, dynamic> map) {
     return ShoppingListItem(
       id: map['id'],
-      name: map['name'],
+      categoryId: map['category_id'],
+      rawText: map['raw_text'] ?? '',
+      parsedName: map['parsed_name'],
+      parsedQuantity: map['parsed_quantity'],
       isChecked: map['is_checked'] == 1,
     );
   }
 
-  ShoppingListItem copyWith({int? id, String? name, bool? isChecked}) {
+  ShoppingListItem copyWith({
+    int? id,
+    int? categoryId,
+    String? rawText,
+    String? parsedName,
+    String? parsedQuantity,
+    bool? isChecked,
+  }) {
     return ShoppingListItem(
       id: id ?? this.id,
-      name: name ?? this.name,
+      categoryId: categoryId ?? this.categoryId,
+      rawText: rawText ?? this.rawText,
+      parsedName: parsedName ?? this.parsedName,
+      parsedQuantity: parsedQuantity ?? this.parsedQuantity,
       isChecked: isChecked ?? this.isChecked,
     );
   }
