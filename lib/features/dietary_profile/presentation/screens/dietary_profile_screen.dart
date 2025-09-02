@@ -1,13 +1,7 @@
-// lib/features/dietary_profile/presentation/screens/dietary_profile_screen.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/core/jobs/logic/job_manager.dart';
-import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/features/dietary_profile/data/utils/profile_parser.dart';
-import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
-
+import 'package:recette/features/dietary_profile/presentation/controllers/dietary_profile_controller.dart';
 
 class DietaryProfileScreen extends StatefulWidget {
   const DietaryProfileScreen({super.key});
@@ -16,166 +10,162 @@ class DietaryProfileScreen extends StatefulWidget {
   State<DietaryProfileScreen> createState() => _DietaryProfileScreenState();
 }
 
-class _DietaryProfileScreenState extends State<DietaryProfileScreen> with SingleTickerProviderStateMixin {
-  final _textController = TextEditingController();
-  late TabController _tabController;
-  bool _isLoading = true;
-  bool _isSaving = false;
+class _DietaryProfileScreenState extends State<DietaryProfileScreen>
+    with SingleTickerProviderStateMixin {
+  late final DietaryProfileController _controller;
+  late final TabController _tabController;
 
-  // NEW: Add a listener to rebuild the visual tab when the text changes.
   @override
   void initState() {
     super.initState();
+    _controller = DietaryProfileController();
+    _controller.loadProfile(); // Start the initial data load
     _tabController = TabController(length: 2, vsync: this);
-    _textController.addListener(() => setState(() {})); // This triggers rebuilds
-    _loadProfile();
-  }
-
-  Future<void> _loadProfile() async {
-    setState(() { _isLoading = true; });
-    final profile = await ProfileService.loadProfile();
-    if (mounted) {
-      setState(() {
-        _textController.text = profile.markdownText;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    setState(() { _isSaving = true; });
-    final newProfile = DietaryProfile(markdownText: _textController.text);
-    await ProfileService.saveProfile(newProfile);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Profile saved successfully!'),
-            backgroundColor: Colors.green),
-      );
-    }
-    setState(() { _isSaving = false; });
-  }
-
-  Future<void> _runAiReview() async {
-    final jobManager = Provider.of<JobManager>(context, listen: false);
-    final profileText = _textController.text;
-
-    if (profileText.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Profile is empty. Nothing to review.'),
-            backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    final requestPayload = json.encode({'profile_text': profileText});
-
-    await jobManager.submitJob(
-      jobType: 'profile_review',
-      requestPayload: requestPayload,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('AI review started... Track progress in the Jobs Tray.'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    }
+    // This listener is for the UI only, to rebuild the 'Visual' tab
+    _controller.textController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _textController.dispose();
+    _controller.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Parse the markdown text on every build.
-    final parsedCategories = ProfileParser.parse(_textController.text);
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Dietary Profile'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.article), text: 'Markdown'),
-            Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
-          ],
-        ),
-        actions: [
-        ]
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton.icon(
-              onPressed: _runAiReview,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('AI Review'),
+    return ChangeNotifierProvider.value(
+      value: _controller,
+      child: Consumer<DietaryProfileController>(
+        builder: (context, controller, child) {
+          // The UI reads the text from the controller to parse it
+          final parsedCategories =
+              ProfileParser.parse(controller.textController.text);
+
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('My Dietary Profile'),
+              bottom: TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(icon: Icon(Icons.article), text: 'Markdown'),
+                  Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _saveProfile,
-              icon: _isSaving
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.save),
-              label: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                // Markdown Editor Tab
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    controller: _textController,
-                    maxLines: null, // Allows infinite lines
-                    expands: true,
-                    textAlignVertical: TextAlignVertical.top,
-                    decoration: const InputDecoration(
-                      hintText: '## Sugar\n- Prioritize foods with 0g of added sugar...',
-                      border: OutlineInputBorder(),
-                    ),
+            bottomNavigationBar: BottomAppBar(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: () async {
+                      // Delegate the action to the controller
+                      final jobStarted = await controller.runAiReview();
+                      if (mounted && jobStarted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'AI review started... Track progress in the Jobs Tray.'),
+                            backgroundColor: Colors.blue,
+                          ),
+                        );
+                      } else if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                                Text('Profile is empty. Nothing to review.'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('AI Review'),
                   ),
-                ),
-                
-                // --- NEW: Visual Editor Tab ---
-                ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: parsedCategories.length,
-                  itemBuilder: (context, index) {
-                    final category = parsedCategories[index];
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: ExpansionTile(
-                        title: Text(category.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        initiallyExpanded: true,
-                        children: category.rules.map((rule) {
-                          return ListTile(
-                            contentPadding: EdgeInsets.only(left: 16.0 + (rule.indentation * 16.0), right: 16.0),
-                            title: Text(rule.text),
-                            // We will add onTap for editing in the next phase
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    // Read the saving state from the controller
+                    onPressed: controller.isSaving
+                        ? null
+                        : () async {
+                            // Delegate saving to the controller
+                            await controller.saveProfile();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Profile saved successfully!'),
+                                    backgroundColor: Colors.green),
+                              );
+                            }
+                          },
+                    // Read the saving state from the controller
+                    icon: controller.isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.save),
+                    label: const Text('Save'),
+                  ),
+                ],
+              ),
             ),
+            // Read the loading state from the controller
+            body: controller.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Markdown Editor Tab
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: TextField(
+                          // Use the text controller from the controller
+                          controller: controller.textController,
+                          maxLines: null,
+                          expands: true,
+                          textAlignVertical: TextAlignVertical.top,
+                          decoration: const InputDecoration(
+                            hintText:
+                                '## Sugar\n- Prioritize foods with 0g of added sugar...',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+
+                      // Visual Editor Tab
+                      ListView.builder(
+                        padding: const EdgeInsets.all(8.0),
+                        itemCount: parsedCategories.length,
+                        itemBuilder: (context, index) {
+                          final category = parsedCategories[index];
+                          return Card(
+                            elevation: 2,
+                            margin:
+                                const EdgeInsets.symmetric(vertical: 4.0),
+                            child: ExpansionTile(
+                              title: Text(category.title,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              initiallyExpanded: true,
+                              children: category.rules.map((rule) {
+                                return ListTile(
+                                  contentPadding: EdgeInsets.only(
+                                      left: 16.0 + (rule.indentation * 16.0),
+                                      right: 16.0),
+                                  title: Text(rule.text),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+          );
+        },
+      ),
     );
   }
 }

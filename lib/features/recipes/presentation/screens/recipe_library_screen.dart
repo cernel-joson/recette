@@ -39,6 +39,16 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
   final _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // This ensures that `loadItems` is called only after the widget has been
+    // fully initialized and mounted in the widget tree.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<RecipeLibraryController>(context, listen: false).loadItems();
+    });
+  }
+  
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

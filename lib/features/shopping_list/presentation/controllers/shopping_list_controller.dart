@@ -1,28 +1,31 @@
-import 'package:flutter/foundation.dart';
+import 'package:recette/core/presentation/controllers/base_controller.dart'; // IMPORT base controller
 import 'package:recette/features/shopping_list/data/models/shopping_list_item_model.dart';
 import 'package:recette/features/shopping_list/data/services/shopping_list_service.dart';
 
-class ShoppingListController with ChangeNotifier {
+// --- UPDATED: Extend BaseController<ShoppingListItem> ---
+class ShoppingListController extends BaseController<ShoppingListItem> {
   final ShoppingListService _shoppingListService;
-  List<ShoppingListItem> _items = [];
-  bool _isLoading = false;
+
+  // --- REMOVED: Redundant properties handled by the base class ---
+  // List<ShoppingListItem> _items = [];
+  // bool _isLoading = false;
 
   ShoppingListController({ShoppingListService? shoppingListService})
-      : _shoppingListService = shoppingListService ?? ShoppingListService() {
-    loadItems();
+      : _shoppingListService = shoppingListService ?? ShoppingListService();
+      // BaseController's constructor automatically calls loadItems()
+
+  // --- REMOVED: Redundant `items` and `isLoading` getters ---
+
+  // --- REMOVED: `loadItems` is now handled by the base class ---
+
+  // --- NEW: Implement the required abstract method ---
+  @override
+  Future<List<ShoppingListItem>> fetchItems() {
+    // Tell the base controller how to fetch the data.
+    return _shoppingListService.getItems();
   }
 
-  List<ShoppingListItem> get items => _items;
-  bool get isLoading => _isLoading;
-
-  Future<void> loadItems() async {
-    _isLoading = true;
-    notifyListeners();
-    _items = await _shoppingListService.getItems();
-    _isLoading = false;
-    notifyListeners();
-  }
-
+  // --- RETAINED: These methods contain specific business logic ---
   Future<void> addItem(String name) async {
     if (name.trim().isEmpty) return;
     final newItem = ShoppingListItem(name: name.trim());

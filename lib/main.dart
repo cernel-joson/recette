@@ -17,6 +17,7 @@ import 'package:recette/features/dietary_profile/data/jobs/profile_analysis_work
 import 'package:recette/features/inventory/data/jobs/inventory_import_worker.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 import 'package:recette/features/inventory/data/jobs/meal_suggestion_worker.dart';
+import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:recette/core/presentation/screens/main_screen.dart';
 
 // Create a GlobalKey for the Navigator. This allows us to navigate
@@ -60,7 +61,7 @@ void main() async {
   final recipeService = RecipeService();
   final recipeImportService = RecipeImportService(jobManager, usageLimiter);
   final inventoryService = InventoryService();
-  // --- END REFACTORED SETUP ---
+  final inventoryController = InventoryController(inventoryService: inventoryService);
 
   runApp(
     // Use MultiProvider to provide both the controller and the manager
@@ -73,6 +74,7 @@ void main() async {
         Provider.value(value: recipeService),
         Provider.value(value: recipeImportService),
         Provider.value(value: inventoryService),
+        ChangeNotifierProvider.value(value: inventoryController),
       ],
       child: const RecetteApp(),
     ),

@@ -7,16 +7,37 @@ import 'package:recette/features/recipes/data/models/recipe_model.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_library_screen.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_view_screen.dart';
 
-class MealPlanScreen extends StatelessWidget {
+class MealPlanScreen extends StatefulWidget {
   const MealPlanScreen({super.key});
 
   @override
+  State<MealPlanScreen> createState() => _MealPlanScreenState();
+}
+
+class _MealPlanScreenState extends State<MealPlanScreen> {
+  late final MealPlanController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = MealPlanController();
+    _controller.loadItems();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => MealPlanController(),
+    return ChangeNotifierProvider.value(
+      value: _controller,
       child: Consumer<MealPlanController>(
         builder: (context, controller, child) {
           return Scaffold(
+            // The original Scaffold and its contents remain unchanged.
             appBar: AppBar(
               title: const Text('Meal Planner'),
               actions: [
@@ -63,7 +84,9 @@ class MealPlanScreen extends StatelessWidget {
     );
   }
 }
+// --- END OF FIX ---
 
+// ... (_CalendarView and _EntryListView widgets are unchanged)
 class _CalendarView extends StatelessWidget {
   final MealPlanController controller;
   const _CalendarView({required this.controller});

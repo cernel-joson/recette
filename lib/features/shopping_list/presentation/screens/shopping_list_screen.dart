@@ -2,16 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart';
 
-class ShoppingListScreen extends StatelessWidget {
+class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
 
   @override
+  State<ShoppingListScreen> createState() => _ShoppingListScreenState();
+}
+
+class _ShoppingListScreenState extends State<ShoppingListScreen> {
+  // Manually create and hold the controller instance.
+  late final ShoppingListController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Create the controller and start loading data when the widget is mounted.
+    _controller = ShoppingListController();
+    _controller.loadItems();
+  }
+
+  @override
+  void dispose() {
+    // Ensure the controller is disposed when the widget is removed.
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ShoppingListController(),
+    // Provide the existing controller instance to the widget tree.
+    return ChangeNotifierProvider.value(
+      value: _controller,
       child: Consumer<ShoppingListController>(
         builder: (context, controller, child) {
           return Scaffold(
+            // The original Scaffold and its contents remain unchanged.
             appBar: AppBar(
               title: const Text('Shopping List'),
               actions: [

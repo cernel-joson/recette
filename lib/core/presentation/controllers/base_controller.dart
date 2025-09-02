@@ -9,10 +9,6 @@ abstract class BaseController<T> with ChangeNotifier {
   List<T> get items => _items;
   bool get isLoading => _isLoading;
 
-  BaseController() {
-    loadItems();
-  }
-
   @protected
   Future<List<T>> fetchItems(); // Force subclasses to implement data fetching
 
@@ -21,6 +17,8 @@ abstract class BaseController<T> with ChangeNotifier {
     notifyListeners();
     _items = await fetchItems();
     _isLoading = false;
+    // It's safe to call notifyListeners() here because this method will
+    // now only be called from a mounted widget's initState.
     notifyListeners();
   }
 }
