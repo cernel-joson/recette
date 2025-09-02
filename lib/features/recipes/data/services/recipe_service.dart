@@ -2,6 +2,7 @@ import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/recipes/data/repositories/recipe_repository.dart';
 import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';
+import 'package:recette/core/utils/utils.dart';
 
 class RecipeService {
   final RecipeRepository _repository;
@@ -79,5 +80,39 @@ class RecipeService {
 
   Future<bool> doesRecipeExist(String fingerprint) async {
     return _repository.fingerprintExists(fingerprint);
+  }
+
+  /// Creates or updates a recipe from the recipe editor.
+  ///
+  /// This method encapsulates the business logic for fingerprinting,
+  /// checking for duplicates, and interacting with the database.
+  Future<void> saveRecipeFromEditor(Recipe recipe, {int? jobId}) async {
+    // Generate a fingerprint for the recipe content.
+    final fingerprint = FingerprintHelper.generate(recipe);
+
+    // Only check for duplicates if it's a new recipe being created.
+    if (recipe.id == null) {
+      final bool exists = await _repository.fingerprintExists(fingerprint);
+      if (exists) {
+        // Throw a specific exception that the UI layer can catch and handle.
+        throw RecipeExistsException(
+            "An identical recipe already exists in your library.");
+      }
+    }
+
+    // Create a final version of the recipe with the new fingerprint.
+    final recipeToSave = recipe.copyWith(fingerprint: fingerprint);
+
+    // Use the repository to perform the database operation.
+    if (recipeToSave.id != null) {
+      await updateRecipe(recipeToSave);
+    } else {
+      await createRecipe(recipeToSave);
+    }
+
+    // If the recipe was created from a background job, archive the job.
+    if (jobId != null) {
+      await _jobManager.archiveJob(jobId);
+    }
   }
 }

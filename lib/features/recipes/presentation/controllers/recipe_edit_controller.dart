@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/core/utils/utils.dart';
-import 'package:recette/core/jobs/data/repositories/job_repository.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/features/recipes/data/services/recipe_service.dart'; // IMPORT the service
 
 class RecipeEditController with ChangeNotifier {
   final Recipe? _initialRecipe;
   final int? parentRecipeId;
   final int? sourceJobId;
-  final _jobRepo = JobRepository();
-  final RecipeService _recipeService = RecipeService();
+  final RecipeService _recipeService;
 
   // State
   late TextEditingController titleController;
@@ -31,7 +28,13 @@ class RecipeEditController with ChangeNotifier {
 
   late List<String> tags;
 
-  RecipeEditController(this._initialRecipe, {this.parentRecipeId, this.sourceJobId}) {
+  RecipeEditController(
+    this._initialRecipe, {
+    this.parentRecipeId,
+    this.sourceJobId,
+    // --- NEW: Allow injecting a mock service for testing ---
+    RecipeService? recipeService,
+  }) : _recipeService = recipeService ?? RecipeService() {
     _populateState(_initialRecipe);
     _addListeners();
   }
@@ -131,10 +134,11 @@ class RecipeEditController with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Saves the form data to the database.
+  /// Gathers form data and delegates saving to the RecipeService.
   /// Throws a [RecipeExistsException] if a duplicate is found.
   Future<bool> saveForm() async {
-    final newRecipe = Recipe(
+    // 1. Assemble the recipe object from the current state.
+    final recipe = Recipe(
       id: _initialRecipe?.id,
       parentRecipeId: parentRecipeId,
       title: titleController.text,
@@ -147,11 +151,7 @@ class RecipeEditController with ChangeNotifier {
       instructions: instructions,
       otherTimings: otherTimings,
       sourceUrl: sourceUrl,
-      // --- THIS IS THE FIX ---
-      // You must include the tags from the controller's state
-      // when building the new recipe object to be saved.
       tags: tags,
-      // --- ADD THESE LINES TO PRESERVE AI DATA ---
       healthRating: _initialRecipe?.healthRating,
       healthSummary: _initialRecipe?.healthSummary,
       healthSuggestions: _initialRecipe?.healthSuggestions,
@@ -159,38 +159,22 @@ class RecipeEditController with ChangeNotifier {
       nutritionalInfo: _initialRecipe?.nutritionalInfo,
     );
 
-    final fingerprint = FingerprintHelper.generate(newRecipe);
-
-    // Only check for duplicates if it's a new recipe
-    if (newRecipe.id == null) {
-      final bool exists = await _recipeService.doesRecipeExist(fingerprint);
-      if (exists) {
-        throw RecipeExistsException("An identical recipe already exists in your library.");
-      }
-    }
-
-    final recipeToSave = newRecipe.copyWith(fingerprint: fingerprint);
-
-    
+    // 2. Delegate the entire save process to the service.
+    //    The try/catch block now correctly belongs in the presentation layer
+    //    (or the calling widget) to handle UI feedback.
     try {
-      if (recipeToSave.id != null) {
-        await _recipeService.updateRecipe(recipeToSave);
-      } else {
-        await _recipeService.createRecipe(recipeToSave);
-      }
-      
-      // --- NEW: Archive the source job ---
-      if (sourceJobId != null) {
-        await _jobRepo.updateJobStatus(sourceJobId!, JobStatus.archived);
-      }
-
+      await _recipeService.saveRecipeFromEditor(recipe, jobId: sourceJobId);
       isDirty = false;
       notifyListeners();
-      return true;
-    }  catch (e) {
-      // In a real app, you might want to handle this error more gracefully
-      debugPrint("Error saving recipe: $e");
-      return false; // Indicate failure
+      return true; // Indicate success
+    } on RecipeExistsException {
+      // Re-throw the specific exception so the UI can catch it and show
+      // the appropriate dialog to the user.
+      rethrow;
+    } catch (e) {
+      debugPrint("An unexpected error occurred in RecipeEditController: $e");
+      // For other unexpected errors, return false.
+      return false;
     }
   }
 
