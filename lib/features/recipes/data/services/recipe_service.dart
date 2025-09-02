@@ -115,4 +115,9 @@ class RecipeService {
       await _jobManager.archiveJob(jobId);
     }
   }
+  
+  /// Archives a job, typically used when a user discards a pending recipe.
+  Future<void> discardJob(int jobId) async {
+    await _jobManager.archiveJob(jobId);
+  }
 }

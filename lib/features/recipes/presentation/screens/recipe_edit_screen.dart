@@ -168,21 +168,23 @@ class _RecipeEditViewState extends State<_RecipeEditView> {
                     label: const Text('Repopulate'),
                     onPressed: controller.isAnalyzing ? null : () => _showPasteTextDialog(context, controller),
                   ), */
-                  // --- NEW: Conditionally add the Discard button ---
-                  if (controller.sourceJobId != null)
-                    TextButton.icon(
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Discard'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      onPressed: () async {
-                        final jobRepo = JobRepository();
-                        await jobRepo.updateJobStatus(controller.sourceJobId!, JobStatus.archived);
-                        if (mounted) {
-                          Provider.of<JobController>(context, listen: false).loadJobs();
-                          Navigator.of(context).pop(true); // Pop and trigger a refresh
-                        }
-                      },
-                    ),
+                    // --- UPDATED: Conditionally add the Discard button ---
+                    if (controller.sourceJobId != null)
+                      TextButton.icon(
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Discard'),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () async {
+                          // 1. Call the new controller method to handle the logic.
+                          await controller.discardAndArchiveJob();
+
+                          // 2. Handle the UI updates after the logic is complete.
+                          if (mounted) {
+                            Provider.of<JobController>(context, listen: false).loadJobs();
+                            Navigator.of(context).pop(true); // Pop and trigger a refresh
+                          }
+                        },
+                      ),
                   const Spacer(), // Pushes buttons to the right
                   // --- END OF NEW BUTTON ---
                   FilledButton.icon(

@@ -177,6 +177,13 @@ class RecipeEditController with ChangeNotifier {
       return false;
     }
   }
+  
+  /// Discards the current recipe edit and archives the source job.
+  Future<void> discardAndArchiveJob() async {
+    if (sourceJobId != null) {
+      await _recipeService.discardJob(sourceJobId!);
+    }
+  }
 
   @override
   void dispose() {
