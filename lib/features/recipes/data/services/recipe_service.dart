@@ -76,4 +76,8 @@ class RecipeService {
   Future<List<Recipe>> getRecentRecipes({int limit = 5}) {
     return _repository.getRecentRecipes(limit: limit);
   }
+
+  Future<bool> doesRecipeExist(String fingerprint) async {
+    return _repository.fingerprintExists(fingerprint);
+  }
 }

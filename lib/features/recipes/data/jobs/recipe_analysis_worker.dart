@@ -8,7 +8,6 @@ import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 
 // Renamed from RecipeParsingWorker
@@ -88,7 +87,6 @@ class RecipeAnalysisWorker implements JobWorker {
       // --- THIS IS THE FIX ---
       if (job.rawAiResponse == null || job.rawAiResponse!.isEmpty) return;
 
-      final db = DatabaseHelper.instance;
       final jobRepo = JobRepository();
       final recipeId = recipeData['id'] as int;
       final originalRecipe = await _recipeService.getRecipeById(recipeId);
@@ -126,7 +124,7 @@ class RecipeAnalysisWorker implements JobWorker {
       );
 
       // 4. Save the fully updated recipe and archive the job.
-      await db.update(finalRecipe, finalRecipe.tags);
+      await _recipeService.updateRecipe(finalRecipe);
       await jobRepo.updateJobStatus(job.id!, JobStatus.archived);
       // --- END OF FIX ---
     }

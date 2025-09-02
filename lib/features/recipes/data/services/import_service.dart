@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
+import 'package:recette/features/recipes/data/services/services.dart';
 
 /// A data class to hold the result of an import operation.
 class ImportResult {
@@ -24,6 +24,7 @@ class ImportResult {
 class ImportService {
   /// Allows the user to select a JSON file and imports its recipes.
   static Future<ImportResult> importLibrary() async {
+    final RecipeService recipeService = RecipeService();
     // 1. Let the user pick a file.
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -54,14 +55,14 @@ class ImportService {
       final fingerprint = recipe.fingerprint ?? FingerprintHelper.generate(recipe);
 
       // 5. Check for duplicates before inserting.
-      final bool exists = await DatabaseHelper.instance.doesRecipeExist(fingerprint);
+      final bool exists = await recipeService.doesRecipeExist(fingerprint);
 
       if (exists) {
         duplicatesSkipped++;
       } else {
         // If it doesn't exist, insert it into the database.
         // We create a copy with the definite fingerprint to be safe.
-        await DatabaseHelper.instance.insert(recipe.copyWith(fingerprint: fingerprint), recipe.tags);
+        await recipeService.createRecipe(recipe.copyWith(fingerprint: fingerprint));
         recipesAdded++;
       }
     }

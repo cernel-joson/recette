@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/core/services/database_helper.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';
+import 'package:recette/features/recipes/data/services/services.dart';
 
 class RecipeEditController with ChangeNotifier {
   final Recipe? _initialRecipe;
   final int? parentRecipeId;
-  final int? sourceJobId; // <-- NEW
-  final _db = DatabaseHelper.instance;
-  final _jobRepo = JobRepository(); // <-- NEW
+  final int? sourceJobId;
+  final _jobRepo = JobRepository();
+  final RecipeService _recipeService = RecipeService();
 
   // State
   late TextEditingController titleController;
@@ -31,7 +31,7 @@ class RecipeEditController with ChangeNotifier {
 
   late List<String> tags;
 
-  RecipeEditController(this._initialRecipe, {this.parentRecipeId, this.sourceJobId}) { // <-- NEW
+  RecipeEditController(this._initialRecipe, {this.parentRecipeId, this.sourceJobId}) {
     _populateState(_initialRecipe);
     _addListeners();
   }
@@ -163,7 +163,7 @@ class RecipeEditController with ChangeNotifier {
 
     // Only check for duplicates if it's a new recipe
     if (newRecipe.id == null) {
-      final bool exists = await _db.doesRecipeExist(fingerprint);
+      final bool exists = await _recipeService.doesRecipeExist(fingerprint);
       if (exists) {
         throw RecipeExistsException("An identical recipe already exists in your library.");
       }
@@ -174,9 +174,9 @@ class RecipeEditController with ChangeNotifier {
     
     try {
       if (recipeToSave.id != null) {
-        await _db.update(recipeToSave, recipeToSave.tags);
+        await _recipeService.updateRecipe(recipeToSave);
       } else {
-        await _db.insert(recipeToSave, recipeToSave.tags);
+        await _recipeService.createRecipe(recipeToSave);
       }
       
       // --- NEW: Archive the source job ---

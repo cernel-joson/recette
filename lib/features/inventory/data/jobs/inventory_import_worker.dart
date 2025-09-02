@@ -38,32 +38,19 @@ class InventoryImportWorker implements JobWorker {
 
   @override
   Future<void> onComplete(Job job) async {
-    if (job.responsePayload == null) return;
+    if (job.responsePayload == null || job.responsePayload!.isEmpty) return;
 
-    final db = await DatabaseHelper.instance.database;
-    final jobRepo = JobRepository();
+    // 1. Instantiate the services we need.
     final inventoryService = InventoryService();
+    final jobRepo = JobRepository();
 
+    // 2. Decode the job's payload.
     final parsedItems = json.decode(job.responsePayload!) as List<dynamic>;
-    final locations = await inventoryService.getLocations();
-    final locationNameMap = {for (var loc in locations) loc.name.toLowerCase(): loc.id};
 
-    await db.database.transaction((txn) async {
-      await txn.delete('inventory'); // Clear existing inventory
-      for (var itemMap in parsedItems) {
-        final locationName = (itemMap['location_name'] as String?)?.toLowerCase();
-        final locationId = locationNameMap[locationName];
+    // 3. Delegate the entire import and replacement logic to the service.
+    await inventoryService.replaceInventoryFromImport(parsedItems);
 
-        final item = InventoryItem(
-          name: itemMap['name'] ?? 'Unknown Item',
-          quantity: itemMap['quantity'] ?? '',
-          unit: itemMap['unit'] ?? '',
-          locationId: locationId,
-        );
-        await txn.insert('inventory', item.toMap());
-      }
-    });
-
+    // 4. Archive the job now that its work is complete.
     await jobRepo.updateJobStatus(job.id!, JobStatus.archived);
   }
 }

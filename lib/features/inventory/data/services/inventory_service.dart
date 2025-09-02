@@ -167,4 +167,36 @@ class InventoryService {
 
     return []; // Return an empty list on failure
   }
+
+  Future<void> replaceInventoryFromImport(List<dynamic> parsedItems) async {
+    // Clear all existing inventory data first.
+    await clearAllInventory();
+
+    // Get all existing locations to map names to IDs.
+    final locations = await getLocations();
+    final locationNameMap = {
+      for (var loc in locations) loc.name.toLowerCase(): loc.id
+    };
+
+    // Convert the dynamic maps from the job payload into InventoryItem objects.
+    final List<InventoryItem> itemsToInsert = [];
+    for (var itemMap in parsedItems) {
+      final locationName = (itemMap['location_name'] as String?)?.toLowerCase();
+      final locationId = locationNameMap[locationName];
+
+      itemsToInsert.add(
+        InventoryItem(
+          name: itemMap['name'] ?? 'Unknown Item',
+          quantity: itemMap['quantity'] ?? '',
+          unit: itemMap['unit'] ?? '',
+          locationId: locationId,
+        ),
+      );
+    }
+
+    // Use the existing batchInsertItems method to add the new data.
+    if (itemsToInsert.isNotEmpty) {
+      await batchInsertItems(itemsToInsert);
+    }
+  }
 }

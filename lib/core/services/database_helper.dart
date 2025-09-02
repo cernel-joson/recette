@@ -288,17 +288,6 @@ class DatabaseHelper {
     final db = await instance.database;
     return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
   }
-
-  Future<bool> doesRecipeExist(String fingerprint) async {
-    final db = await instance.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'recipes',
-      where: 'fingerprint = ?',
-      whereArgs: [fingerprint],
-      limit: 1
-    );
-    return maps.isNotEmpty;
-  }
   
   Future<List<String>> getAllUniqueTags() async {
     final db = await instance.database;
