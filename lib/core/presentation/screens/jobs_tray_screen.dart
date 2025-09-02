@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
-import 'package:recette/core/services/developer_service.dart';
+import 'package:recette/core/data/services/developer_service.dart';
 import 'package:recette/core/presentation/screens/job_inspector_screen.dart';
 
 class JobsTrayScreen extends StatelessWidget {

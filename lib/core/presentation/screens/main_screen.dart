@@ -4,7 +4,7 @@ import 'package:recette/core/presentation/screens/dashboard_screen.dart';
 import 'package:recette/core/presentation/screens/jobs_tray_screen.dart';
 import 'package:recette/core/presentation/screens/settings_screen.dart';
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
-import 'package:recette/core/services/share_intent_service.dart';
+import 'package:recette/core/data/services/share_intent_service.dart';
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart';
 import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen.dart';

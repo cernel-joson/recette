@@ -1,4 +1,4 @@
-// lib/core/services/logging_service.dart
+// lib/core/data/services/logging_service.dart
 
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';

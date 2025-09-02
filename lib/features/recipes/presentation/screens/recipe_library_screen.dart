@@ -81,7 +81,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
 
       final result = await ImportService.importLibrary();
       
-      controller.loadRecipes();
+      controller.loadItems();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
@@ -145,7 +145,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     // If the result is true (meaning a save happened), refresh the library.
     if (result == true && mounted) {
       // Get the controller and tell it to reload the recipes.
-      Provider.of<RecipeLibraryController>(context, listen: false).loadRecipes();
+      Provider.of<RecipeLibraryController>(context, listen: false).loadItems();
     }
   }
 
@@ -216,7 +216,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                   // 2. IMPORTANT: Reset the library's state to the default view.
                   //    This clears the search, clears the navigation origin, and
                   //    prevents the infinite loop.
-                  controller.loadRecipes();
+                  controller.loadItems();
 
                   // 3. Now, from the clean state, navigate to the recipe.
                   //    Because the state is clean, when the user presses back on the
@@ -351,7 +351,7 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
                                 controller.search(result);
                               } else if (result == true) {
                                 controller.clearNavigationOrigin();
-                                controller.loadRecipes();
+                                controller.loadItems();
                               }
                             },
                           );

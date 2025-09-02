@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/core/services/developer_service.dart';
+import 'package:recette/core/data/services/developer_service.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});

@@ -1,4 +1,4 @@
-// lib/core/services/developer_service.dart
+// lib/core/data/services/developer_service.dart
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';

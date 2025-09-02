@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/core/data/services/database_helper.dart';
 
 void main() {
   // Use sqflite_common_ffi for testing on a desktop environment

@@ -1,5 +1,5 @@
 import 'package:recette/core/jobs/data/models/job_model.dart';
-import 'package:recette/core/services/database_helper.dart';
+import 'package:recette/core/data/services/database_helper.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/logic/job_broadcast_service.dart';
 

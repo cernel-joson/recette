@@ -1,4 +1,4 @@
-// lib/core/services/database_helper.dart
+// lib/core/data/services/database_helper.dart
 
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:recette/core/services/export_service.dart';
-import 'package:recette/core/services/import_service.dart';
+import 'package:recette/core/data/services/export_service.dart';
+import 'package:recette/core/data/services/import_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

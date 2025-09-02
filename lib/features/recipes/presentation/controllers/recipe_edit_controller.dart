@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';
 import 'package:recette/features/recipes/data/services/services.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart'; // IMPORT the service
+import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/recipes/presentation/controllers/list_manager_mixin.dart';
 
-class RecipeEditController with ChangeNotifier {
+class RecipeEditController extends ChangeNotifier with ListManagerMixin {
   final Recipe? _initialRecipe;
   final int? parentRecipeId;
   final int? sourceJobId;
@@ -58,79 +59,63 @@ class RecipeEditController with ChangeNotifier {
   }
 
   void _addListeners() {
-    titleController.addListener(_markDirty);
-    descriptionController.addListener(_markDirty);
-    prepTimeController.addListener(_markDirty);
-    cookTimeController.addListener(_markDirty);
-    totalTimeController.addListener(_markDirty);
-    servingsController.addListener(_markDirty);
+    titleController.addListener(markDirty);
+    descriptionController.addListener(markDirty);
+    prepTimeController.addListener(markDirty);
+    cookTimeController.addListener(markDirty);
+    totalTimeController.addListener(markDirty);
+    servingsController.addListener(markDirty);
   }
 
-  void _markDirty() {
+  // This method fulfills the contract of the ListManagerMixin.
+  @override
+  void markDirty() {
     if (!isDirty) {
       isDirty = true;
       notifyListeners();
     }
   }
 
-  // --- List Management Methods ---
+  // --- Methods now correctly use the mixin's functions directly ---
   void addIngredient(Ingredient newIngredient) {
-    ingredients.add(newIngredient);
-    _markDirty();
-    notifyListeners();
+    addItemToList(ingredients, newIngredient);
   }
 
   void editIngredient(int index, Ingredient updatedIngredient) {
-    ingredients[index] = updatedIngredient;
-    _markDirty();
-    notifyListeners();
+    updateItemInList(ingredients, index, updatedIngredient);
   }
 
   void removeIngredient(int index) {
-    ingredients.removeAt(index);
-    _markDirty();
-    notifyListeners();
+    removeItemFromList(ingredients, index);
   }
 
   void addInstruction() {
-    instructions.add('New Step'); // Add a placeholder
-    _markDirty();
-    notifyListeners();
+    addItemToList(instructions, 'New Step');
   }
 
   void editInstruction(int index, String updatedInstruction) {
-    instructions[index] = updatedInstruction;
-    _markDirty();
-    notifyListeners();
+    updateItemInList(instructions, index, updatedInstruction);
   }
 
   void removeInstruction(int index) {
-    instructions.removeAt(index);
-    _markDirty();
-    notifyListeners();
+    removeItemFromList(instructions, index);
   }
 
   void addOtherTiming(TimingInfo newTiming) {
-    otherTimings.add(newTiming);
-    _markDirty();
-    notifyListeners();
+    addItemToList(otherTimings, newTiming);
   }
 
   void editOtherTiming(int index, TimingInfo updatedTiming) {
-    otherTimings[index] = updatedTiming;
-    _markDirty();
-    notifyListeners();
+    updateItemInList(otherTimings, index, updatedTiming);
   }
 
   void removeOtherTiming(int index) {
-    otherTimings.removeAt(index);
-    _markDirty();
-    notifyListeners();
+    removeItemFromList(otherTimings, index);
   }
-  
+
   void updateTags(List<String> newTags) {
     tags = newTags;
-    _markDirty();
+    markDirty();
     notifyListeners();
   }
 
