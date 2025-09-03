@@ -60,6 +60,11 @@ abstract class BaseListController<T extends ListItem, C extends ListCategory> wi
   
   T createItemFromParsed(Map<String, String> parsed, {required int categoryId, int? id});
 
+  /// Abstract method for concrete controllers to implement category creation.
+  C createCategory(String name);
+  
+  // The reconciliation logic is now a complete sync, handling additions,
+  // updates, and deletions for both items and categories.
   Future<void> reconcileMarkdownChanges() async {
     final newText = textController.text;
     if (newText == _originalMarkdownText) return;
@@ -67,74 +72,72 @@ abstract class BaseListController<T extends ListItem, C extends ListCategory> wi
     _isLoading = true;
     notifyListeners();
 
-    final dmp = DiffMatchPatch();
-    // --- FIX: Use correct snake_case method names from the library ---
-    final diffs = dmp.diff(_originalMarkdownText, newText);
-    dmp.diffCleanupSemantic(diffs);
-    // --- END OF FIX ---
+    // 1. Parse the new markdown into a structured map
+    final newStructure = parser.parseMarkdownToStructure(newText);
+    final newCategoryNames = newStructure.keys.toSet();
 
-    final List<T> itemsToAdd = [];
-    final List<T> itemsToUpdate = [];
-    final List<int> itemIdsToDelete = [];
+    // 2. Get current categories from the database
+    final existingCategories = await service.getAllCategories();
+    final existingCategoryMap = { for (var cat in existingCategories) cat.name: cat };
 
-    int currentLine = 0;
-    int currentCategoryId = categories.isNotEmpty ? categories.first.id ?? -1 : -1;
-
-    for (final diff in diffs) {
-      final linesInDiff = diff.text.split('\n');
-      // --- FIX: Correctly calculate line count to avoid type errors and logic bugs ---
-      int lineCount = linesInDiff.length;
-      if (diff.operation != DIFF_INSERT) {
-        // For deletes and equals, the number of lines processed is based on the original text structure
-        lineCount = diff.text.isEmpty ? 0 : linesInDiff.length - (diff.text.endsWith('\n') ? 0 : 1);
-      }
-      // --- END OF FIX ---
-
-      if (diff.operation == DIFF_EQUAL) {
-        for(final line in linesInDiff) {
-           if(line.startsWith('##')) {
-              final catName = line.substring(3).trim();
-              currentCategoryId = _categories.firstWhere((cat) => cat.name == catName, orElse: () => _categories.first).id!;
-           }
-        }
-        currentLine += lineCount;
-      } else if (diff.operation == DIFF_DELETE) {
-         for (int i = 0; i < lineCount; i++) {
-           final itemId = _lineIdMap[currentLine + i];
-           if (itemId != null && itemId > 0) {
-             itemIdsToDelete.add(itemId);
-           }
-         }
-         currentLine += lineCount;
-      } else if (diff.operation == DIFF_INSERT) {
-         for (final line in linesInDiff) {
-            if (line.trim().isEmpty) continue;
-             if(line.startsWith('##')) {
-                final catName = line.substring(3).trim();
-                currentCategoryId = _categories.firstWhere((cat) => cat.name == catName, orElse: () => _categories.first).id!;
-                continue;
-            }
-
-            final itemIdToUpdate = _lineIdMap[currentLine];
-            
-            if (itemIdToUpdate != null && itemIdsToDelete.contains(itemIdToUpdate)) {
-              itemIdsToDelete.remove(itemIdToUpdate);
-              final parsed = parser.parseLine(line);
-              itemsToUpdate.add(createItemFromParsed(parsed, categoryId: currentCategoryId, id: itemIdToUpdate));
-            } else {
-              final parsed = parser.parseLine(line);
-              itemsToAdd.add(createItemFromParsed(parsed, categoryId: currentCategoryId));
-            }
-        }
-      }
+    // 3. Create any new categories found in the markdown
+    final categoriesToCreate = newCategoryNames.where((name) => !existingCategoryMap.containsKey(name));
+    for (final name in categoriesToCreate) {
+      await service.addCategory(createCategory(name));
     }
+
+    // 4. Delete any old categories that are no longer in the markdown
+    final categoriesToDelete = existingCategoryMap.values.where((cat) {
+      // Don't delete a category if it's still in the new text.
+      // Also, never delete the default "Uncategorized" category.
+      return !newCategoryNames.contains(cat.name) && cat.name != 'Uncategorized';
+    });
+    for (final category in categoriesToDelete) {
+      await service.deleteCategory(category.id!);
+    }
+
+    // 5. Re-fetch all categories to get a complete, updated map with IDs
+    final allCategories = await service.getAllCategories();
+    final categoryNameToIdMap = { for (var cat in allCategories) cat.name: cat.id! };
     
+    // 6. Get all existing items from the database
+    final allExistingItems = await service.getAllItems();
+    final existingItemsByRawText = { for (var item in allExistingItems) item.rawText: item };
+
+    // 7. Determine item changes (add, update, delete)
+    final itemsToAdd = <T>[];
+    final itemsToUpdate = <T>[];
+    final Set<int> itemsToKeep = {}; // Track items that are still in the new text
+
+    newStructure.forEach((categoryName, parsedItems) {
+      final categoryId = categoryNameToIdMap[categoryName]!;
+      for (final parsedItemData in parsedItems) {
+        final rawText = parsedItemData['rawText']!;
+        final existingItem = existingItemsByRawText[rawText];
+
+        if (existingItem != null) {
+          itemsToKeep.add(existingItem.id!);
+          if (existingItem.categoryId != categoryId) {
+            final updatedItem = createItemFromParsed(parsedItemData, categoryId: categoryId, id: existingItem.id);
+            itemsToUpdate.add(updatedItem);
+          }
+        } else {
+          itemsToAdd.add(createItemFromParsed(parsedItemData, categoryId: categoryId));
+        }
+      }
+    });
+
+    final allExistingItemIds = allExistingItems.map((item) => item.id!).toSet();
+    final itemIdsToDelete = allExistingItemIds.difference(itemsToKeep).toList();
+
+    // 8. Call the service to perform the database transaction for items
     await service.reconcileItems(
       itemsToAdd: itemsToAdd,
       itemsToUpdate: itemsToUpdate,
       itemIdsToDelete: itemIdsToDelete,
     );
-    
+
+    // 9. Reload the state from the database to reflect all changes
     await loadItems();
   }
 

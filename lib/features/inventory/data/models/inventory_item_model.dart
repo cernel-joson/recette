@@ -1,15 +1,16 @@
-import 'package:recette/core/data/repositories/data_repository.dart';
+import 'package:recette/core/data/models/list_item_model.dart';
 
-/// The core model representing a single item in the user's inventory.
-class InventoryItem implements DataModel {
+
+// Implemented the ListItem interface to make this model compatible
+// with the generic BaseListController.
+class InventoryItem implements ListItem {
   @override
   final int? id;
   final String name;
   final String? brand;
   final String? quantity;
   final String? unit;
-  final int? locationId;
-  final int? categoryId;
+  final int? locationId; // This now maps to categoryId
   final String? healthRating;
   final String? notes;
 
@@ -20,10 +21,28 @@ class InventoryItem implements DataModel {
     this.quantity,
     this.unit,
     this.locationId,
-    this.categoryId,
     this.healthRating,
     this.notes,
   });
+
+  // --- Implementation of the ListItem interface ---
+  @override
+  int? get categoryId => locationId;
+
+  @override
+  String get rawText {
+    final parts = [quantity, unit, name];
+    return parts.where((p) => p != null && p.isNotEmpty).join(' ');
+  }
+
+  @override
+  String? get parsedName => name;
+
+  @override
+  String? get parsedQuantity {
+    final parts = [quantity, unit];
+    return parts.where((p) => p != null && p.isNotEmpty).join(' ');
+  }
 
   @override
   Map<String, dynamic> toMap() {
@@ -34,7 +53,6 @@ class InventoryItem implements DataModel {
       'quantity': quantity,
       'unit': unit,
       'location_id': locationId,
-      'category_id': categoryId,
       'health_rating': healthRating,
       'notes': notes,
     };
@@ -43,12 +61,11 @@ class InventoryItem implements DataModel {
   factory InventoryItem.fromMap(Map<String, dynamic> map) {
     return InventoryItem(
       id: map['id'],
-      name: map['name'],
+      name: map['name'] ?? 'Unknown Item',
       brand: map['brand'],
       quantity: map['quantity'],
       unit: map['unit'],
       locationId: map['location_id'],
-      categoryId: map['category_id'],
       healthRating: map['health_rating'],
       notes: map['notes'],
     );

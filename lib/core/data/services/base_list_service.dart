@@ -9,6 +9,11 @@ abstract class BaseListService<T extends ListItem, C extends ListCategory> {
 
   Future<Map<C, List<T>>> getGroupedItems() => repository.getGroupedItems();
 
+  Future<List<C>> getAllCategories() => repository.categories.getAll();
+  Future<C> addCategory(C category) => repository.categories.create(category);
+  // A method to delete a category by its ID.
+  Future<int> deleteCategory(int id) => repository.categories.delete(id);
+
   Future<T> addItem(T item) => repository.items.create(item);
   Future<int> updateItem(T item) => repository.items.update(item);
   Future<int> deleteItem(int id) => repository.items.delete(id);

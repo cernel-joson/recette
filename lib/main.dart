@@ -15,7 +15,7 @@ import 'firebase_options.dart'; // Import the generated file
 import 'package:recette/core/data/services/developer_service.dart';
 import 'package:recette/features/dietary_profile/data/jobs/profile_analysis_worker.dart';
 import 'package:recette/features/inventory/data/jobs/inventory_import_worker.dart';
-import 'package:recette/features/inventory/data/services/inventory_service.dart';
+import 'package:recette/features/inventory/data/services/inventory_list_service.dart';
 import 'package:recette/features/inventory/data/jobs/meal_suggestion_worker.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:recette/core/presentation/screens/main_screen.dart';
@@ -66,15 +66,11 @@ void main() async {
   // Create instances of the new services
   final recipeService = RecipeService();
   final recipeImportService = RecipeImportService(jobManager, usageLimiter);
-  final inventoryService = InventoryService();
-  final inventoryController = InventoryController(inventoryService: inventoryService);
+  final inventoryService = InventoryListService();
+  final inventoryController = InventoryController();
   final shoppingListService = ShoppingListService();
   final shoppingListController = ShoppingListController(shoppingListService: shoppingListService);
   final mealPlanController = MealPlanController();
-
-  // --- NEW: Load initial data for the singleton controllers ---
-  await inventoryController.loadItems();
-  await shoppingListController.loadItems();
 
   runApp(
     // Use MultiProvider to provide both the controller and the manager

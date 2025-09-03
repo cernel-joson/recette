@@ -53,17 +53,31 @@ class MealPlanController extends BaseController<MealPlanEntry> {
     _selectedDate = date;
     notifyListeners();
   }
-
+  
+  // The controller now has two distinct methods for adding different entry types.
   Future<void> addRecipeToMealPlan(
       Recipe recipe, DateTime date, MealType mealType) async {
     final newEntry = MealPlanEntry(
       date: date,
       mealType: mealType,
+      entryType: MealPlanEntryType.recipe,
       recipeId: recipe.id!,
       recipeTitle: recipe.title,
     );
     await _mealPlanService.addEntry(newEntry);
-    await loadItems(); // Reload to reflect the change
+    await loadItems();
+  }
+
+  Future<void> addTextEntryToMealPlan(
+      String text, DateTime date, MealType mealType) async {
+    final newEntry = MealPlanEntry(
+      date: date,
+      mealType: mealType,
+      entryType: MealPlanEntryType.text,
+      textEntry: text,
+    );
+    await _mealPlanService.addEntry(newEntry);
+    await loadItems();
   }
 
   Future<void> deleteEntry(int id) async {

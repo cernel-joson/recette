@@ -3,15 +3,218 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
+import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+
+/// The UI for the inventory screen, now completely rebuilt to support
+/// a dual-editor interface with Visual and Markdown tabs.
+class InventoryScreen extends StatefulWidget {
+  const InventoryScreen({super.key});
+
+  @override
+  State<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    // The screen is now responsible for triggering the initial data load.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<InventoryController>(context, listen: false).loadItems();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _getMealIdeas(BuildContext context) async {
+    final controller = Provider.of<InventoryController>(context, listen: false);
+    final intentController = TextEditingController();
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+
+    final userIntent = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("What's the situation?"),
+        content: TextField(
+          controller: intentController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: "e.g., 'I'm tired and need something quick.'",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(intentController.text),
+            child: const Text('Get Ideas'),
+          ),
+        ],
+      ),
+    );
+
+    if (userIntent == null || !context.mounted) return;
+
+    // Use the controller's text field, which contains the up-to-date markdown
+    final inventoryList = controller.textController.text;
+    final profile = await ProfileService.loadProfile();
+    final requestPayload = json.encode({
+      'inventory': inventoryList,
+      'dietary_profile': profile.fullProfileText,
+      'user_intent': userIntent,
+    });
+
+    await jobManager.submitJob(
+      jobType: 'meal_suggestion',
+      requestPayload: requestPayload,
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating meal idea... Track progress in the Jobs Tray.'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Provider.of<InventoryController>(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Inventory'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
+            Tab(icon: Icon(Icons.article), text: 'Markdown'),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FilledButton.icon(
+              icon: const Icon(Icons.save),
+              label: const Text('Save Changes'),
+              onPressed: () async {
+                // The save button now only needs to worry about the markdown view
+                if (_tabController.index == 1) {
+                  await controller.reconcileMarkdownChanges();
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Inventory saved!'), backgroundColor: Colors.green),
+                );
+              },
+            )
+          ],
+        ),
+      ),
+      body: controller.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildVisualEditor(controller),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: controller.textController,
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: '## Fridge\n- 1 gallon Milk...',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _getMealIdeas(context),
+        tooltip: 'Get Meal Ideas',
+        icon: const Icon(Icons.lightbulb_outline),
+        label: const Text('What can I make?'),
+      ),
+    );
+  }
+
+  Widget _buildVisualEditor(InventoryController controller) {
+    if (controller.groupedItems.isEmpty) {
+      return const Center(child: Text('Your inventory is empty.'));
+    }
+    return ListView(
+      children: controller.groupedItems.entries.map((entry) {
+        final location = entry.key;
+        final items = entry.value;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0).copyWith(bottom: 8),
+              child: Text(
+                location.name,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ...items.map((item) => ListTile(
+                  title: Text(item.name),
+                  subtitle: Text('${item.quantity ?? ''} ${item.unit ?? ''}'.trim()),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => controller.deleteItem(item.id!),
+                  ),
+                )),
+            const Divider(),
+          ],
+        );
+      }).toList(),
+    );
+  }
+}
+
+
+
+/* import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:recette/features/inventory/data/models/models.dart';
+import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/features/inventory/data/services/inventory_service.dart';
 
-class InventoryScreen extends StatelessWidget  {
+// 1. Converted the widget to a StatefulWidget.
+class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key});
 
-  // --- All previous logic is GONE. The UI now delegates to the controller ---
+  @override
+  State<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends State<InventoryScreen> {
+  // 2. Added the initState method to call loadItems.
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<InventoryController>(context, listen: false).loadItems();
+    });
+  }
+  
   void _exportInventory(BuildContext context) async {
     final controller = Provider.of<InventoryController>(context, listen: false);
     final inventoryText = await controller.getInventoryAsText();
@@ -263,4 +466,4 @@ class InventoryScreen extends StatelessWidget  {
       ),
     );
   }
-}
+} */

@@ -1,47 +1,43 @@
-import 'package:flutter/foundation.dart';
-import 'package:recette/core/presentation/controllers/base_controller.dart';
+import 'package:recette/core/presentation/controllers/base_list_controller.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
-import 'package:recette/features/inventory/data/services/inventory_service.dart';
+import 'package:recette/features/inventory/data/services/inventory_list_service.dart';
 
-class InventoryController extends BaseController<InventoryItem> {
-  final InventoryService _inventoryService;
-
-  // State specific to the inventory screen
-  Map<String, List<InventoryItem>> _groupedItems = {};
-  List<Location> _locations = [];
-  bool _isSelecting = false;
-  final Set<int> _selectedItemIds = {};
-
-  InventoryController({InventoryService? inventoryService})
-      : _inventoryService = inventoryService ?? InventoryService();
-
-  // Public getters for the UI
-  Map<String, List<InventoryItem>> get groupedItems => _groupedItems;
-  List<Location> get locations => _locations;
-  bool get isSelecting => _isSelecting;
-  Set<int> get selectedItemIds => _selectedItemIds;
+/// The controller for the inventory screen, now refactored to support
+/// dual-mode (visual and markdown) editing.
+class InventoryController extends BaseListController<InventoryItem, Location> {
+  InventoryController({InventoryListService? inventoryListService})
+      : super(inventoryListService ?? InventoryListService());
 
   @override
-  Future<List<InventoryItem>> fetchItems() async {
-    // This is the primary data loading method. We also fetch related data here.
-    final groupedItemsFuture = _inventoryService.getGroupedInventory();
-    final locationsFuture = _inventoryService.getLocations();
-    final inventoryItemsFuture = _inventoryService.getInventory();
-
-    // Await all futures in parallel
-    final results = await Future.wait([
-      groupedItemsFuture,
-      locationsFuture,
-      inventoryItemsFuture,
-    ]);
-
-    // Update state from the results
-    _groupedItems = results[0] as Map<String, List<InventoryItem>>;
-    _locations = results[1] as List<Location>;
+  InventoryItem createItemFromParsed(Map<String, String> parsed, {required int categoryId, int? id}) {
+    // This logic translates the generic parsed map from the Markdown parser
+    // into a specific InventoryItem.
+    final rawQuantity = parsed['parsedQuantity'] ?? '';
+    final parts = rawQuantity.split(' ');
+    final quantity = parts.isNotEmpty ? parts.first : '';
+    final unit = parts.length > 1 ? parts.sublist(1).join(' ') : '';
     
-    // Return the primary list of items to the BaseController
-    return results[2] as List<InventoryItem>;
+    return InventoryItem(
+      id: id,
+      name: parsed['parsedName'] ?? 'Unknown Item',
+      quantity: quantity,
+      unit: unit,
+      locationId: categoryId,
+    );
   }
+
+  @override
+  Location createCategory(String name) {
+    // Provides the base controller with a way to create a Location object
+    // when a new '##' heading is detected in the markdown.
+    return Location(name: name);
+  }
+
+  // NOTE: All previous selection and item movement logic has been removed,
+  // as these operations are now implicitly handled by the markdown reconciliation.
+
+  /*
+  
 
   // --- All business logic is now in the controller ---
 
@@ -89,4 +85,5 @@ class InventoryController extends BaseController<InventoryItem> {
   Future<String> getInventoryAsText() {
     return _inventoryService.getInventoryAsText();
   }
+  */
 }

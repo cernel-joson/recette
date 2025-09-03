@@ -16,6 +16,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> with SingleTick
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // This ensures that the data loading process begins as soon as
+    // the widget is added to the widget tree.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ShoppingListController>(context, listen: false).loadItems();
+    });
   }
 
   @override

@@ -11,7 +11,7 @@ class DatabaseHelper {
   static Database? _database;
 
   // IMPORTANT: Increment the DB version to trigger the upgrade.
-  static const int _dbVersion = 17;
+  static const int _dbVersion = 20;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -42,6 +42,7 @@ class DatabaseHelper {
     await _createGeneratedRecipesTable(db);
     await _createJobHistoryTable(db);
     await _createChatMessagesTable(db);
+    await _createShoppingListCategoriesTable(db);
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -76,6 +77,26 @@ class DatabaseHelper {
     }
     if (oldVersion < 16) await _createChatMessagesTable(db);
     if (oldVersion < 17) await _createShoppingListCategoriesTable(db);
+    // Add a robust migration to rebuild the shopping list table correctly.
+    // This replaces the previous, simpler migration for version 18.
+    if (oldVersion < 19) {
+      await db.execute('ALTER TABLE shopping_list_items RENAME TO _shopping_list_items_old');
+      await _createShoppingListTables(db);
+      
+      // Copy data from the old table to the new one, mapping old 'name' column
+      // to the new 'raw_text' and 'parsed_name' columns.
+      await db.execute('''
+        INSERT INTO shopping_list_items (id, raw_text, parsed_name, is_checked)
+        SELECT id, name, name, is_checked FROM _shopping_list_items_old
+      ''');
+      
+      await db.execute('DROP TABLE _shopping_list_items_old');
+    }
+    // Safely migrate the meal plan table to the new, more flexible schema.
+    if (oldVersion < 20) {
+      await db.execute('DROP TABLE IF EXISTS meal_plan_entries');
+      await _createMealPlanTables(db);
+    }
 
     debugPrint("--- _upgradeDB complete. ---");
   }
@@ -176,12 +197,17 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE shopping_list_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        is_checked INTEGER NOT NULL DEFAULT 0
+        category_id INTEGER,
+        raw_text TEXT NOT NULL,
+        parsed_name TEXT,
+        parsed_quantity TEXT,
+        is_checked INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (category_id) REFERENCES shopping_list_categories (id) ON DELETE SET NULL
       )
     ''');
   }
-
+  
+  // The schema is updated to support both recipe and text entries.
   Future<void> _createMealPlanTables(Database db) async {
     await db.execute('''
       CREATE TABLE meal_plan_entries (
@@ -190,6 +216,7 @@ class DatabaseHelper {
         meal_type TEXT NOT NULL,
         entry_type TEXT NOT NULL,
         recipe_id INTEGER,
+        recipe_title TEXT,
         text_entry TEXT,
         FOREIGN KEY (recipe_id) REFERENCES recipes (id) ON DELETE SET NULL
       )
@@ -246,62 +273,8 @@ class DatabaseHelper {
     name TEXT NOT NULL UNIQUE
   )
 ''');
-  }
 
-  // --- NONE OF THESE FUNCTIONS SHOULD BE HERE
-
-  // --- REFACTORED: Centralized method for inserting/updating tags ---
-  Future<void> _manageTags(Transaction txn, int recipeId, List<String> tags) async {
-    await txn.delete('recipe_tags', where: 'recipeId = ?', whereArgs: [recipeId]);
-    for (String tagName in tags) {
-      var existingTag = await txn.query('tags', where: 'name = ?', whereArgs: [tagName.toLowerCase()]);
-      int tagId;
-      if (existingTag.isEmpty) {
-        tagId = await txn.insert('tags', {'name': tagName.toLowerCase()});
-      } else {
-        tagId = existingTag.first['id'] as int;
-      }
-      await txn.insert('recipe_tags', {'recipeId': recipeId, 'tagId': tagId});
-    }
-  }
-
-  // --- REFACTORED: Centralized method for getting tags ---
-  Future<List<String>> _getTagsForRecipe(DatabaseExecutor db, int recipeId) async {
-    final List<Map<String, dynamic>> result = await db.rawQuery('''
-        SELECT T.name FROM tags T
-        INNER JOIN recipe_tags RT ON T.id = RT.tagId
-        WHERE RT.recipeId = ?
-    ''', [recipeId]);
-    return result.map((map) => map['name'] as String).toList();
-  }
-
-  // --- REFACTORED: insert and update now use a transaction for atomicity ---
-  Future<int> insert(Recipe recipe, List<String> tags) async {
-    final db = await instance.database;
-    return await db.transaction((txn) async {
-      final newId = await txn.insert('recipes', recipe.toMap());
-      await _manageTags(txn, newId, tags);
-      return newId;
-    });
-  }
-
-  Future<int> update(Recipe recipe, List<String> tags) async {
-    final db = await instance.database;
-    return await db.transaction((txn) async {
-      final rowsAffected = await txn.update('recipes', recipe.toMap(), where: 'id = ?', whereArgs: [recipe.id]);
-      await _manageTags(txn, recipe.id!, tags);
-      return rowsAffected;
-    });
-  }
-
-  Future<int> delete(int id) async {
-    final db = await instance.database;
-    return await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
-  }
-  
-  Future<List<String>> getAllUniqueTags() async {
-    final db = await instance.database;
-    final List<Map<String, dynamic>> result = await db.query('tags', orderBy: 'name ASC');
-    return result.map((map) => map['name'] as String).toList();
+    // Add a default category to ensure the list is never empty.
+    await db.insert('shopping_list_categories', {'name': 'Uncategorized'});
   }
 }
