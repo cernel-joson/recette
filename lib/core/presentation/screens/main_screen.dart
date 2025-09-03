@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:recette/core/presentation/screens/about_screen.dart';
-import 'package:recette/core/presentation/screens/dashboard_screen.dart';
 import 'package:recette/core/presentation/screens/jobs_tray_screen.dart';
 import 'package:recette/core/presentation/screens/settings_screen.dart';
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 import 'package:recette/core/data/services/share_intent_service.dart';
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart';
+import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart';
+import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_controller.dart';
 import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen.dart';
+import 'package:recette/features/recipes/presentation/controllers/recipe_library_controller.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_library_screen.dart';
+import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart';
+import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart';
 import 'package:recette/features/shopping_list/presentation/screens/shopping_list_screen.dart';
+import 'package:recette/features/recipes/data/services/export_service.dart' as recipe_export_service;
+import 'package:recette/features/recipes/data/services/import_service.dart' as recipe_import_service;
+import 'package:recette/features/recipes/presentation/widgets/filter_bottom_sheet.dart';
+import 'package:recette/core/presentation/screens/dashboard_screen.dart';
 
-/// A data class to hold information for each navigation destination.
 class NavDestination {
   final String label;
   final IconData icon;
@@ -20,8 +28,6 @@ class NavDestination {
   const NavDestination(this.label, this.icon, this.screen);
 }
 
-/// The main screen of the app, which manages the bottom navigation bar and
-/// the page view for the primary app features.
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -33,8 +39,6 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   late final PageController _pageController;
 
-  // Define the primary navigation destinations. These will populate the
-  // bottom navigation bar and the main page view.
   final List<NavDestination> _destinations = [
     const NavDestination('Home', Icons.home_outlined, DashboardScreen()),
     const NavDestination('Recipes', Icons.menu_book_outlined, RecipeLibraryScreen()),
@@ -47,19 +51,16 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
-    // Initialize the share service when the main screen loads.
     ShareIntentService.instance.init(GlobalKey<NavigatorState>());
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    // Dispose the service to prevent memory leaks.
     ShareIntentService.instance.dispose();
     super.dispose();
   }
 
-  /// Handles taps on the bottom navigation bar items.
   void _onItemTapped(int index) {
     _pageController.animateToPage(
       index,
@@ -68,8 +69,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  /// Handles the selection from the overflow menu in the AppBar.
-  void _onMenuSelected(String value) {
+  void _onMenuSelected(String value) async {
     switch (value) {
       case 'profile':
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DietaryProfileScreen()));
@@ -80,6 +80,82 @@ class _MainScreenState extends State<MainScreen> {
       case 'about':
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AboutScreen()));
         break;
+      case 'import_recipes':
+        await recipe_import_service.ImportService.importLibrary();
+        break;
+      case 'export_recipes':
+        await recipe_export_service.ExportService.exportLibrary();
+        break;
+    }
+  }
+
+  List<Widget> _buildContextualActions() {
+    switch (_selectedIndex) {
+      case 1: // Recipe Library
+        return [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Filters',
+            onPressed: () async {
+              final controller = context.read<RecipeLibraryController>();
+              final String? constructedQuery = await showModalBottomSheet<String>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => const FilterBottomSheet(),
+              );
+              if (constructedQuery != null) {
+                controller.search(constructedQuery);
+              }
+            },
+          ),
+        ];
+      case 3: // Meal Planner
+        return [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined),
+            tooltip: 'Clear Plan',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Clear Meal Plan?'),
+                  content: const Text('Are you sure you want to delete all entries?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                    TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Clear'), style: TextButton.styleFrom(foregroundColor: Colors.red)),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await context.read<MealPlanController>().clearPlan();
+              }
+            },
+          ),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  Widget? _buildContextualFab() {
+    switch (_selectedIndex) {
+      case 1: // Recipe Library
+        return FloatingActionButton(
+          heroTag: 'addRecipeFab',
+          onPressed: () => DialogUtils.showAddRecipeMenu(context),
+          tooltip: 'Add Recipe',
+          child: const Icon(Icons.add),
+        );
+      case 2: // Inventory
+        return FloatingActionButton.extended(
+          heroTag: 'mealIdeasFab',
+          onPressed: () => context.read<InventoryController>().getMealIdeas(context),
+          tooltip: 'Get Meal Ideas',
+          icon: const Icon(Icons.lightbulb_outline),
+          label: const Text('What can I make?'),
+        );
+      default:
+        return null;
     }
   }
 
@@ -87,36 +163,32 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // The title dynamically updates to match the current screen's label.
         title: Text(_destinations[_selectedIndex].label),
         actions: [
-          // The global JobsTrayIcon remains in the top-right.
+          ..._buildContextualActions(),
           JobsTrayIcon(
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const JobsTrayScreen())),
           ),
-          // The overflow menu contains secondary navigation targets.
           PopupMenuButton<String>(
             onSelected: _onMenuSelected,
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'profile',
-                child: ListTile(leading: Icon(Icons.person_outline), title: Text('My Profile')),
-              ),
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: ListTile(leading: Icon(Icons.settings_outlined), title: Text('Settings')),
-              ),
-              const PopupMenuItem<String>(
-                value: 'about',
-                child: ListTile(leading: Icon(Icons.info_outline), title: Text('About')),
-              ),
-            ],
+            itemBuilder: (BuildContext context) {
+              final items = <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(value: 'profile', child: ListTile(leading: Icon(Icons.person_outline), title: Text('My Profile'))),
+                const PopupMenuItem<String>(value: 'settings', child: ListTile(leading: Icon(Icons.settings_outlined), title: Text('Settings'))),
+                const PopupMenuItem<String>(value: 'about', child: ListTile(leading: Icon(Icons.info_outline), title: Text('About'))),
+              ];
+              if (_selectedIndex == 1) {
+                items.add(const PopupMenuDivider());
+                items.add(const PopupMenuItem<String>(value: 'import_recipes', child: ListTile(leading: Icon(Icons.download), title: Text('Import Library'))));
+                items.add(const PopupMenuItem<String>(value: 'export_recipes', child: ListTile(leading: Icon(Icons.upload_file), title: Text('Export Library'))));
+              }
+              return items;
+            },
           ),
         ],
       ),
       body: PageView(
         controller: _pageController,
-        // Update the selected index when the user swipes between pages.
         onPageChanged: (index) {
           setState(() {
             _selectedIndex = index;
@@ -125,19 +197,14 @@ class _MainScreenState extends State<MainScreen> {
         children: _destinations.map((d) => d.screen).toList(),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        // Use the `map` function to create a list of BottomNavigationBarItem
-        // widgets from our list of destinations.
         items: _destinations.map((destination) {
-          return BottomNavigationBarItem(
-            icon: Icon(destination.icon),
-            label: destination.label,
-          );
+          return BottomNavigationBarItem(icon: Icon(destination.icon), label: destination.label);
         }).toList(),
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        // This ensures all labels are always visible and the background is white.
         type: BottomNavigationBarType.fixed,
       ),
+      floatingActionButton: _buildContextualFab(),
     );
   }
 }

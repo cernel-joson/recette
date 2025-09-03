@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Import provider
-import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/logic/job_manager.dart';
@@ -9,30 +9,22 @@ import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
 import 'package:recette/core/utils/usage_limiter.dart';
 import 'package:recette/features/recipes/data/jobs/recipe_analysis_worker.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
 import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
-import 'firebase_options.dart'; // Import the generated file
+import 'firebase_options.dart';
 import 'package:recette/core/data/services/developer_service.dart';
 import 'package:recette/features/dietary_profile/data/jobs/profile_analysis_worker.dart';
 import 'package:recette/features/inventory/data/jobs/inventory_import_worker.dart';
-import 'package:recette/features/inventory/data/services/inventory_list_service.dart';
 import 'package:recette/features/inventory/data/jobs/meal_suggestion_worker.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:recette/core/presentation/screens/main_screen.dart';
-import 'package:recette/features/shopping_list/data/services/shopping_list_service.dart';
-import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart'; // Import ShoppingListController
+import 'package:recette/features/recipes/presentation/controllers/recipe_library_controller.dart';
+import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart';
+import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_controller.dart';
 
-import 'package:recette/features/meal_plan/data/repositories/meal_plan_repository.dart'; // Import repository
-import 'package:recette/features/meal_plan/data/services/meal_plan_service.dart'; // Import service
-import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_controller.dart'; // Import controller
-
-// Create a GlobalKey for the Navigator. This allows us to navigate
-// from anywhere in the app, which is essential for the share handler.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // We no longer use dotenv for release builds, but it's needed for debug.
-  // This will be handled by the launch.json configuration.
   
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -44,7 +36,6 @@ void main() async {
     return true;
   };
   
-  // --- REFACTORED: Set up all dependencies for providing ---
   final jobRepository = JobRepository();
   final jobController = JobController(jobRepository: jobRepository);
   final usageLimiter = await UsageLimiter.create();
@@ -60,33 +51,24 @@ void main() async {
   });
 
   final jobManager = JobManager.instance;
-  // Create an instance of the new developer service
   final developerService = DeveloperService();
-
-  // Create instances of the new services
-  final recipeService = RecipeService();
   final recipeImportService = RecipeImportService(jobManager, usageLimiter);
-  final inventoryService = InventoryListService();
-  final inventoryController = InventoryController();
-  final shoppingListService = ShoppingListService();
-  final shoppingListController = ShoppingListController(shoppingListService: shoppingListService);
-  final mealPlanController = MealPlanController();
-
+  
   runApp(
-    // Use MultiProvider to provide both the controller and the manager
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: jobController),
-        ChangeNotifierProvider.value(value: developerService), // Provide the new service
-        // Provide all the core services to the widget tree
+        ChangeNotifierProvider.value(value: developerService),
         Provider.value(value: jobManager),
-        Provider.value(value: recipeService),
         Provider.value(value: recipeImportService),
-        Provider.value(value: inventoryService),
-        Provider.value(value: shoppingListService),
-        ChangeNotifierProvider.value(value: shoppingListController),
-        ChangeNotifierProvider.value(value: mealPlanController),
-        ChangeNotifierProvider.value(value: inventoryController), 
+        
+        // --- THIS IS THE FIX ---
+        // All feature controllers are now correctly created and provided to the app.
+        // This ensures that each screen can find its required controller.
+        ChangeNotifierProvider(create: (_) => RecipeLibraryController()),
+        ChangeNotifierProvider(create: (_) => InventoryController()),
+        ChangeNotifierProvider(create: (_) => ShoppingListController()),
+        ChangeNotifierProvider(create: (_) => MealPlanController()),
       ],
       child: const RecetteApp(),
     ),
@@ -99,22 +81,20 @@ class RecetteApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Assign the navigatorKey to the MaterialApp.
       navigatorKey: navigatorKey,
       title: 'Recette',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        // Define a slightly elevated card theme for the dashboard
         cardTheme: CardThemeData(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
           ),
         ),
       ),
-      // Set the DashboardScreen as the new home screen.
       home: const MainScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
+

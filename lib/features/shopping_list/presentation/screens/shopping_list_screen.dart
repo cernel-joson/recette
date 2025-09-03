@@ -16,8 +16,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> with SingleTick
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // This ensures that the data loading process begins as soon as
-    // the widget is added to the widget tree.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ShoppingListController>(context, listen: false).loadItems();
     });
@@ -31,58 +30,43 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    final controller = Provider.of<ShoppingListController>(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shopping List'),
-        bottom: TabBar(
+    final listController = context.watch<ShoppingListController>();
+
+    if (listController.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        TabBar(
           controller: _tabController,
           tabs: const [
             Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
             Tab(icon: Icon(Icons.article), text: 'Markdown'),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            FilledButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text('Save Changes'),
-              onPressed: () async {
-                if (_tabController.index == 1) {
-                  await controller.reconcileMarkdownChanges();
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Shopping list saved!'), backgroundColor: Colors.green),
-                );
-              },
-            )
-          ],
-        ),
-      ),
-      body: controller.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildVisualEditor(controller),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: controller.textController,
-                    maxLines: null,
-                    expands: true,
-                    textAlignVertical: TextAlignVertical.top,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: '## Produce\n- 2 Apples...',
-                    ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildVisualEditor(listController),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: listController.textController,
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: '## Produce\n- 2 Apples...',
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -126,3 +110,4 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> with SingleTick
     );
   }
 }
+

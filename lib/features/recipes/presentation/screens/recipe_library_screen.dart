@@ -6,47 +6,20 @@ import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 
-class RecipeLibraryScreen extends StatelessWidget {
+class RecipeLibraryScreen extends StatefulWidget {
   const RecipeLibraryScreen({
     super.key,
-    this.isSelecting = false, // New parameter to indicate if we're selecting a recipe
+    this.isSelecting = false,
   });
   
   final bool isSelecting;
 
   @override
-  Widget build(BuildContext context) {
-    // 1. Create the provider at the top level of the screen.
-    return ChangeNotifierProvider(
-      create: (_) => RecipeLibraryController(),
-      // 2. The actual UI is now built by a child widget that has
-      //    access to the provider.
-      child: _RecipeLibraryView(isSelecting: isSelecting),
-    );
-  }
+  State<RecipeLibraryScreen> createState() => _RecipeLibraryScreenState();
 }
 
-// --- UPDATED: Converted to a StatefulWidget to manage the TextEditingController ---
-class _RecipeLibraryView extends StatefulWidget {
-  const _RecipeLibraryView({required this.isSelecting});
-  final bool isSelecting;
-
-  @override
-  State<_RecipeLibraryView> createState() => _RecipeLibraryViewState();
-}
-
-class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
+class _RecipeLibraryScreenState extends State<RecipeLibraryScreen> {
   final _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    // This ensures that `loadItems` is called only after the widget has been
-    // fully initialized and mounted in the widget tree.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<RecipeLibraryController>(context, listen: false).loadItems();
-    });
-  }
   
   @override
   void dispose() {
@@ -54,95 +27,19 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
     super.dispose();
   }
 
-  Future<void> _showFilterPanel(BuildContext context) async {
-    // Get the controller once, outside the async gap.
-    final controller = Provider.of<RecipeLibraryController>(context, listen: false);
-
-    final String? constructedQuery = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true, // Allows the sheet to be taller
-      builder: (_) => const FilterBottomSheet(),
-    );
-
-    if (constructedQuery != null) {
-      // If the user applied filters, update the search bar and run the search.
-      _searchController.text = constructedQuery;
-      controller.search(constructedQuery);
-    }
-  }
-
-  // --- NEW: Helper method for import action ---
-  Future<void> _importLibrary(BuildContext context) async {
-    final controller = Provider.of<RecipeLibraryController>(context, listen: false);
-    try {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Import Recipe Library?'),
-          content: const Text('This will add recipes from a JSON backup file. Existing recipes will be skipped.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Import')),
-          ],
-        ),
-      );
-
-      if (confirm != true) return;
-
-      final result = await ImportService.importLibrary();
-      
-      controller.loadItems();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.toString()), backgroundColor: Colors.green),
-        );
-      }
-
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: ${e.toString()}'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  // --- NEW: Helper method for export action ---
-  Future<void> _exportLibrary(BuildContext context) async {
-    try {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Export Recipe Library?'),
-          content: const Text('This will generate a JSON backup file of all your recipes.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Export')),
-          ],
-        ),
-      );
-
-      if (confirm == true) {
-        await ExportService.exportLibrary();
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: ${e.toString()}'), backgroundColor: Colors.red),
-        );
-      }
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Load data when the widget is first created.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<RecipeLibraryController>(context, listen: false).loadItems();
+    });
   }
   
-  void _reviewPendingJob(Job job) async {
-    // The responsePayload from the worker IS the recipe map.
-    // We decode it directly instead of looking for a nested 'recipe' key.
+  void _reviewPendingJob(BuildContext context, Job job) async {
     final recipeMap = json.decode(job.responsePayload!) as Map<String, dynamic>;
-
-    // Create a Recipe object from the stored data.
     final recipe = Recipe.fromMap(recipeMap);
     
-    // Await the result from the RecipeEditScreen.
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => RecipeEditScreen(
@@ -152,233 +49,115 @@ class _RecipeLibraryViewState extends State<_RecipeLibraryView> {
       ),
     );
 
-    // If the result is true (meaning a save happened), refresh the library.
     if (result == true && mounted) {
-      // Get the controller and tell it to reload the recipes.
       Provider.of<RecipeLibraryController>(context, listen: false).loadItems();
     }
   }
 
-  Future<void> _dismissJob(Job job) async {
+  Future<void> _dismissJob(BuildContext context, Job job) async {
     final jobRepo = JobRepository();
     await jobRepo.updateJobStatus(job.id!, JobStatus.archived);
     if (mounted) {
-      // Refresh the job list so the banner disappears
       Provider.of<JobController>(context, listen: false).loadJobs();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get the controller once to use in callbacks.
-    final controller = Provider.of<RecipeLibraryController>(context, listen: false);
-
-    return Consumer2<RecipeLibraryController, JobController>(
-      builder: (context, libraryController, jobController, child) {
-        // --- NEW: Find pending recipe jobs ---
-        /*final pendingNewRecipeJobs = jobController.jobs.where((job) {
-          if (job.jobType != 'recipe_analysis' || job.status != JobStatus.complete) {
-            return false;
-          }
-          // Decode the request payload to inspect its contents.
-          final requestData = json.decode(job.requestPayload);
-          final recipeData = requestData['recipe_data'] as Map<String, dynamic>;
-          
-          // --- THIS IS THE LOGIC ---
-          // If the data contains a url, text, or image, it's a new recipe
-          // that needs to be reviewed.
-          return recipeData.containsKey('url') || 
-                recipeData.containsKey('text') || 
-                recipeData.containsKey('image');
-        }).toList();*/
-        
-        // --- THIS IS THE FIX ---
-        // Find all completed jobs that result in a reviewable recipe.
-        final pendingNewRecipeJobs = jobController.jobs.where((job) {
-          final isCompletedRecipeJob =
-              (job.jobType == 'recipe_analysis' || job.jobType == 'meal_suggestion') &&
-              job.status == JobStatus.complete;
-
-          if (!isCompletedRecipeJob) return false;
-          
-          // For recipe_analysis, only show banner if it was a new import.
-          if (job.jobType == 'recipe_analysis') {
-            final requestData = json.decode(job.requestPayload);
-            final recipeData = requestData['recipe_data'] as Map<String, dynamic>;
-            return recipeData.containsKey('url') ||
-                   recipeData.containsKey('text') ||
-                   recipeData.containsKey('image');
-          }
-          
-          return true; // Always show banner for meal suggestions
-        }).toList();
-        // --- END OF FIX ---
+    final libraryController = context.watch<RecipeLibraryController>();
+    final jobController = context.watch<JobController>();
             
-        return Scaffold(
-          appBar: AppBar(
-          // --- CONDITIONAL LEADING WIDGET ---
-          leading: controller.navigatedFromRecipeId != null 
-            ? BackButton(
-                onPressed: () {
-                  // 1. Get the ID of the recipe we want to navigate to.
-                  final recipeId = controller.navigatedFromRecipeId!;
+    final pendingNewRecipeJobs = jobController.jobs.where((job) {
+      final isCompletedRecipeJob =
+          (job.jobType == 'recipe_analysis' || job.jobType == 'meal_suggestion') &&
+          job.status == JobStatus.complete;
+      if (!isCompletedRecipeJob) return false;
+      if (job.jobType == 'recipe_analysis') {
+        final requestData = json.decode(job.requestPayload);
+        final recipeData = requestData['recipe_data'] as Map<String, dynamic>;
+        return recipeData.containsKey('url') ||
+               recipeData.containsKey('text') ||
+               recipeData.containsKey('image');
+      }
+      return true;
+    }).toList();
+        
+    if (libraryController.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                  // 2. IMPORTANT: Reset the library's state to the default view.
-                  //    This clears the search, clears the navigation origin, and
-                  //    prevents the infinite loop.
-                  controller.loadItems();
-
-                  // 3. Now, from the clean state, navigate to the recipe.
-                  //    Because the state is clean, when the user presses back on the
-                  //    recipe screen, they will land on the main library view.
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RecipeViewScreen(
-                        recipeId: recipeId,
-                      ),
-                    ),
-                  );
-                },
-              )
-            : null, // Use the default (e.g., drawer icon or no button)
-            title: const Text('My Recipe Library'),
-            // --- THIS IS THE REFACTORED ACTIONS SECTION ---
-            actions: [
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'import') {
-                    _importLibrary(context);
-                  } else if (value == 'export') {
-                    _exportLibrary(context);
-                  }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'import',
-                    child: ListTile(
-                      leading: Icon(Icons.download),
-                      title: Text('Import Library'),
-                    ),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'export',
-                    child: ListTile(
-                      leading: Icon(Icons.upload_file),
-                      title: Text('Export Library'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            // --- END OF REFACTORED ACTIONS SECTION ---
-            // --- NEW: Add a persistent search bar at the bottom of the AppBar ---
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search (e.g., chicken tag:dinner)',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    contentPadding: EdgeInsets.zero,
-                    suffixIcon: Row( // Use a Row for multiple icons
-                      mainAxisSize: MainAxisSize.min, // Important
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.filter_list), // The new filter button
-                          tooltip: 'Filters',
-                          onPressed: () {
-                            // This will open our new filter panel
-                            _showFilterPanel(context);
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            controller.search('');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  onSubmitted: (query) => controller.search(query),
+    return Column(
+      children: [
+        PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search (e.g., chicken tag:dinner)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                contentPadding: EdgeInsets.zero,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    libraryController.search('');
+                  },
                 ),
               ),
+              onSubmitted: (query) => libraryController.search(query),
             ),
           ),
-          body: Builder(
-            builder: (context) {
-              if (libraryController.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              return Column(
-                children: [
-                  // --- NEW: Display a banner for each pending job ---
-                  ...pendingNewRecipeJobs.map((job) => PendingJobBanner(
-                        job: job,
-                        onView: () => _reviewPendingJob(job),
-                        onDismiss: () => _dismissJob(job),
-                      )),
-                  
-                  if (libraryController.recipes.isEmpty && pendingNewRecipeJobs.isEmpty)
-                    const Expanded(
-                      child: Center(
-                        child: Text('No recipes found.'),
+        ),
+        ...pendingNewRecipeJobs.map((job) => PendingJobBanner(
+              job: job,
+              onView: () => _reviewPendingJob(context, job),
+              onDismiss: () => _dismissJob(context, job),
+            )),
+        if (libraryController.recipes.isEmpty && pendingNewRecipeJobs.isEmpty)
+          const Expanded(
+            child: Center(
+              child: Text('No recipes found.'),
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: libraryController.recipes.length,
+              itemBuilder: (context, index) {
+                final recipe = libraryController.recipes[index];
+                return RecipeCard(
+                  recipe: recipe,
+                  onTap: () async {
+                    if (widget.isSelecting) {
+                      Navigator.of(context).pop(recipe.id);
+                      return;
+                    }
+                    final dynamic result = await Navigator.push<dynamic>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
                       ),
-                    )
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: controller.recipes.length,
-                        itemBuilder: (context, index) {
-                          final recipe = controller.recipes[index];
-                          return RecipeCard(
-                            recipe: recipe,
-                            onTap: () async {
-                              // The navigation logic remains the same
-                              if (widget.isSelecting) {
-                                Navigator.of(context).pop(recipe.id);
-                                return;
-                              }
-                              final dynamic result = await Navigator.push<dynamic>(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RecipeViewScreen(recipeId: recipe.id!),
-                                ),
-                              );
-                              if (result is String) {
-                                controller.setNavigationOrigin(recipe.id!);
-                                _searchController.text = result;
-                                controller.search(result);
-                              } else if (result == true) {
-                                controller.clearNavigationOrigin();
-                                controller.loadItems();
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              );
-            },
+                    );
+                    if (result is String) {
+                      libraryController.setNavigationOrigin(recipe.id!);
+                      libraryController.search(result);
+                    } else if (result == true) {
+                      libraryController.clearNavigationOrigin();
+                      libraryController.loadItems();
+                    }
+                  },
+                );
+              },
+            ),
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => DialogUtils.showAddRecipeMenu(context),
-            tooltip: 'Add Recipe',
-            child: const Icon(Icons.add),
-          ),
-        );
-      }
+      ],
     );
   }
 }

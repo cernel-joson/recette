@@ -1,17 +1,18 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/core/presentation/controllers/base_list_controller.dart';
+import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/data/services/inventory_list_service.dart';
 
-/// The controller for the inventory screen, now refactored to support
-/// dual-mode (visual and markdown) editing.
 class InventoryController extends BaseListController<InventoryItem, Location> {
   InventoryController({InventoryListService? inventoryListService})
       : super(inventoryListService ?? InventoryListService());
 
   @override
   InventoryItem createItemFromParsed(Map<String, String> parsed, {required int categoryId, int? id}) {
-    // This logic translates the generic parsed map from the Markdown parser
-    // into a specific InventoryItem.
     final rawQuantity = parsed['parsedQuantity'] ?? '';
     final parts = rawQuantity.split(' ');
     final quantity = parts.isNotEmpty ? parts.first : '';
@@ -28,62 +29,58 @@ class InventoryController extends BaseListController<InventoryItem, Location> {
 
   @override
   Location createCategory(String name) {
-    // Provides the base controller with a way to create a Location object
-    // when a new '##' heading is detected in the markdown.
     return Location(name: name);
   }
 
-  // NOTE: All previous selection and item movement logic has been removed,
-  // as these operations are now implicitly handled by the markdown reconciliation.
+  /// Displays a dialog to get user intent and submits a meal suggestion job.
+  void getMealIdeas(BuildContext context) async {
+    final intentController = TextEditingController();
+    final jobManager = JobManager.instance; // Access singleton
 
-  /*
-  
+    final userIntent = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("What's the situation?"),
+        content: TextField(
+          controller: intentController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: "e.g., 'I'm tired and need something quick.'",
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(intentController.text),
+            child: const Text('Get Ideas'),
+          ),
+        ],
+      ),
+    );
 
-  // --- All business logic is now in the controller ---
+    if (userIntent == null || !context.mounted) return;
+    
+    final inventoryList = textController.text;
+    final profile = await ProfileService.loadProfile();
+    final requestPayload = json.encode({
+      'inventory': inventoryList,
+      'dietary_profile': profile.fullProfileText,
+      'user_intent': userIntent,
+    });
 
-  void toggleSelection(int itemId) {
-    if (_selectedItemIds.contains(itemId)) {
-      _selectedItemIds.remove(itemId);
-      if (_selectedItemIds.isEmpty) {
-        _isSelecting = false;
-      }
-    } else {
-      _selectedItemIds.add(itemId);
-      _isSelecting = true;
+    await jobManager.submitJob(
+      jobType: 'meal_suggestion',
+      requestPayload: requestPayload,
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating meal idea... Track progress in the Jobs Tray.'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     }
-    notifyListeners();
   }
-
-  void clearSelection() {
-    _isSelecting = false;
-    _selectedItemIds.clear();
-    notifyListeners();
-  }
-
-  Future<void> moveSelectedItems(int locationId) async {
-    await _inventoryService.moveItemsToLocation(
-        _selectedItemIds.toList(), locationId);
-    clearSelection();
-    await loadItems(); // Reload data from the base controller
-  }
-  
-  Future<void> addItem(InventoryItem item) async {
-    await _inventoryService.addItem(item);
-    await loadItems();
-  }
-  
-  Future<void> updateItem(InventoryItem item) async {
-    await _inventoryService.updateItem(item);
-    await loadItems();
-  }
-  
-  Future<void> deleteItem(int id) async {
-    await _inventoryService.deleteItem(id);
-    await loadItems();
-  }
-  
-  Future<String> getInventoryAsText() {
-    return _inventoryService.getInventoryAsText();
-  }
-  */
 }
