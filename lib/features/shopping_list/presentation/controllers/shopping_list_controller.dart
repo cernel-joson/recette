@@ -6,6 +6,15 @@ class ShoppingListController extends BaseListController<ShoppingListItem, Shoppi
   ShoppingListController({ShoppingListService? shoppingListService})
       : super(shoppingListService ?? ShoppingListService());
 
+  int tabIndex = 0;
+
+  void onTabChanged(int index) {
+    if (tabIndex != index) {
+      tabIndex = index;
+      notifyListeners();
+    }
+  }
+
   @override
   ShoppingListItem createItemFromParsed(Map<String, String> parsed, {required int categoryId, int? id}) {
     return ShoppingListItem(
@@ -17,7 +26,6 @@ class ShoppingListController extends BaseListController<ShoppingListItem, Shoppi
     );
   }
   
-  // Implement the new required abstract method from the base controller.
   @override
   ShoppingListCategory createCategory(String name) {
     // This provides the base controller with a way to create a new category

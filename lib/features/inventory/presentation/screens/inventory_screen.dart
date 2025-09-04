@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:recette/core/presentation/utils/dialog_utils.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -9,25 +10,15 @@ class InventoryScreen extends StatefulWidget {
   State<InventoryScreen> createState() => _InventoryScreenState();
 }
 
-class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
+class _InventoryScreenState extends State<InventoryScreen> {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<InventoryController>(context, listen: false).loadItems();
     });
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-  
   @override
   Widget build(BuildContext context) {
     final invController = context.watch<InventoryController>();
@@ -36,37 +27,41 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Column(
-      children: [
-        TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
-            Tab(icon: Icon(Icons.article), text: 'Markdown'),
-          ],
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildVisualEditor(invController),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                  controller: invController.textController,
-                  maxLines: null,
-                  expands: true,
-                  textAlignVertical: TextAlignVertical.top,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: '## Fridge\n- 1 gallon Milk...',
-                  ),
-                ),
-              ),
+    // --- THIS IS THE FIX ---
+    // The screen now uses a DefaultTabController to manage the tab state,
+    // which allows the MainScreen to know which tab is currently active.
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.list_alt), text: 'Visual'),
+              Tab(icon: Icon(Icons.article), text: 'Markdown'),
             ],
           ),
-        ),
-      ],
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildVisualEditor(invController),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: invController.textController,
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: '## Fridge\n- 1 gallon Milk...',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -95,6 +90,12 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () => controller.deleteItem(item.id!),
                   ),
+                  // Make the list tile tappable to edit the item.
+                  onTap: () => DialogUtils.showItemEditDialog(
+                    context: context,
+                    controller: controller,
+                    item: item,
+                  ),
                 )),
             const Divider(),
           ],
@@ -103,4 +104,3 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     );
   }
 }
-

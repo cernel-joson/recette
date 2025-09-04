@@ -11,6 +11,15 @@ class InventoryController extends BaseListController<InventoryItem, Location> {
   InventoryController({InventoryListService? inventoryListService})
       : super(inventoryListService ?? InventoryListService());
 
+  int tabIndex = 0;
+
+  void onTabChanged(int index) {
+    if (tabIndex != index) {
+      tabIndex = index;
+      notifyListeners();
+    }
+  }
+
   @override
   InventoryItem createItemFromParsed(Map<String, String> parsed, {required int categoryId, int? id}) {
     final rawQuantity = parsed['parsedQuantity'] ?? '';

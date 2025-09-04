@@ -5,6 +5,7 @@ import 'package:recette/core/presentation/screens/jobs_tray_screen.dart';
 import 'package:recette/core/presentation/screens/settings_screen.dart';
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
 import 'package:recette/core/data/services/share_intent_service.dart';
+import 'package:recette/core/presentation/utils/dialog_utils.dart';
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
 import 'package:recette/features/inventory/presentation/screens/inventory_screen.dart';
@@ -12,7 +13,7 @@ import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_co
 import 'package:recette/features/meal_plan/presentation/screens/meal_plan_screen.dart';
 import 'package:recette/features/recipes/presentation/controllers/recipe_library_controller.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_library_screen.dart';
-import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart';
+import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart' as recipe_dialog_utils;
 import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart';
 import 'package:recette/features/shopping_list/presentation/screens/shopping_list_screen.dart';
 import 'package:recette/features/recipes/data/services/export_service.dart' as recipe_export_service;
@@ -142,17 +143,48 @@ class _MainScreenState extends State<MainScreen> {
       case 1: // Recipe Library
         return FloatingActionButton(
           heroTag: 'addRecipeFab',
-          onPressed: () => DialogUtils.showAddRecipeMenu(context),
+          onPressed: () => recipe_dialog_utils.DialogUtils.showAddRecipeMenu(context),
           tooltip: 'Add Recipe',
           child: const Icon(Icons.add),
         );
       case 2: // Inventory
-        return FloatingActionButton.extended(
-          heroTag: 'mealIdeasFab',
-          onPressed: () => context.read<InventoryController>().getMealIdeas(context),
-          tooltip: 'Get Meal Ideas',
-          icon: const Icon(Icons.lightbulb_outline),
-          label: const Text('What can I make?'),
+        final controller = context.watch<InventoryController>();
+        final isVisualTab = controller.tabIndex == 0;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (isVisualTab)
+              FloatingActionButton(
+                heroTag: 'addInventoryItemFab',
+                onPressed: () => DialogUtils.showItemEditDialog(
+                  context: context,
+                  controller: controller,
+                ),
+                tooltip: 'Add Item',
+                child: const Icon(Icons.add),
+              ),
+            const SizedBox(width: 8),
+            FloatingActionButton.extended(
+              heroTag: 'mealIdeasFab',
+              onPressed: () => controller.getMealIdeas(context),
+              tooltip: 'Get Meal Ideas',
+              icon: const Icon(Icons.lightbulb_outline),
+              label: const Text('What can I make?'),
+            ),
+          ],
+        );
+      case 4: // Shopping List
+        final controller = context.watch<ShoppingListController>();
+        final isVisualTab = controller.tabIndex == 0;
+        if (!isVisualTab) return null; // No FAB on the Markdown tab
+        return FloatingActionButton(
+          heroTag: 'addShoppingItemFab',
+          onPressed: () => DialogUtils.showItemEditDialog(
+            context: context,
+            controller: controller,
+          ),
+          tooltip: 'Add Item',
+          child: const Icon(Icons.add),
         );
       default:
         return null;
