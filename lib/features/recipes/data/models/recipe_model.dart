@@ -218,16 +218,24 @@ class Recipe implements DataModel, Fingerprintable {
       }
     }
 
+    // Helper to safely convert a dynamic value (String or List) to a String.
+    String _safeString(dynamic value) {
+      if (value == null) return '';
+      if (value is String) return value;
+      if (value is List) return value.join('\n'); // Join list elements with newlines.
+      return value.toString();
+    }
+
     return Recipe(
       id: map['id'],
       parentRecipeId: map['parentRecipeId'],
       fingerprint: map['fingerprint'],
-      title: map['title'] ?? 'No Title',
-      description: map['description'] ?? '',
-      prepTime: map['prepTime'] ?? map['prep_time'] ?? '',
-      cookTime: map['cookTime'] ?? map['cook_time'] ?? '',
-      totalTime: map['totalTime'] ?? map['total_time'] ?? '',
-      servings: map['servings'] ?? '',
+      title: _safeString(map['title'] ?? 'No Title'),
+      description: _safeString(map['description'] ?? ''),
+      prepTime: _safeString(map['prepTime'] ?? map['prep_time'] ?? ''),
+      cookTime: _safeString(map['cookTime'] ?? map['cook_time'] ?? ''),
+      totalTime: _safeString(map['totalTime'] ?? map['total_time'] ?? ''),
+      servings: _safeString(map['servings'] ?? ''),
       
       // Use the safe list decoder
       ingredients: _safeDecodeList(map['ingredients'], (item) => Ingredient.fromMap(item)),

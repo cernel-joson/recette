@@ -55,6 +55,22 @@ class RecipeAnalysisService {
     
     return true; // Indicates a job was submitted
   }
+  
+  /// Submits a job to have the AI create a healthier version of a recipe.
+  Future<void> healthifyRecipe(Recipe recipe) async {
+    final profile = await ProfileService.loadProfile();
+
+    final requestPayload = json.encode({
+      'recipe_data': recipe.toMap(),
+      'dietary_profile': profile.fullProfileText,
+    });
+
+    await _jobManager.submitJob(
+      jobType: 'healthify_recipe',
+      requestPayload: requestPayload,
+      // priority: JobPriority.high,
+    );
+  }
 
   /// Private helper to check if the health data is still valid.
   bool _isHealthCacheValid(Recipe recipe, DietaryProfile profile) {

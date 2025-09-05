@@ -8,6 +8,7 @@ import 'package:recette/core/jobs/logic/job_manager.dart';
 import 'package:recette/core/jobs/data/repositories/job_repository.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';
 import 'package:recette/core/utils/usage_limiter.dart';
+import 'package:recette/features/recipes/data/jobs/healthify_recipe_worker.dart';
 import 'package:recette/features/recipes/data/jobs/recipe_analysis_worker.dart';
 import 'package:recette/features/recipes/data/services/recipe_import_service.dart';
 import 'firebase_options.dart';
@@ -44,6 +45,7 @@ void main() async {
     'profile_review': ProfileAnalysisWorker(),
     'inventory_import': InventoryImportWorker(),
     'meal_suggestion': MealSuggestionWorker(),
+    'healthify_recipe': HealthifyRecipeWorker(),
   };
   
   workers.forEach((key, value) {

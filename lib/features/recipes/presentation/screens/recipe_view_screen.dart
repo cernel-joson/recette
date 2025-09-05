@@ -97,6 +97,32 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
     }
   }
 
+  /// Triggers a background job to create a healthier variation of the recipe.
+  Future<void> _healthifyRecipe() async {
+    if (_currentRecipe == null) return;
+
+    final jobManager = Provider.of<JobManager>(context, listen: false);
+    final analysisService = RecipeAnalysisService(jobManager);
+
+    try {
+      await analysisService.healthifyRecipe(_currentRecipe!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Creating healthier version... Track progress in the Jobs Tray.'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _createVariation() async {
     final recipeForVariation = _currentRecipe!.copyWith(isVariation: true);
     final result = await Navigator.push<bool>(
@@ -341,6 +367,12 @@ class _RecipeViewScreenState extends State<RecipeViewScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
+                    if (_currentRecipe!.healthRating != 'SAFE' && _currentRecipe!.healthRating != 'GREEN')
+                      TextButton.icon(
+                        icon: const Icon(Icons.favorite_outline, color: Colors.pink),
+                        label: const Text('Healthify', style: TextStyle(color: Colors.pink)),
+                        onPressed: _healthifyRecipe,
+                      ),
                     TextButton.icon(
                       icon: const Icon(Icons.auto_awesome),
                       label: const Text('Analyze'),

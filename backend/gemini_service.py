@@ -6,16 +6,7 @@ def call_gemini(model: GenerativeModel, prompt_parts: list, developer_mode: bool
     """
     Handles the interaction with the Gemini model, including prompt execution,
     response parsing, and error handling.
-
-    Args:
-        model: The initialized GenerativeModel instance.
-        prompt_parts: A list of parts that make up the complete prompt.
-        developer_mode: If True, returns the prompt text instead of calling the AI.
-
-    Returns:
-        A dictionary containing the prompt text, raw response, parsed result, and any errors.
     """
-    # Join only the string parts of the prompt for the text version.
     full_prompt_text = "".join([p for p in prompt_parts if isinstance(p, str)])
 
     if developer_mode:
@@ -23,9 +14,13 @@ def call_gemini(model: GenerativeModel, prompt_parts: list, developer_mode: bool
 
     try:
         response = model.generate_content(prompt_parts)
-        raw_response_text = response.text
 
-        # Standardize the JSON cleaning process
+        # --- THIS IS THE FIX ---
+        # The 'response.text' property can be unreliable. The robust way to get the
+        # full text content is to iterate through the response 'parts' and join them.
+        # This handles all cases and ensures a string is always produced.
+        raw_response_text = "".join([part.text for part in response.parts]) if hasattr(response, 'parts') and response.parts else response.text
+
         json_string = raw_response_text.strip().replace("```json", "").replace("```", "").strip()
         ai_result = json.loads(json_string)
         error_message = None

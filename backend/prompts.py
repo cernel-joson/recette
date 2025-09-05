@@ -142,6 +142,33 @@ def build_recipe_analysis_prompt(tasks, recipe_data, dietary_profile=''):
 
     return prompt_parts
 
+
+def build_healthify_recipe_prompt(recipe_data, dietary_profile):
+    """
+    Creates the prompt for the new "healthify" service. This is a creative
+    task that results in a completely new recipe object.
+    """
+    # --- THIS IS THE FIX ---
+    # The prompt is now broken into multiple parts, consistent with other
+    # prompt builders. This ensures the backend sends a simple string
+    # in the 'prompt_text' field of its response.
+    prompt_parts = [
+        "You are an expert nutritionist and recipe developer. Your task is to analyze the provided recipe and the user's dietary profile to create a NEW, healthier version of the recipe.",
+        "\n\n**GUIDELINES:**",
+        "\n1.  **Prioritize Health:** Your primary goal is to make the recipe align better with the user's health needs. Focus on reducing unhealthy fats, sugars, and sodium, and suggest healthier cooking methods (e.g., baking instead of frying).",
+        "\n2.  **Maintain the Core Dish:** The new recipe should still be recognizable as the original dish. Do not change it into something completely different.",
+        "\n3.  **Provide a Complete Recipe:** Your response must be a full, new recipe, not just a list of suggestions. This includes a new title (e.g., \"Healthier Chicken Parmesan\"), a full ingredient list with modified quantities, and a complete set of instructions.",
+        "\n4.  **Explain Your Changes:** In the new recipe's \"description\" field, you MUST include a brief explanation of the key changes you made and why they are healthier.",
+        "\n\n**CONTEXT:**",
+        f"\n- **User's Dietary Profile:** {dietary_profile}",
+        f"\n- **Original Recipe to Modify:** {json.dumps(recipe_data)}",
+        "\n\nYou MUST return a single, clean JSON object that follows the exact structure defined below.",
+        "\n---",
+        JSON_STRUCTURE_PROMPT,
+        "\n---"
+    ]
+    return prompt_parts
+
 # --- UNIFIED ANALYSIS PROMPT ---
 
 def get_recipe_analysis_prompt(tasks, has_image=False):

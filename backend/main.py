@@ -12,7 +12,8 @@ from . import recipe_tools_service
 from . import inventory_service
 from . import profile_service
 # from prompts import get_conversational_chat_prompt
-from . import chat_service # <-- Import the new service
+from . import healthify_service
+from . import chat_service
 
 # --- Initialization ---
 PROJECT_ID = "recette-fdf64"
@@ -59,6 +60,8 @@ def recipe_analyzer_api(request):
         # --- The Router ---
         if 'recipe_analysis_request' in request_json:
             response_data = recipe_analysis_service.handle_recipe_analysis(request_json, model)
+        elif 'healthify_recipe_request' in request_json:
+            response_data = healthify_service.handle_healthify_recipe(request_json, model)
         elif 'find_similar_request' in request_json:
             response_data = recipe_tools_service.handle_find_similar(request_json, model)
         elif 'meal_suggestion_request' in request_json:
