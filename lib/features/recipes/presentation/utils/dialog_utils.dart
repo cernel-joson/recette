@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:recette/features/recipes/recipes.dart';
 
 import 'dart:convert';
-import 'package:recette/core/jobs/logic/job_manager.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/core/jobs/job_manager.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
 
 class DialogUtils {
   /// Shows a modal bottom sheet with options for adding a new recipe.

@@ -4,11 +4,11 @@ import 'dart:typed_data';
 import 'package:file_saver/file_saver.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:recette/core/data/models/data_backup_model.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
-import 'package:recette/features/inventory/data/services/inventory_service.dart';
-import 'package:recette/features/meal_plan/data/services/meal_plan_service.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
-import 'package:recette/features/shopping_list/data/services/shopping_list_service.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
+import 'package:recette/features/inventory/services/inventory_service.dart';
+import 'package:recette/features/meal_plan/services/meal_plan_service.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
+import 'package:recette/features/shopping_list/services/shopping_list_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// A service to handle exporting all user data into a single backup file.

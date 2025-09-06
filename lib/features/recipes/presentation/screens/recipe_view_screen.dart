@@ -7,8 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/core/presentation/widgets/widgets.dart';
-import 'package:recette/core/jobs/logic/job_manager.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/core/jobs/job_manager.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
 
 // Enum to define the result of the popup menu
 enum _MenuAction { share, delete, createVariation }

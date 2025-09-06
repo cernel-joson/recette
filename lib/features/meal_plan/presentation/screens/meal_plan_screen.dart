@@ -4,7 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:recette/features/meal_plan/data/models/meal_plan_entry_model.dart';
 import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_controller.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_library_screen.dart';
 import 'package:recette/features/recipes/presentation/screens/recipe_view_screen.dart';
 

@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart'; // Import foundation for debugPrint
 import 'package:recette/core/data/datasources/api_helper.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
-import 'package:recette/core/jobs/logic/job_worker.dart';
+import 'package:recette/core/jobs/job_worker.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
 
 /// A specialized job worker that asks the AI to create a healthier
 /// version of a given recipe.

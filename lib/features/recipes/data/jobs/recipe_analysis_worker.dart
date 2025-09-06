@@ -3,12 +3,12 @@
 import 'dart:convert';
 import 'dart:developer' as developer; // 1. Import the developer log
 import 'package:recette/core/core.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
-import 'package:recette/core/jobs/data/repositories/job_repository.dart';
-import 'package:recette/core/jobs/logic/job_worker.dart';
+import 'package:recette/core/jobs/job_repository.dart';
+import 'package:recette/core/jobs/job_worker.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
 
 // Renamed from RecipeParsingWorker
 class RecipeAnalysisWorker implements JobWorker {

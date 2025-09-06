@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/recipes/services/services.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
 import 'package:recette/features/recipes/presentation/controllers/list_manager_mixin.dart';
 
 class RecipeEditController extends ChangeNotifier with ListManagerMixin {

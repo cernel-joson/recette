@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:recette/core/presentation/controllers/base_controller.dart'; // IMPORT the new base controller
-import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/features/recipes/services/services.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
 
 // --- UPDATED: Extend the generic BaseController<Recipe> ---

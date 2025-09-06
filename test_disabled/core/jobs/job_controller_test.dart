@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/presentation/controllers/job_controller.dart';
+import 'package:recette/core/jobs/job_model.dart';
 
 import '../../mocks/mock_job_repository.mocks.dart';
 

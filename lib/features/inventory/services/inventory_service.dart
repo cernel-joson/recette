@@ -3,7 +3,7 @@ import 'package:recette/core/data/datasources/api_helper.dart';
 import 'package:recette/core/data/datasources/database_helper.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/data/repositories/repositories.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart'; // Import profile service
+import 'package:recette/features/dietary_profile/services/profile_service.dart'; // Import profile service
 
 class InventoryService {
   final InventoryRepository _repository;

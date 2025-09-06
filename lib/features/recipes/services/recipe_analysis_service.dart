@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:recette/core/core.dart';
 import 'package:recette/features/recipes/recipes.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
-import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
+import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
 
 // Enum to define the different kinds of analysis a user can request.

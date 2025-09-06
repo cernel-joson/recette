@@ -7,8 +7,8 @@ import 'dart:async' as _i4;
 import 'dart:ui' as _i5;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:recette/core/jobs/presentation/controllers/job_controller.dart' as _i2;
-import 'package:recette/core/jobs/data/models/job_model.dart' as _i3;
+import 'package:recette/core/presentation/controllers/job_controller.dart' as _i2;
+import 'package:recette/core/jobs/job_model.dart' as _i3;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values

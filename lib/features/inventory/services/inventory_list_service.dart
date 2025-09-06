@@ -1,4 +1,4 @@
-import 'package:recette/core/data/services/base_list_service.dart';
+import 'package:recette/core/services/base_list_service.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
 import 'package:recette/features/inventory/data/repositories/inventory_list_repository.dart';
 

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:recette/core/data/models/list_item_model.dart';
-import 'package:recette/core/data/services/base_list_service.dart';
-import 'package:recette/core/data/utils/markdown_parser.dart';
+import 'package:recette/core/services/base_list_service.dart';
+import 'package:recette/core/utils/markdown_parser.dart';
 
 abstract class BaseListController<T extends ListItem, C extends ListCategory> with ChangeNotifier {
   final BaseListService<T, C> service;

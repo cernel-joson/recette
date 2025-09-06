@@ -4,7 +4,7 @@ import 'package:recette/core/presentation/screens/about_screen.dart';
 import 'package:recette/core/presentation/screens/jobs_tray_screen.dart';
 import 'package:recette/core/presentation/screens/settings_screen.dart';
 import 'package:recette/core/presentation/widgets/jobs_tray_icon.dart';
-import 'package:recette/core/data/services/share_intent_service.dart';
+import 'package:recette/core/services/share_intent_service.dart';
 import 'package:recette/core/presentation/utils/dialog_utils.dart';
 import 'package:recette/features/dietary_profile/presentation/screens/dietary_profile_screen.dart';
 import 'package:recette/features/inventory/presentation/controllers/inventory_controller.dart';
@@ -16,8 +16,8 @@ import 'package:recette/features/recipes/presentation/screens/recipe_library_scr
 import 'package:recette/features/recipes/presentation/utils/dialog_utils.dart' as recipe_dialog_utils;
 import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart';
 import 'package:recette/features/shopping_list/presentation/screens/shopping_list_screen.dart';
-import 'package:recette/features/recipes/data/services/export_service.dart' as recipe_export_service;
-import 'package:recette/features/recipes/data/services/import_service.dart' as recipe_import_service;
+import 'package:recette/features/recipes/services/export_service.dart' as recipe_export_service;
+import 'package:recette/features/recipes/services/import_service.dart' as recipe_import_service;
 import 'package:recette/features/recipes/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:recette/core/presentation/screens/dashboard_screen.dart';
 

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/features/dietary_profile/data/models/dietary_profile_model.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
 
 class DietaryProfileController with ChangeNotifier {
   final JobManager _jobManager;

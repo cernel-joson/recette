@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
 
 class ExportService {
   /// Fetches all recipes, converts them to a JSON file, and triggers sharing.

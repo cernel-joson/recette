@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/job_model.dart';
 
 class PendingJobBanner extends StatelessWidget {
   final Job job;

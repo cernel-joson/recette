@@ -1,4 +1,4 @@
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/data/datasources/database_helper.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/logic/job_broadcast_service.dart';

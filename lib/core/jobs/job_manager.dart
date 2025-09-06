@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
-import 'package:recette/core/jobs/data/repositories/job_repository.dart';
-import 'package:recette/core/jobs/logic/job_worker.dart';
+import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/jobs/job_repository.dart';
+import 'package:recette/core/jobs/job_worker.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
 
 class JobManager {

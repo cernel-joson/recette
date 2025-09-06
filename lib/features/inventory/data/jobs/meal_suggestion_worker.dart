@@ -1,9 +1,9 @@
 // lib/features/inventory/data/jobs/meal_suggestion_worker.dart
 import 'dart:convert';
 import 'package:recette/core/core.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
-import 'package:recette/core/jobs/logic/job_worker.dart';
+import 'package:recette/core/jobs/job_worker.dart';
 import 'package:recette/features/recipes/recipes.dart';
 
 /* class MealSuggestionWorker implements JobWorker {

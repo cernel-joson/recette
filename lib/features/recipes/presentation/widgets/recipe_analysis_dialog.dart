@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/features/recipes/services/services.dart';
 
 class RecipeAnalysisDialog extends StatefulWidget {
   const RecipeAnalysisDialog({super.key});

@@ -1,6 +1,6 @@
 // lib/features/inventory/presentation/widgets/meal_ideas_banner.dart
 import 'package:flutter/material.dart';
-import 'package:recette/core/jobs/data/models/job_model.dart';
+import 'package:recette/core/jobs/job_model.dart';
 
 class MealIdeasBanner extends StatelessWidget {
   final Job job;

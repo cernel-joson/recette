@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:recette/core/utils/utils.dart';
 import 'package:recette/features/recipes/data/models/models.dart';
-import 'package:recette/features/recipes/data/services/services.dart';
+import 'package:recette/features/recipes/services/services.dart';
 
 /// A data class to hold the result of an import operation.
 class ImportResult {

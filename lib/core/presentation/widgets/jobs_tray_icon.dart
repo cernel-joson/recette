@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
+import 'package:recette/core/presentation/controllers/job_controller.dart';
 
 /// An icon for the AppBar that provides a visual indication of background
 /// job activity and serves as a button to open the Jobs Tray screen.

@@ -1,4 +1,4 @@
-import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/features/recipes/recipes.dart';
 import 'package:recette/features/recipes/data/repositories/recipe_repository.dart';
 import 'package:recette/features/recipes/data/exceptions/recipe_exceptions.dart';

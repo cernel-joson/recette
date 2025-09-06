@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:recette/core/presentation/controllers/base_controller.dart'; // IMPORT base controller
 import 'package:recette/features/meal_plan/data/models/meal_plan_entry_model.dart';
-import 'package:recette/features/meal_plan/data/services/meal_plan_service.dart';
+import 'package:recette/features/meal_plan/services/meal_plan_service.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
 
 // --- UPDATED: Extend BaseController<MealPlanEntry> ---

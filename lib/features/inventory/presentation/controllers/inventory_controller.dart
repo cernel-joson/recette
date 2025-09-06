@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:recette/core/jobs/logic/job_manager.dart';
+import 'package:recette/core/jobs/job_manager.dart';
 import 'package:recette/core/presentation/controllers/base_list_controller.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
-import 'package:recette/features/inventory/data/services/inventory_list_service.dart';
+import 'package:recette/features/inventory/services/inventory_list_service.dart';
 
 class InventoryController extends BaseListController<InventoryItem, Location> {
   InventoryController({InventoryListService? inventoryListService})

@@ -3,11 +3,11 @@ import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:file_picker/file_picker.dart';
 import 'package:recette/core/data/models/data_backup_model.dart';
-import 'package:recette/features/dietary_profile/data/services/profile_service.dart';
-import 'package:recette/features/inventory/data/services/inventory_service.dart';
-import 'package:recette/features/meal_plan/data/services/meal_plan_service.dart';
-import 'package:recette/features/recipes/data/services/recipe_service.dart';
-import 'package:recette/features/shopping_list/data/services/shopping_list_service.dart';
+import 'package:recette/features/dietary_profile/services/profile_service.dart';
+import 'package:recette/features/inventory/services/inventory_service.dart';
+import 'package:recette/features/meal_plan/services/meal_plan_service.dart';
+import 'package:recette/features/recipes/services/recipe_service.dart';
+import 'package:recette/features/shopping_list/services/shopping_list_service.dart';
 
 /// Service to handle importing data from a backup file and overwriting local data.
 class ImportService {

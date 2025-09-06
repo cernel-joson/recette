@@ -1,7 +1,7 @@
 // test/services/search_service_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:recette/features/recipes/data/services/search_service.dart';
+import 'package:recette/features/recipes/services/search_service.dart';
 
 void main() {
   late SearchService searchService;

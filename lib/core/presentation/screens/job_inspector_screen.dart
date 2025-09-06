@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart'; // Import Provider
-import 'package:recette/core/jobs/data/models/job_model.dart';
-import 'package:recette/core/jobs/presentation/controllers/job_controller.dart';
-import 'package:recette/core/jobs/presentation/controllers/job_inspector_controller.dart';
+import 'package:recette/core/jobs/job_model.dart';
+import 'package:recette/core/presentation/controllers/job_controller.dart';
+import 'package:recette/core/presentation/controllers/job_inspector_controller.dart';
 
 class JobInspectorScreen extends StatelessWidget {
   final int jobId; // Pass the job ID instead of the whole object

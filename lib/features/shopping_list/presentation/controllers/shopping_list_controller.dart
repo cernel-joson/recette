@@ -1,6 +1,6 @@
 import 'package:recette/core/presentation/controllers/base_list_controller.dart';
 import 'package:recette/features/shopping_list/data/models/models.dart';
-import 'package:recette/features/shopping_list/data/services/shopping_list_service.dart';
+import 'package:recette/features/shopping_list/services/shopping_list_service.dart';
 
 class ShoppingListController extends BaseListController<ShoppingListItem, ShoppingListCategory> {
   ShoppingListController({ShoppingListService? shoppingListService})
