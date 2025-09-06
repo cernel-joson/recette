@@ -43,6 +43,7 @@ dev_dependencies:
   build_runner: ^2.4.10
   sqflite_common_ffi: ^2.3.3
   flutter_lints: ^6.0.0
+  http: ^1.1.0 # For mocking HTTP requests in tests
 
 flutter:
   uses-material-design: true

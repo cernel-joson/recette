@@ -1,4 +1,4 @@
-import 'package:recette/core/data/services/database_helper.dart';
+import 'package:recette/core/data/datasources/database_helper.dart';
 
 // A generic interface defining the contract for our models
 abstract interface class DataModel {

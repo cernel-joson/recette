@@ -6,7 +6,7 @@
 // flutter pub run build_runner build
 
 import 'package:mockito/annotations.dart';
-import 'package:recette/core/data/services/database_helper.dart';
+import 'package:recette/core/data/datasources/database_helper.dart';
 import 'package:sqflite/sqflite.dart';
 
 @GenerateMocks([DatabaseHelper, Database])

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,6 +22,7 @@ import 'package:recette/core/presentation/screens/main_screen.dart';
 import 'package:recette/features/recipes/presentation/controllers/recipe_library_controller.dart';
 import 'package:recette/features/shopping_list/presentation/controllers/shopping_list_controller.dart';
 import 'package:recette/features/meal_plan/presentation/controllers/meal_plan_controller.dart';
+import 'package:recette/core/data/datasources/api_client.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -56,6 +58,12 @@ void main() async {
   final developerService = DeveloperService();
   final recipeImportService = RecipeImportService(jobManager, usageLimiter);
   
+  // Read the URL from the compile-time environment variable.
+  const apiUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'https://us-central1-recette-fdf64.cloudfunctions.net/recette-api-dev',
+  );
+  
   runApp(
     MultiProvider(
       providers: [
@@ -71,6 +79,14 @@ void main() async {
         ChangeNotifierProvider(create: (_) => InventoryController()),
         ChangeNotifierProvider(create: (_) => ShoppingListController()),
         ChangeNotifierProvider(create: (_) => MealPlanController()),
+        
+        Provider<ApiClient>(
+          create: (context) => ApiClient(
+            client: http.Client(),
+            baseUrl: apiUrl, // <-- Provide the URL here
+            // loggingService: context.read<LoggingService>(),
+          ),
+        ),
       ],
       child: const RecetteApp(),
     ),

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart'; // Import foundation for debugPrint
-import 'package:recette/core/data/services/api_helper.dart';
+import 'package:recette/core/data/datasources/api_helper.dart';
 import 'package:recette/core/jobs/data/models/job_model.dart';
 import 'package:recette/core/jobs/data/models/job_result.dart';
 import 'package:recette/core/jobs/logic/job_worker.dart';

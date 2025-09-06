@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:recette/core/data/repositories/data_repository.dart';
-import 'package:recette/core/data/services/database_helper.dart';
+import 'package:recette/core/data/datasources/database_helper.dart';
 import 'package:recette/features/recipes/data/models/recipe_model.dart';
 
 /// The single data access point for all recipe-related data.

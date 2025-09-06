@@ -1,6 +1,6 @@
 import 'package:recette/core/data/models/list_item_model.dart';
 import 'package:recette/core/data/repositories/data_repository.dart';
-import 'package:recette/core/data/services/database_helper.dart';
+import 'package:recette/core/data/datasources/database_helper.dart';
 
 /// A generic repository for list-based features that handles common database operations.
 abstract class BaseListRepository<T extends ListItem, C extends ListCategory> {

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 enum AiModel { pro, flash }
 
 /// A helper class to handle all communication with the back-end API.
+@Deprecated('Use ApiClient instead. This will be removed in a future version.')
 class ApiHelper {
   // The single source of truth for our cloud function URL.
   // static const String _cloudFunctionUrl =

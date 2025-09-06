@@ -1,5 +1,5 @@
 import 'package:recette/core/data/repositories/data_repository.dart';
-import 'package:recette/core/data/services/database_helper.dart';
+import 'package:recette/core/data/datasources/database_helper.dart';
 import 'package:recette/features/inventory/data/models/models.dart';
 
 /// The single data access point for all inventory-related data.

@@ -43,3 +43,19 @@ To ensure backward compatibility between the frontend app and the backend servic
 * **Deprecation**: Older API versions can be monitored for traffic and safely decommissioned once all users have upgraded to a newer version of the app.
 
 This approach prevents breaking changes in the backend from crashing older app versions in the wild, providing a stable and reliable user experience.
+
+## **6.0 Modular Architecture & Code Generation**
+
+To ensure the long-term scalability and maintainability of the Recette application, the architecture will adopt a modular, "plugin-like" system for feature integration, moving away from manual dependency registration in main.dart.
+
+* **Problem**: As new features (e.g., Recipes, Inventory, Shopping List) are added, the main.dart file becomes a bottleneck, requiring manual updates for every new service, controller, and background worker. This creates tight coupling and increases the risk of configuration errors.
+
+* **Solution**: The project will implement a Feature Module pattern powered by compile-time code generation.
+
+        Feature Modules: Each core feature will be responsible for declaring its own dependencies (Providers) and background tasks (JobWorkers) in a dedicated module class.
+
+        Annotations: Feature modules will be marked with a simple @featureModule annotation, making them discoverable.
+
+        Code Generation: Instead of using reflection (which is disabled in Flutter for performance and app-size reasons), the project will use the standard build_runner tool. At compile time, a script will scan the codebase for annotated modules and automatically generate the code required to register all dependencies and workers.
+
+* **Benefits**: This approach makes the core application agnostic of its features. Adding a new feature will no longer require modifying main.dart or any other core files. This improves developer velocity, reduces code fragility, and adheres to Flutter best practices for building large-scale applications.
